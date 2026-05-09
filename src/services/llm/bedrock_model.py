@@ -3,6 +3,7 @@ from typing import Any, Dict, Optional, Type, Union
 
 import boto3
 import pystache
+from botocore.config import Config
 from pydantic import ValidationError
 
 from src.config.logging import Logger
@@ -39,7 +40,11 @@ class BedrockModel(BaseLLMModel, Logger):
         if not self.region:
             raise LLMModelError("AWS region is not configured. Set 'AWS_REGION' in the environment.")
 
-        self.client = boto3.client("bedrock-runtime", region_name=self.region)
+        self.client = boto3.client(
+            "bedrock-runtime",
+            region_name=self.region,
+            config=Config(read_timeout=300, connect_timeout=10, retries={"max_attempts": 2}),
+        )
 
     def render_prompt_template(self, prompt: str, context: Dict[str, Any]) -> Any:
         """Mustache prompt template render function."""
