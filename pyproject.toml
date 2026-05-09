@@ -36,6 +36,7 @@ agent-framework-azure-ai = { version = "*", allow-prereleases = true }
 # ollama = "*"
 cachetools = "*"
 types-cachetools = "*"
+boto3 = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

@@ -34,6 +34,10 @@ class Settings(BaseSettings):
     azure_openai_responses_deployment_name: str = Field(default="gpt-4o", description="")
     azure_api_version: str = Field(default="2024-05-01-preview")
 
+    # AWS Bedrock Settings
+    aws_region: str = Field(default="us-west-1", description="AWS region for the Bedrock runtime client.")
+    bedrock_model_id: Union[str, None] = Field(default=None, description="Bedrock model id or inference profile ARN for Anthropic Claude.")
+
     # Hugging Face Settings
     hugggingface_minilm_embedding_model: str = Field(default="sentence-transformers/all-MiniLM-L6-v2", description="Hugging Face Embedding Model.")  # 384
     hugggingface_qwen_embedding_model: str = Field(default="Qwen/Qwen3-Embedding-0.6B", description="Qwen3 0.6B model from Hugging Face.")
