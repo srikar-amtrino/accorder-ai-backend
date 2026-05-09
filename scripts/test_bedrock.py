@@ -28,7 +28,7 @@ def main() -> None:
     body = {
         "anthropic_version": "bedrock-2023-05-31",
         "max_tokens": 100,
-        "messages": [{"role": "user", "content": "Say hello in one short sentence."}],
+        "messages": [{"role": "user", "content": "Summarize what an NDA is in two sentences."}],
     }
 
     response = client.invoke_model(

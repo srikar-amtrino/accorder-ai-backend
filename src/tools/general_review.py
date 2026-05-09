@@ -11,7 +11,7 @@
 #     llm_service = service_container.azure_openai_model
 #     # faiss_store = service_container.faiss_store
 
-#     prompt = Path(r"src\services\prompts\v1\general_review.mustache").read_text()
+#     prompt = Path(r"src/services/prompts/v1/general_review.mustache").read_text()
 
 #     context = {
 #         "paragraph": request.paragraph,

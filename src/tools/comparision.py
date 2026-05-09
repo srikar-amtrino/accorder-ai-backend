@@ -550,7 +550,7 @@ def _reconcile_matched_containment(pairs: List[Tuple[int, int, float]], clauses_
 async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_client) -> ClauseComparisonLLMResponse:
     """Send one clause pair to the LLM for detailed comparison."""
 
-    prompt = Path(r"src\services\prompts\v1\clause_comparison_prompt.mustache").read_text()
+    prompt = Path(r"src/services/prompts/v1/clause_comparison_prompt.mustache").read_text()
 
     context = {
         "clause_heading": clause_a.heading or clause_b.heading or "Unnamed Clause",

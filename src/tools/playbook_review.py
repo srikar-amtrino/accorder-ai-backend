@@ -23,9 +23,9 @@ logger = get_logger(__name__)
 
 AGENT_NAME = "playbook_review_agent"
 
-SIMILARITY_PROMPT = Path(r"src\services\prompts\v1\ai_review_prompt_v2.mustache").read_text(encoding="utf-8")
+SIMILARITY_PROMPT = Path(r"src/services/prompts/v1/ai_review_prompt_v2.mustache").read_text(encoding="utf-8")
 
-MISSING_CLAUSES_PROMPT = Path(r"src\services\prompts\v1\missing_clauses.mustache").read_text(encoding="utf-8")
+MISSING_CLAUSES_PROMPT = Path(r"src/services/prompts/v1/missing_clauses.mustache").read_text(encoding="utf-8")
 
 
 def _hash(text: str) -> str:

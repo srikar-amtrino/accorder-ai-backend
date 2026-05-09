@@ -37,7 +37,7 @@ async def get_summary(session_id: Optional[str], response: str = "JSON") -> str 
 
     full_text = "\n\n".join((chunk.content for chunk in results.values() if getattr(chunk, "content", None)))
 
-    prompt_template = Path(r"src\services\prompts\v1\summary_prompt_template.mustache").read_text()
+    prompt_template = Path(r"src/services/prompts/v1/summary_prompt_template.mustache").read_text()
     context = {"text": full_text}
 
     summary: str | SummaryToolResponse = await llm_service.generate(prompt=prompt_template, context=context, response_model=None, mode="markdown")

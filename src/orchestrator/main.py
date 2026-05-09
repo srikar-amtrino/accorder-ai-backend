@@ -195,7 +195,7 @@ class OpenAIChat(BaseChatClient):
         )
 
 
-prompt = Path(r"src\services\prompts\v1\orchestrator_prompt.mustache").read_text()
+prompt = Path(r"src/services/prompts/v1/orchestrator_prompt.mustache").read_text()
 
 agent = OpenAIChat().create_agent(
     name="Orchestrator Agent",

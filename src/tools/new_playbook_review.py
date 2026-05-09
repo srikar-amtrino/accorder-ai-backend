@@ -91,7 +91,7 @@ async def validate_clause_against_rule(clause_content: str, rule_title: str, rul
     # Use the same prompt as the old playbook review
     from pathlib import Path
 
-    prompt = Path(r"src\services\prompts\v1\ai_review_prompt_v2.mustache").read_text(encoding="utf-8")
+    prompt = Path(r"src/services/prompts/v1/ai_review_prompt_v2.mustache").read_text(encoding="utf-8")
 
     context = {"rule_title": rule_title, "rule_instruction": rule_instruction, "rule_description": rule_description, "paragraphs": f"PARA_ID: clause_content\nTEXT: {clause_content}"}
 

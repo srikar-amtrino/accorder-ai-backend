@@ -23,7 +23,7 @@ async def get_missing_clauses(data: str) -> List[str]:
     service_container = get_service_container()
     llm_model = service_container.azure_openai_model
 
-    prompt = Path(r"src\services\prompts\v1\missing_clauses.mustache").read_text(encoding="utf-8")
+    prompt = Path(r"src/services/prompts/v1/missing_clauses.mustache").read_text(encoding="utf-8")
     context = {"data": data}
     response = await llm_model.generate(
         prompt=prompt,

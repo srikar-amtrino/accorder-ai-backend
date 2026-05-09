@@ -92,7 +92,7 @@ class AIParser(BaseParser, Logger):
             return []
 
         # prompt = self._build_prompt(text)
-        prompt = Path(r"src\services\prompts\v1\ai_parser_prompt.mustache").read_text(encoding="utf-8")
+        prompt = Path(r"src/services/prompts/v1/ai_parser_prompt.mustache").read_text(encoding="utf-8")
         prompt = prompt.replace("{{text}}", text)
 
         try:
@@ -178,7 +178,7 @@ class AIParser(BaseParser, Logger):
             client = self.llm_model.client
             deployment = self.llm_model.deployment_name
             # prompt = self._build_prompt(text)
-            prompt = Path(r"src\services\prompts\v1\ai_parser_prompt.mustache").read_text(encoding="utf-8")
+            prompt = Path(r"src/services/prompts/v1/ai_parser_prompt.mustache").read_text(encoding="utf-8")
             prompt = prompt.replace("{{text}}", text)
 
             response = client.chat.completions.create(

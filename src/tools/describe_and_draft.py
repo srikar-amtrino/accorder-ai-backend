@@ -18,7 +18,7 @@ async def draft_document(request: DraftRequest, session_id: str) -> DraftRespons
 
     agent_results = session_data.tool_results.setdefault(AGENT_NAME, {})
 
-    prompt = Path(r"src\services\prompts\v1\describe_and_draft_prompt.mustache").read_text(encoding="utf-8")
+    prompt = Path(r"src/services/prompts/v1/describe_and_draft_prompt.mustache").read_text(encoding="utf-8")
 
     # Build previous versions summary to inject into the prompt
     previous_versions = {}

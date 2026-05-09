@@ -29,7 +29,7 @@ async def generate_nda_headings(request: NDAGenerationHeadingRequest, session_id
         return NDAGenerationHeadingResponse(headings=list(agent_results.keys()))
 
     # Load prompt
-    prompt = Path(r"src\services\prompts\v1\nda_generation.mustache").read_text(encoding="utf-8")
+    prompt = Path(r"src/services/prompts/v1/nda_generation.mustache").read_text(encoding="utf-8")
 
     context = {
         "nda_description": request.nda_description,
@@ -75,7 +75,7 @@ async def generate_heading_description(request: NDAContentGenerationRequest, ses
         return agent_results[heading]["content"]
 
     # Load prompt
-    prompt = Path(r"src\services\prompts\v1\nda_description_prompt.mustache").read_text(encoding="utf-8")
+    prompt = Path(r"src/services/prompts/v1/nda_description_prompt.mustache").read_text(encoding="utf-8")
 
     context = {
         "nda_description": agent_results["user_input"],

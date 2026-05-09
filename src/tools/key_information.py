@@ -28,7 +28,7 @@ async def get_key_information_document(content: str, session_id: str) -> str:
     if agent_cache:
         return agent_cache
 
-    prompt_path = Path(r"src\services\prompts\v1\key_information_prompt.mustache").read_text(encoding="utf-8")
+    prompt_path = Path(r"src/services/prompts/v1/key_information_prompt.mustache").read_text(encoding="utf-8")
 
     response: str = await llm_model.generate(
         prompt=prompt_path,
@@ -71,7 +71,7 @@ async def get_key_information(session_id: Optional[str] = None, response_format:
 
     full_text = "\n\n".join(chunk.content for chunk in results.values() if getattr(chunk, "content", None))
 
-    prompt_path = Path(r"src\services\prompts\v1\key_information_prompt.mustache").read_text(encoding="utf-8")
+    prompt_path = Path(r"src/services/prompts/v1/key_information_prompt.mustache").read_text(encoding="utf-8")
 
     response: str | KeyInformationToolResponse = await _llm.generate(
         prompt=prompt_path,

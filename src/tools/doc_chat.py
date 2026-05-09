@@ -14,7 +14,7 @@ async def query_document(query: str, session_id: str) -> DocChatResponse:
     retrieval_service = service_container.retrieval_service
     azure_model = service_container.azure_openai_model
 
-    prompt = Path(r"src\services\prompts\v1\llm_response.mustache").read_text(encoding="utf-8")
+    prompt = Path(r"src/services/prompts/v1/llm_response.mustache").read_text(encoding="utf-8")
 
     # Get session data
     session_data = session_manager.get_session(session_id)

@@ -14,7 +14,7 @@ from src.tools.summarizer import get_summary
 
 settings = get_settings()
 
-prompt = Path(r"src\services\prompts\v1\orchestrator_prompt.mustache").read_text()
+prompt = Path(r"src/services/prompts/v1/orchestrator_prompt.mustache").read_text()
 
 
 async def get_azure_agent() -> ChatAgent:
