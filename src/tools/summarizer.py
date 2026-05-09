@@ -5,10 +5,10 @@ from pydantic import BaseModel
 
 from src.dependencies import get_service_container
 from src.schemas.tool_schema import SummaryToolResponse
-from src.services.llm.azure_openai_model import AzureOpenAIModel
+from src.services.llm.bedrock_model import BedrockModel
 from src.services.vector_store.manager import get_all_chunks
 
-llm_service = AzureOpenAIModel()
+llm_service = BedrockModel()
 
 
 async def get_summary(session_id: Optional[str], response: str = "JSON") -> str | BaseModel:

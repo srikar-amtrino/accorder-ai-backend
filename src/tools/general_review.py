@@ -40,7 +40,6 @@ Two modes:
 """
 
 import asyncio
-import json
 import logging
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
@@ -138,42 +137,6 @@ def _get_session(session_id: str) -> SessionData:
 # --- LLM call plumbing -------------------------------------------------------
 
 
-def _sync_generate_structured(
-    llm: Any,
-    system_message: str,
-    rendered_prompt: str,
-    response_model: Any,
-) -> Any:
-    """Synchronous structured LLM call — used via ``asyncio.to_thread``.
-
-    Generic over the response model so the same plumbing handles the
-    per-clause review call and the relevance-gate call.
-    """
-    response = llm.client.chat.completions.create(
-        model=llm.deployment_name,
-        messages=[
-            {"role": "system", "content": system_message},
-            {"role": "user", "content": rendered_prompt},
-        ],
-        temperature=0.0,
-        max_tokens=16384,
-        response_format={
-            "type": "json_schema",
-            "json_schema": {
-                "name": response_model.__name__,
-                "schema": response_model.model_json_schema(),
-                "strict": False,
-            },
-        },
-    )
-
-    response_text = response.choices[0].message.content
-    if response_text is None:
-        raise ValueError("Empty response from LLM model.")
-
-    return response_model.model_validate(json.loads(response_text))
-
-
 async def _split_prompt_into_subtopics(user_prompt: str) -> List[str]:
     """Break a multi-topic user prompt into atomic sub-instructions.
 
@@ -197,17 +160,13 @@ async def _split_prompt_into_subtopics(user_prompt: str) -> List[str]:
     container = get_service_container()
     llm = container.azure_openai_model
     template = _PROMPT_SPLITTER_PROMPT_PATH.read_text(encoding="utf-8")
-    rendered = llm.render_prompt_template(
-        prompt=template,
-        context={"user_prompt": user_prompt},
-    )
     try:
-        parsed: PromptSplitLLMResponse = await asyncio.to_thread(
-            _sync_generate_structured,
-            llm,
-            _SPLITTER_SYSTEM_MESSAGE,
-            rendered,
-            PromptSplitLLMResponse,
+        parsed: PromptSplitLLMResponse = await llm.generate(
+            prompt=template,
+            context={"user_prompt": user_prompt},
+            response_model=PromptSplitLLMResponse,
+            mode="JSON",
+            system_message=_SPLITTER_SYSTEM_MESSAGE,
         )
     except Exception as exc:
         logger.exception("Prompt splitter failed; falling back to full prompt: %s", exc)
@@ -229,20 +188,16 @@ async def _run_relevance_check(
     container = get_service_container()
     llm = container.azure_openai_model
     template = _RELEVANCE_PROMPT_PATH.read_text(encoding="utf-8")
-    rendered = llm.render_prompt_template(
+    return await llm.generate(
         prompt=template,
         context={
             "clause_title": clause_title,
             "clause_text": clause_text,
             "user_prompt": user_prompt,
         },
-    )
-    return await asyncio.to_thread(
-        _sync_generate_structured,
-        llm,
-        _RELEVANCE_SYSTEM_MESSAGE,
-        rendered,
-        RelevanceCheckLLMResponse,
+        response_model=RelevanceCheckLLMResponse,
+        mode="JSON",
+        system_message=_RELEVANCE_SYSTEM_MESSAGE,
     )
 
 
@@ -261,20 +216,16 @@ async def _run_clause_review(
     container = get_service_container()
     llm = container.azure_openai_model
     template = _CLAUSE_REVIEW_PROMPT_PATH.read_text(encoding="utf-8")
-    rendered = llm.render_prompt_template(
+    parsed: ClauseSuggestionsLLMResponse = await llm.generate(
         prompt=template,
         context={
             "clause_title": clause_title,
             "clause_text": clause_text,
             "user_prompt": user_prompt,
         },
-    )
-    parsed: ClauseSuggestionsLLMResponse = await asyncio.to_thread(
-        _sync_generate_structured,
-        llm,
-        _REVIEW_SYSTEM_MESSAGE,
-        rendered,
-        ClauseSuggestionsLLMResponse,
+        response_model=ClauseSuggestionsLLMResponse,
+        mode="JSON",
+        system_message=_REVIEW_SYSTEM_MESSAGE,
     )
 
     valid: List[Suggestion] = []

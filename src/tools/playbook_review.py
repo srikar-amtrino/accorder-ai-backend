@@ -16,7 +16,7 @@ from src.schemas.playbook_review import (
     RuleResult,
     TextInfo,
 )
-from src.services.llm.azure_openai_model import AzureOpenAIModel
+from src.services.llm.base_model import BaseLLMModel
 
 logger = get_logger(__name__)
 
@@ -89,7 +89,7 @@ def _build_reviewed_rules_summary(reviewed: Dict[Tuple[str, str], PlayBookReview
     return "\n".join(lines) if lines else "None"
 
 
-async def get_missing_clauses(llm_model: AzureOpenAIModel, full_text: str, reviewed_rules_summary: str) -> MissingClausesLLMResponse:
+async def get_missing_clauses(llm_model: BaseLLMModel, full_text: str, reviewed_rules_summary: str) -> MissingClausesLLMResponse:
     """Gets missing clauses from the LLM based on the full document text and a summary of reviewed rules."""
 
     try:
@@ -114,7 +114,7 @@ async def _process_rule(
     rule: RuleInfo,
     clause_map: Dict[str, List[TextInfo]],
     full_document: List[TextInfo],
-    llm_model: AzureOpenAIModel,
+    llm_model: BaseLLMModel,
 ) -> Tuple[Tuple[str, str], PlayBookReviewResponse]:
     """
     Evaluates a single rule against its extracted clause paragraphs.

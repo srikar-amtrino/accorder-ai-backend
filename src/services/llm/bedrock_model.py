@@ -1,5 +1,5 @@
 import json
-from typing import Any, Dict, Type, Union
+from typing import Any, Dict, Optional, Type, Union
 
 import boto3
 import pystache
@@ -81,7 +81,7 @@ class BedrockModel(BaseLLMModel, Logger):
             self.logger.error(f"An error occurred while streaming response from the LLM model: {str(e)}")
             raise LLMModelError("An error occurred while streaming response from the LLM model.") from e
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Union[Type, None], mode: str = "JSON") -> Any:
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Union[Type, None], mode: str = "JSON", system_message: Optional[str] = None) -> Any:
         """Main function to generate response."""
 
         prompt = self.render_prompt_template(prompt=prompt, context=context)
@@ -95,7 +95,7 @@ class BedrockModel(BaseLLMModel, Logger):
                     "input_schema": response_model.model_json_schema(),
                 }
 
-                body = {
+                body: Dict[str, Any] = {
                     "anthropic_version": "bedrock-2023-05-31",
                     "max_tokens": 16384,
                     "messages": [{"role": "user", "content": prompt}],
@@ -103,6 +103,8 @@ class BedrockModel(BaseLLMModel, Logger):
                     "tool_choice": {"type": "tool", "name": response_model.__name__},
                     "temperature": 0.0,
                 }
+                if system_message:
+                    body["system"] = system_message
 
                 response = self.client.invoke_model(
                     modelId=self.model_id,
@@ -137,7 +139,7 @@ class BedrockModel(BaseLLMModel, Logger):
                     "anthropic_version": "bedrock-2023-05-31",
                     "max_tokens": 16384,
                     "messages": [{"role": "user", "content": prompt}],
-                    "system": "Extract the information and return valid Markdown format.",
+                    "system": system_message or "Extract the information and return valid Markdown format.",
                     "temperature": 0.2,
                 }
 

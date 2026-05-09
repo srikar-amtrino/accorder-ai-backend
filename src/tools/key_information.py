@@ -6,10 +6,10 @@ from pydantic import BaseModel
 from src.dependencies import get_service_container
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
 from src.schemas.tool_schema import KeyInformationToolResponse
-from src.services.llm.azure_openai_model import AzureOpenAIModel
+from src.services.llm.bedrock_model import BedrockModel
 from src.services.vector_store.manager import get_all_chunks
 
-_llm = AzureOpenAIModel()
+_llm = BedrockModel()
 
 AGENT_NAME = "Contract Analyzer"
 
