@@ -11,6 +11,11 @@ python = ">=3.10,<3.11"
 [tool.poetry.scripts]
 contract-api = "src.api.main:main_entry"
 
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
 [tool.poetry.group.dev.dependencies]
 black = "*"
 isort = "*"
@@ -37,6 +42,7 @@ agent-framework-azure-ai = { version = "*", allow-prereleases = true }
 cachetools = "*"
 types-cachetools = "*"
 boto3 = "*"
+torch = { version = "*", source = "pytorch-cpu" }
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
