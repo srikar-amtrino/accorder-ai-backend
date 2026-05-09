@@ -1,0 +1,92 @@
+[tool.poetry]
+name = "AI Contract Review"
+version = "0.0.1"
+description = "An AI-powered tool for reviewing and analyzing contracts."
+package-mode = false
+packages = [{ include = "src" }]
+
+[tool.poetry.dependencies]
+python = "3.10"
+
+[tool.poetry.scripts]
+contract-api = "src.api.main:main_entry"
+
+[tool.poetry.group.dev.dependencies]
+black = "*"
+isort = "*"
+mypy = "*"
+flake8 = "*"
+pydantic = "*"
+pydantic-settings = "*"
+fastapi = "*"
+uvicorn = "*"
+python-docx = "*"
+python-multipart = "*"
+langchain = "*"
+langchain-community = "*"
+sentence-transformers = "*"
+google-genai = "*"
+faiss-cpu = "*"
+openai = "*"
+einops = "*"
+types-requests = "*"
+pystache = "*"
+agent-framework = { version = "*", allow-prereleases = true }
+agent-framework-azure-ai = { version = "*", allow-prereleases = true }
+# ollama = "*"
+cachetools = "*"
+types-cachetools = "*"
+
+[build-system]
+requires = ["poetry-core>=1.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.black]
+line-length = 200
+target-version = ['py310']
+include = '\.pyi?$'
+exclude = '''
+/(\.
+| \.git
+| \.hg
+| \.mypy_cache
+| \.tox
+| \.venv
+| _build
+| buck-out
+| build
+| dist
+)/
+'''
+
+[tool.isort]
+profile = "black"
+line_length = 200
+known_first_party = ["your_package_name"]
+known_third_party = ["pymongo"]
+default_section = "THIRDPARTY"
+skip = ["__init__.py"]
+combine_as_imports = true
+include_trailing_comma = true
+multi_line_output = 3
+
+[tool.mypy]
+python_version = "3.8"
+check_untyped_defs = true
+disallow_untyped_defs = true
+ignore_missing_imports = true
+strict_optional = true
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = true
+
+[tool.flake8]
+max-line-length = 200
+extend-ignore = "E203, W503"
+exclude = ".git,__pycache__,build,dist,.venv"
+max-complexity = 10
+select = "B,C,E,F,W,T4,B9"
+inline-quotes = "double"
+multiline-quotes = "double"
+docstring-quotes = "double"
+import-order-style = "google"
