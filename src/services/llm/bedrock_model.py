@@ -58,7 +58,6 @@ class BedrockModel(BaseLLMModel, Logger):
                 "max_tokens": 16384,
                 "messages": [{"role": "user", "content": prompt}],
                 "system": "Extract the information and return valid JSON.",
-                "temperature": 0.2,
             }
 
             response = self.client.invoke_model_with_response_stream(
@@ -101,7 +100,6 @@ class BedrockModel(BaseLLMModel, Logger):
                     "messages": [{"role": "user", "content": prompt}],
                     "tools": [tool],
                     "tool_choice": {"type": "tool", "name": response_model.__name__},
-                    "temperature": 0.0,
                 }
                 if system_message:
                     body["system"] = system_message
@@ -140,7 +138,6 @@ class BedrockModel(BaseLLMModel, Logger):
                     "max_tokens": 16384,
                     "messages": [{"role": "user", "content": prompt}],
                     "system": system_message or "Extract the information and return valid Markdown format.",
-                    "temperature": 0.2,
                 }
 
                 response = self.client.invoke_model(
