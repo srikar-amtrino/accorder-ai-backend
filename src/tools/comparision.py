@@ -794,30 +794,32 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
 
     parser = get_parser()
 
-    # load cached data for this agent
+    # Extract text first (cheap) — needed to validate the per-session cache.
+    doc_text_a = await extract_text(document_a)
+    doc_text_b = await extract_text(document_b)
+    hash_a = hash(doc_text_a)
+    hash_b = hash(doc_text_b)
+
+    # Cache hit only if BOTH document hashes match in the same order — A→B and B→A
+    # produce different comparisons, so the cache key is direction-sensitive.
     session_data = container.session_manager.get_session(session_id=session_id)
-    cached_data: Dict[str, CompareResponse] = session_data.tool_results[AGENT_NAME] if AGENT_NAME in session_data.tool_results else []
+    cached_data = session_data.tool_results.get(AGENT_NAME)
+    if cached_data and cached_data.get("doc_1_hash") == hash_a and cached_data.get("doc_2_hash") == hash_b:
+        logger.info(f"Cache hit for session {session_id} agent {AGENT_NAME} — returning cached response")
+        return CompareResponse(
+            success=cached_data.get("success", True),
+            message=cached_data.get("message"),
+            summary=cached_data.get("summary", _zero_changes_summary()),
+            sections=cached_data.get("sections", []),
+        )
     if cached_data:
-        logger.info(f"Loaded cached data for session {session_id} and agent {AGENT_NAME}")
-        return cached_data
+        logger.info(f"Cache miss for session {session_id} agent {AGENT_NAME} — documents differ, recomputing")
 
     doc_a: ParseResult = await parser.parse_document(document_a)
     doc_b: ParseResult = await parser.parse_document(document_b)
 
-    doc_text_a = await extract_text(document_a)
-    doc_text_b = await extract_text(document_b)
-
-    # if hash(doc_text_a) == cached_data.get("doc_1_hash") and hash(doc_text_b) == cached_data.get("doc_2_hash"):
-    #     logger.info(f"Document hashes match cached data for session {session_id} and agent {AGENT_NAME} — returning cached response")
-    #     return CompareResponse(
-    #         success=cached_data.get("success", True),
-    #         message=cached_data.get("message"),
-    #         summary=cached_data.get("summary", _zero_changes_summary()),
-    #         sections=cached_data.get("sections", []),
-    #     )
-
     # Guard: same document
-    if hash(doc_text_a) == hash(doc_text_b):
+    if hash_a == hash_b:
         return CompareResponse(
             success=True,
             message="Both document IDs are the same. Provide two different documents to compare.",
@@ -891,8 +893,8 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
 
     # Store data in cache for this session and agent
     session_data.tool_results[AGENT_NAME] = {
-        "doc_1_hash": hash(doc_text_a),
-        "doc_2_hash": hash(doc_text_b),
+        "doc_1_hash": hash_a,
+        "doc_2_hash": hash_b,
         "success": True,
         "message": message,
         "summary": summary,
