@@ -27,15 +27,15 @@ Return ONE JSON object matching this shape EXACTLY. No markdown. No commentary. 
 
 **modification_type** — Pick the dominant kind of change:
 - "value" — a number, date, percentage, amount, or duration changed (e.g., 30 → 60 days; $10K → $25K).
-- "language" — rewording with no change to rights, obligations, or coverage.
+- "language" — rewording with no change to rights, obligations, or coverage. NOTE: if a single-word edit *inverts* an obligation or right (e.g., removes "not", flips "may not" → "may", flips "shall" → "may"), classify as "scope" — the meaning was inverted even though only one word changed.
 - "scope" — rights, obligations, or coverage expanded or narrowed (added carve-outs, broader/narrower definitions, more or fewer permitted uses).
 - "structural" — sub-clauses split, merged, or reorganized while substance is largely preserved.
 - "rewritten" — the clause takes a substantively different approach despite the same heading.
 If more than one applies, pick the one with the greatest business impact.
 
 **risk_level**:
-- "high" — touches a liability cap, indemnification, IP ownership, termination triggers, payment obligation, governing law, or monetary exposure.
-- "medium" — touches notice periods, dispute venue, audit rights, confidentiality duration, permitted disclosees, or comparable operational terms.
+- "high" — touches a liability cap, indemnification scope, IP ownership, payment obligation, governing law, monetary exposure, or *who* may terminate / *under what conditions* (e.g., for-cause vs for-convenience, mutual vs one-sided termination rights).
+- "medium" — touches notice periods (including termination notice period), dispute venue, audit rights, confidentiality duration, permitted disclosees, or comparable operational terms.
 - "low" — cleanup, formatting, defined-term renames, restatement with no business effect.
 
 **affected_party** — The party whose legal or commercial position MATERIALLY CHANGES (gains or loses rights, obligations, or risk exposure). This is *not* the party named in the clause text — the clause text already names them. Use the actual role name from the contract (e.g., "Customer", "Vendor", "Licensee", "Licensor", "Discloser", "Recipient", "Lessor", "Lessee").
@@ -51,6 +51,8 @@ If more than one applies, pick the one with the greatest business impact.
 - scope: "<right/obligation> was expanded to include <X>." / "<X> was carved out of <right/obligation>."
 - structural: "The clause was split into <N> paragraphs covering <A> and <B>."
 - rewritten: "The clause was rewritten to <new approach> instead of <old approach>."
+
+NOTE: If the original wording is grammatically broken due to a typo (e.g., "disagree to take" where "disagree" was meant to be "agree"), describe the *intended* change rather than quoting the broken text verbatim. Prefer "The precaution standard was softened from 'necessary' to 'reasonable'." over "The obligation to 'disagree to take necessary precautions' was changed to 'agree to take reasonable precautions'."
 </field_semantics>
 
 <examples>
@@ -75,6 +77,19 @@ If more than one applies, pick the one with the greatest business impact.
   "modification_type": "scope",
   "summary": "Termination for convenience was narrowed from either party to Customer only.",
   "risk_level": "high",
+  "affected_party": "Vendor",
+  "is_substantive": true
+}
+</example>
+
+<example>
+<original_version>You will not work in good faith with Epit to test the integration of the Vendor Software with the Epit Software.</original_version>
+<revised_version>You will work in good faith with Epit to test the integration of the Vendor Software with the Epit Software.</revised_version>
+{
+  "change_type": "modified",
+  "modification_type": "scope",
+  "summary": "The obligation was inverted from a refusal to a requirement to cooperate on integration testing.",
+  "risk_level": "medium",
   "affected_party": "Vendor",
   "is_substantive": true
 }
