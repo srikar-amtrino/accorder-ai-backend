@@ -4,13 +4,8 @@ from src.config.logging import Logger
 from src.config.settings import Settings
 from src.services.ingestion.ingestion import IngestionService
 from src.services.llm.bedrock_model import BedrockModel
-
-# from src.services.llm.gemini_model import GeminiModel
 from src.services.retrieval.retrieval import RetrievalService
 from src.services.session_manager import SessionManager
-
-# from src.services.vector_store.embeddings.embedding_service import BGEEmbeddingService
-# from src.services.vector_store.embeddings.jina_embeddings import JinaEmbeddings
 from src.services.vector_store.embeddings.embedding_service import (
     HuggingFaceEmbeddingService,
 )
@@ -34,9 +29,6 @@ class ServiceContainer(Logger):
         self._ingestion_service: Optional[IngestionService] = None
         self._retrieval_service: Optional[RetrievalService] = None
         self._azure_openai_model: Optional[BedrockModel] = None
-        # self._gemini_model: Optional[GeminiModel] = None
-        # self._embedding_service: Optional[BGEEmbeddingService] = None
-        # self._embedding_service: Optional[JinaEmbeddings] = None
         self._embedding_service: Optional[HuggingFaceEmbeddingService] = None
         self._session_manager: Optional[SessionManager] = None
         self._faiss_store: Optional[FAISSVectorStore] = None
@@ -48,22 +40,17 @@ class ServiceContainer(Logger):
             self.logger.info("Initializing service container...")
 
             # Initialize embedding service first to get correct dimensions
-            # self._embedding_service = BGEEmbeddingService()
-            # self._embedding_service = JinaEmbeddings()
             self._embedding_service = HuggingFaceEmbeddingService()
             embedding_dimension = self._embedding_service.get_embedding_dimensions()
-            self.logger.info(f"BGEEmbeddingService initialized with dimension {embedding_dimension}")
+            self.logger.info(f"HuggingFaceEmbeddingService initialized with dimension {embedding_dimension}")
 
             # Initialize session manager with correct embedding dimensions
             self._session_manager = SessionManager(embedding_dimension=embedding_dimension)
             self.logger.info("SessionManager initialized")
 
-            # Initialize LLM models
+            # Initialize LLM model
             self._azure_openai_model = BedrockModel()
             self.logger.info("BedrockModel initialized")
-
-            # self._gemini_model = GeminiModel()
-            # self.logger.info("GeminiModel initialized")
 
             # Initialize FAISS Store
             self._faiss_store = FAISSVectorStore(self._embedding_service.get_embedding_dimensions())
@@ -103,7 +90,6 @@ class ServiceContainer(Logger):
             self._ingestion_service = None
             self._retrieval_service = None
             self._azure_openai_model = None
-            self._gemini_model = None
             self._embedding_service = None
             self._session_manager = None
             self._settings = None
@@ -156,20 +142,11 @@ class ServiceContainer(Logger):
             raise RuntimeError("BedrockModel not initialized. Call initialize() first.")
         return self._azure_openai_model
 
-    # @property
-    # def gemini_model(self) -> GeminiModel:
-    #     """Get the Gemini model instance."""
-    #     if self._gemini_model is None:
-    #         raise RuntimeError("GeminiModel not initialized. Call initialize() first.")
-    #     return self._gemini_model
-
     @property
-    # def bge_embedding_service(self) -> BGEEmbeddingService:
-    # def bge_embedding_service(self) -> JinaEmbeddings:
     def embedding_service(self) -> HuggingFaceEmbeddingService:
-        """Get the BGE embedding service instance."""
+        """Get the embedding service instance."""
         if self._embedding_service is None:
-            raise RuntimeError("BGEEmbeddingService not initialized. Call initialize() first.")
+            raise RuntimeError("HuggingFaceEmbeddingService not initialized. Call initialize() first.")
         return self._embedding_service
 
 
