@@ -18,7 +18,7 @@ class HuggingFaceEmbeddingService(BaseEmbeddingService, Logger):
         super().__init__()
 
         self.settings = get_settings()
-        self.model_name = self.settings.hugggingface_minilm_embedding_model
+        self.model_name = self.settings.huggingface_minilm_embedding_model
 
         self.tokenizer = SentenceTransformer(model_name_or_path=self.model_name)
 
