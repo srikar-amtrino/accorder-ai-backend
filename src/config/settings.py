@@ -10,7 +10,7 @@ class Settings(BaseSettings):
     """Application configuration settings."""
 
     # API settings
-    api_host: str = Field(default="localhost", description="API host address")
+    api_host: str = Field(default="0.0.0.0", description="Interface the FastAPI server binds to. '0.0.0.0' listens on all interfaces (needed for EC2/external access); 'localhost' for local-only.")
     api_port: int = Field(default=8000, description="API port number")
     debug: bool = Field(default=False, description="Enable or disable debug mode")
 
