@@ -790,7 +790,7 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
 
     container = get_service_container()
     embedding_service = container.embedding_service
-    llm_client = container.azure_openai_model
+    llm_client = container.llm_model
 
     parser = get_parser()
 

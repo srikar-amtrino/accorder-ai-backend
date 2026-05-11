@@ -18,7 +18,7 @@ async def get_key_information_document(content: str, session_id: str) -> str:
     """Extract structured key contract details from the given document content."""
 
     container = get_service_container()
-    llm_model = container.azure_openai_model
+    llm_model = container.llm_model
 
     session_data = container.session_manager.get_session(session_id) if session_id else None
     if not session_data:

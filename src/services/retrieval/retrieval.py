@@ -27,7 +27,7 @@ class RetrievalService(Logger):
 
         service_container = get_service_container()
         self.embedding_service: BaseEmbeddingService = service_container.embedding_service
-        self.llm: BaseLLMModel = service_container.azure_openai_model
+        self.llm: BaseLLMModel = service_container.llm_model
         self.rewrite_query_prompt = Path(r"src/services/prompts/v1/query_rewriter.mustache").read_text()
         self.vector_store = get_faiss_vector_store(self.embedding_service.get_embedding_dimensions())
 

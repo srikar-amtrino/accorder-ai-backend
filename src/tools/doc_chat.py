@@ -12,7 +12,7 @@ async def query_document(query: str, session_id: str) -> DocChatResponse:
     service_container = get_service_container()
     session_manager = service_container.session_manager
     retrieval_service = service_container.retrieval_service
-    azure_model = service_container.azure_openai_model
+    azure_model = service_container.llm_model
 
     prompt = Path(r"src/services/prompts/v1/llm_response.mustache").read_text(encoding="utf-8")
 

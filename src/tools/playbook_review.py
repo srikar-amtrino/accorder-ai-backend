@@ -200,7 +200,7 @@ async def review_document(
     force_update_rules = force_update_rules or []
 
     container = get_service_container()
-    llm_model = container.azure_openai_model
+    llm_model = container.llm_model
 
     session_data = container.session_manager.get_session(session_id)
 
@@ -321,7 +321,7 @@ async def review_document(
 #     force_update_rules = force_update_rules or []
 
 #     container = get_service_container()
-#     llm_model = container.azure_openai_model  # Embeddings no longer needed
+#     llm_model = container.llm_model  # Embeddings no longer needed
 
 #     session_data = container.session_manager.get_session(session_id)
 #     if not session_data:

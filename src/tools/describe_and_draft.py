@@ -10,7 +10,7 @@ async def draft_document(request: DraftRequest, session_id: str) -> DraftRespons
     """Draft the document for the user query."""
 
     container = get_service_container()
-    llm_model = container.azure_openai_model
+    llm_model = container.llm_model
 
     session_data = container.session_manager.get_session(session_id=session_id)
     if not session_data:

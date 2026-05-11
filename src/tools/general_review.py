@@ -8,7 +8,7 @@
 #     """General review function for any custom review between rules and paras."""
 
 #     service_container = get_service_container()
-#     llm_service = service_container.azure_openai_model
+#     llm_service = service_container.llm_model
 #     # faiss_store = service_container.faiss_store
 
 #     prompt = Path(r"src/services/prompts/v1/general_review.mustache").read_text()
@@ -158,7 +158,7 @@ async def _split_prompt_into_subtopics(user_prompt: str) -> List[str]:
         fallback.
     """
     container = get_service_container()
-    llm = container.azure_openai_model
+    llm = container.llm_model
     template = _PROMPT_SPLITTER_PROMPT_PATH.read_text(encoding="utf-8")
     try:
         parsed: PromptSplitLLMResponse = await llm.generate(
@@ -186,7 +186,7 @@ async def _run_relevance_check(
 ) -> RelevanceCheckLLMResponse:
     """Ask the gate LLM whether the user's query applies to the selected clause."""
     container = get_service_container()
-    llm = container.azure_openai_model
+    llm = container.llm_model
     template = _RELEVANCE_PROMPT_PATH.read_text(encoding="utf-8")
     return await llm.generate(
         prompt=template,
@@ -214,7 +214,7 @@ async def _run_clause_review(
     handed an un-anchored fix.
     """
     container = get_service_container()
-    llm = container.azure_openai_model
+    llm = container.llm_model
     template = _CLAUSE_REVIEW_PROMPT_PATH.read_text(encoding="utf-8")
     parsed: ClauseSuggestionsLLMResponse = await llm.generate(
         prompt=template,

@@ -28,7 +28,7 @@ class ServiceContainer(Logger):
         # Service instances
         self._ingestion_service: Optional[IngestionService] = None
         self._retrieval_service: Optional[RetrievalService] = None
-        self._azure_openai_model: Optional[BedrockModel] = None
+        self._llm_model: Optional[BedrockModel] = None
         self._embedding_service: Optional[HuggingFaceEmbeddingService] = None
         self._session_manager: Optional[SessionManager] = None
         self._faiss_store: Optional[FAISSVectorStore] = None
@@ -49,7 +49,7 @@ class ServiceContainer(Logger):
             self.logger.info("SessionManager initialized")
 
             # Initialize LLM model
-            self._azure_openai_model = BedrockModel()
+            self._llm_model = BedrockModel()
             self.logger.info("BedrockModel initialized")
 
             # Initialize FAISS Store
@@ -89,7 +89,7 @@ class ServiceContainer(Logger):
             # Services are cleaned up here
             self._ingestion_service = None
             self._retrieval_service = None
-            self._azure_openai_model = None
+            self._llm_model = None
             self._embedding_service = None
             self._session_manager = None
             self._settings = None
@@ -136,11 +136,11 @@ class ServiceContainer(Logger):
         return self._retrieval_service
 
     @property
-    def azure_openai_model(self) -> BedrockModel:
-        """Get the LLM model instance (Bedrock-backed; property name retained for caller compatibility)."""
-        if self._azure_openai_model is None:
+    def llm_model(self) -> BedrockModel:
+        """Get the Bedrock-backed LLM model instance."""
+        if self._llm_model is None:
             raise RuntimeError("BedrockModel not initialized. Call initialize() first.")
-        return self._azure_openai_model
+        return self._llm_model
 
     @property
     def embedding_service(self) -> HuggingFaceEmbeddingService:
