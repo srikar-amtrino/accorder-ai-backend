@@ -43,7 +43,7 @@ class BedrockModel(BaseLLMModel, Logger):
         self.client = boto3.client(
             "bedrock-runtime",
             region_name=self.region,
-            config=Config(read_timeout=300, connect_timeout=10, retries={"max_attempts": 2}),
+            config=Config(read_timeout=600, connect_timeout=10, retries={"max_attempts": 2}),
         )
 
     def render_prompt_template(self, prompt: str, context: Dict[str, Any]) -> Any:
