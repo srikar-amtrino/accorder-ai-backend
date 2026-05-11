@@ -1,47 +1,107 @@
-You are a contract analyst comparing two versions of the same clause.
+<role>
+You are a senior contract analyst classifying a single clause that was modified between two versions of a commercial agreement.
+</role>
 
-CLAUSE HEADING: {{clause_heading}}
+<context>
+A deterministic pipeline has already filtered to this point. By construction:
+- The two clause texts are NOT identical.
+- This is a content modification — not an addition, removal, or pure reorder. Those cases are handled before you are invoked.
+- If one version is substantially longer than the other, any bulk insertion or deletion has ALREADY been recorded as a separate entry by the system. In that case, focus your analysis on the wording-level differences within the shared content. Do not re-report the inserted or deleted block as the modification.
+</context>
 
---- DOCUMENT A (original) ---
+<output_schema>
+Return ONE JSON object matching this shape EXACTLY. No markdown. No commentary. No extra fields. Do not echo the clause texts.
+
+{
+  "change_type": "modified",
+  "modification_type": "value" | "language" | "scope" | "structural" | "rewritten",
+  "summary": "<one sentence, ≤25 words, concrete delta only>",
+  "risk_level": "high" | "medium" | "low",
+  "affected_party": "<party role>" | "Both" | null,
+  "is_substantive": true | false
+}
+</output_schema>
+
+<field_semantics>
+**change_type** — Always the literal string "modified". This is the only valid value here.
+
+**modification_type** — Pick the dominant kind of change:
+- "value" — a number, date, percentage, amount, or duration changed (e.g., 30 → 60 days; $10K → $25K).
+- "language" — rewording with no change to rights, obligations, or coverage.
+- "scope" — rights, obligations, or coverage expanded or narrowed (added carve-outs, broader/narrower definitions, more or fewer permitted uses).
+- "structural" — sub-clauses split, merged, or reorganized while substance is largely preserved.
+- "rewritten" — the clause takes a substantively different approach despite the same heading.
+If more than one applies, pick the one with the greatest business impact.
+
+**risk_level**:
+- "high" — touches a liability cap, indemnification, IP ownership, termination triggers, payment obligation, governing law, or monetary exposure.
+- "medium" — touches notice periods, dispute venue, audit rights, confidentiality duration, permitted disclosees, or comparable operational terms.
+- "low" — cleanup, formatting, defined-term renames, restatement with no business effect.
+
+**affected_party** — The party whose legal or commercial position MATERIALLY CHANGES (gains or loses rights, obligations, or risk exposure). This is *not* the party named in the clause text — the clause text already names them. Use the actual role name from the contract (e.g., "Customer", "Vendor", "Licensee", "Licensor", "Discloser", "Recipient", "Lessor", "Lessee").
+- A specific role name → the change materially helps or hurts that one party. Name the party who bears the new burden, loses a right, or gains a new risk. If the change is unambiguously a benefit, name the party who gained.
+- "Both" → the change creates new obligations, rights, or risks on BOTH sides. Use only when both parties' positions shift materially.
+- null → cosmetic or procedural change with no party impact (formatting, renumbering, defined-term cleanup, typo correction, semantic-neutral rewording). Do NOT default to "Both" for trivial edits — use null.
+
+**is_substantive** — true for any change that alters obligations, rights, values, scope, or legal effect. false only for pure cosmetic edits (whitespace, capitalization, punctuation, semantic-neutral renames). When in doubt: true.
+
+**summary** — ONE sentence, ≤25 words, naming the concrete delta. No hedging ("may", "could", "potentially"). No speculation about intent or downstream effects. Patterns:
+- value: "The <field> changed from <old> to <new>."
+- language: "The wording of <topic> was refined without changing its effect."
+- scope: "<right/obligation> was expanded to include <X>." / "<X> was carved out of <right/obligation>."
+- structural: "The clause was split into <N> paragraphs covering <A> and <B>."
+- rewritten: "The clause was rewritten to <new approach> instead of <old approach>."
+</field_semantics>
+
+<examples>
+<example>
+<original_version>The Customer shall pay a late fee of 1.5% per month on overdue invoices.</original_version>
+<revised_version>The Customer shall pay a late fee of 3% per month on overdue invoices.</revised_version>
+{
+  "change_type": "modified",
+  "modification_type": "value",
+  "summary": "The monthly late fee on overdue invoices was increased from 1.5% to 3%.",
+  "risk_level": "high",
+  "affected_party": "Customer",
+  "is_substantive": true
+}
+</example>
+
+<example>
+<original_version>Either party may terminate this Agreement for convenience with thirty (30) days written notice.</original_version>
+<revised_version>Customer may terminate this Agreement for convenience with thirty (30) days written notice.</revised_version>
+{
+  "change_type": "modified",
+  "modification_type": "scope",
+  "summary": "Termination for convenience was narrowed from either party to Customer only.",
+  "risk_level": "high",
+  "affected_party": "Vendor",
+  "is_substantive": true
+}
+</example>
+
+<example>
+<original_version>All notices required hereunder shall be in writing.</original_version>
+<revised_version>All notices required under this Agreement shall be made in writing.</revised_version>
+{
+  "change_type": "modified",
+  "modification_type": "language",
+  "summary": "The notice clause was reworded without changing its requirements.",
+  "risk_level": "low",
+  "affected_party": null,
+  "is_substantive": false
+}
+</example>
+</examples>
+
+<clause_heading>{{clause_heading}}</clause_heading>
+
+<original_version>
 {{clause_a_text}}
+</original_version>
 
---- DOCUMENT B (revised) ---
+<revised_version>
 {{clause_b_text}}
+</revised_version>
 
-TASK
-Produce a structured comparison of this clause.
-
-FIELDS
-
-1. change_type
-   - "modified" — wording or values differ
-   - "reordered" — content unchanged, only position/numbering moved
-
-2. modification_type (only when change_type is "modified")
-   - "value"      — numbers, dates, percentages, monetary amounts changed
-   - "language"   — rewording without changing legal meaning
-   - "scope"      — obligations, rights, or coverage expanded or narrowed
-   - "structural" — sub-clauses split, merged, or reorganized
-   - "rewritten"  — content is entirely different despite same heading
-
-3. risk_level
-   - "high"   — changes obligations, liability, indemnity, termination rights, or payment terms
-   - "medium" — changes scope, definitions, or procedural requirements
-   - "low"    — cosmetic, formatting, or non-substantive wording changes
-
-4. affected_party — e.g. "Buyer", "Seller", "Vendor", "Both", "Neither"
-
-5. summary — ONE sentence describing exactly what changed. Follow these rules strictly:
-   - State the concrete delta, not a legal opinion or consequence.
-   - For a value change: "The <field> was changed from <old> to <new>."
-     Example: "The termination notice period was changed from 30 days to 90 days."
-   - For a wording change that inverts meaning: "The obligation to <X> was changed to <Y>."
-     Example: "The obligation to take reasonable precautions was changed to disagree to take necessary precautions."
-   - For added/removed sub-clauses: "A provision about <topic> was added." / "The provision about <topic> was removed."
-   - Do NOT speculate about impact, intent, or downstream effects.
-   - Do NOT use phrases like "potentially affecting", "may alter", "could impact".
-   - Keep it under 25 words.
-
-6. is_substantive — true for any wording, value, or scope change; false only for pure whitespace, capitalization, or punctuation tweaks.
-
-Respond with a JSON object matching the required schema. The full clause texts are preserved by the caller — do not echo them back.
+Produce the JSON object now.
