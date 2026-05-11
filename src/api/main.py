@@ -17,7 +17,6 @@ from src.api.endpoints.clause_extraction.router import (
 )
 from src.api.endpoints.doc_information.router import router as doc_information_router
 from src.api.endpoints.ingestion.router import router as ingestion_router
-from src.api.endpoints.orchestrator.router import router as orchestrator_router
 from src.config.logging import setup_logging
 from src.config.settings import get_settings
 from src.dependencies import initialize_dependencies, shutdown_dependencies
@@ -79,7 +78,6 @@ async def add_process_time_header(request: Request, call_next):
 app.include_router(ingestion_router, prefix="/api/v1")
 app.include_router(clause_extraction_router, prefix="/api/v1/clause-extraction")
 app.include_router(admin_router, prefix="/admin")
-app.include_router(orchestrator_router, prefix="/api/v1/orchesrator")
 app.include_router(doc_information_router, prefix="/api/v1/DocInfo")
 app.include_router(agents_router, prefix="/Accorder/agents")
 
