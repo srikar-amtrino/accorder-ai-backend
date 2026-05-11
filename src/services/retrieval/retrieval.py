@@ -147,7 +147,7 @@ class RetrievalService(Logger):
             self.logger.info(f"Retrieved {len(final_chunks)} chunks for query (requested top_k={top_k}, dynamic={dynamic_k})")
 
             return {
-                "query": new_query,
+                "query": query,
                 "rewritten_queries": queries,
                 "chunks": final_chunks,
                 "num_results": len(final_chunks),
