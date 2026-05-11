@@ -56,32 +56,14 @@ class IngestionService(Logger):
             parsed_data.processing_time = time.time() - start_time
             self.logger.info(f"Data parsed in {parsed_data.processing_time:.2f} seconds for the provided data.")
 
-        # Index the chunks in the vector store
+        # Register chunks in the chunk store (the parser already populated the vector store).
         if parsed_data.chunks:
-            # Generate embeddings for each chunk and index them
-            for chunk in parsed_data.chunks:
-                # Generate embedding for the chunk content
-                embedding = await self.embedding_service.generate_embeddings(text=chunk.content, task="text-matching")
-
-                # Index embedding into the appropriate vector store
-                if session_data:
-                    await session_data.vector_store.index_embedding(embedding)
-                else:
-                    # For global indexing, use the global vector store
-                    from src.services.vector_store.manager import get_faiss_vector_store
-
-                    global_store = get_faiss_vector_store(self.embedding_service.get_embedding_dimensions())
-                    await global_store.index_embedding(embedding)
-
-            # Index chunks into chunk store
             if session_data:
-                # Per-session indexing (include document metadata)
                 index_chunks_in_session(session_data, parsed_data.chunks, parsed_data.metadata)
-                self.logger.info(f"Indexed {len(parsed_data.chunks)} chunks into " f"session {session_data.session_id}")
+                self.logger.info(f"Indexed {len(parsed_data.chunks)} chunks into session {session_data.session_id}")
             else:
-                # Global indexing (legacy)
                 index_chunks(parsed_data.chunks)
-                self.logger.info(f"Indexed {len(parsed_data.chunks)} chunks into the vector store.")
+                self.logger.info(f"Indexed {len(parsed_data.chunks)} chunks into the global chunk store.")
 
         return parsed_data
 

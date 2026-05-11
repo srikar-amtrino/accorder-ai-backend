@@ -13,12 +13,16 @@ class ContextualFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         """Add context variables to the log record."""
         try:
-            from src.api.context import get_session_id
+            from src.api.context import get_document_id, get_request_id, get_session_id
 
             record.session_id = get_session_id() or "-"
+            record.document_id = get_document_id() or "-"
+            record.request_id = get_request_id() or "-"
         except (ImportError, RuntimeError):
             # Import error can happen at startup, runtime error if context not initialized
             record.session_id = "-"
+            record.document_id = "-"
+            record.request_id = "-"
 
         return True
 
