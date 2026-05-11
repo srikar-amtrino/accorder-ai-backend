@@ -27,7 +27,7 @@ Return ONE JSON object matching this shape EXACTLY. No markdown. No commentary. 
 
 **modification_type** — Pick the dominant kind of change:
 - "value" — a number, date, percentage, amount, or duration changed (e.g., 30 → 60 days; $10K → $25K).
-- "language" — rewording with no change to rights, obligations, or coverage. NOTE: if a single-word edit *inverts* an obligation or right (e.g., removes "not", flips "may not" → "may", flips "shall" → "may"), classify as "scope" — the meaning was inverted even though only one word changed.
+- "language" — rewording where the rights, obligations, and coverage all remain the same. A single-word edit can still change the legal effect — adding/removing "not", swapping "may" with "may not", or swapping "shall" with "may" — and when it does, the change belongs in "scope", not "language". The trigger is whether the underlying obligation or right differs, not how many words changed.
 - "scope" — rights, obligations, or coverage expanded or narrowed (added carve-outs, broader/narrower definitions, more or fewer permitted uses).
 - "structural" — sub-clauses split, merged, or reorganized while substance is largely preserved.
 - "rewritten" — the clause takes a substantively different approach despite the same heading.
@@ -45,14 +45,9 @@ If more than one applies, pick the one with the greatest business impact.
 
 **is_substantive** — true for any change that alters obligations, rights, values, scope, or legal effect. false only for pure cosmetic edits (whitespace, capitalization, punctuation, semantic-neutral renames). When in doubt: true.
 
-**summary** — ONE sentence, ≤25 words, naming the concrete delta. No hedging ("may", "could", "potentially"). No speculation about intent or downstream effects. Patterns:
-- value: "The <field> changed from <old> to <new>."
-- language: "The wording of <topic> was refined without changing its effect."
-- scope: "<right/obligation> was expanded to include <X>." / "<X> was carved out of <right/obligation>."
-- structural: "The clause was split into <N> paragraphs covering <A> and <B>."
-- rewritten: "The clause was rewritten to <new approach> instead of <old approach>."
+**summary** — ONE sentence, ≤25 words. Required content: what specifically changed (the field, value, obligation, or right) and the before-state vs the after-state, named concretely. No hedging ("may", "could", "potentially"). No speculation about intent or downstream effects. Write in natural English — do not lean on a fixed verb or template, and do not quote prompt phrasing verbatim.
 
-NOTE: If the original wording is grammatically broken due to a typo (e.g., "disagree to take" where "disagree" was meant to be "agree"), describe the *intended* change rather than quoting the broken text verbatim. Prefer "The precaution standard was softened from 'necessary' to 'reasonable'." over "The obligation to 'disagree to take necessary precautions' was changed to 'agree to take reasonable precautions'."
+NOTE: If the original wording is grammatically broken due to a typo (e.g., "disagree to take" where "disagree" was meant to be "agree"), describe the *intended* change rather than quoting the broken text verbatim.
 </field_semantics>
 
 <examples>
