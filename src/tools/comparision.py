@@ -547,10 +547,29 @@ def _reconcile_matched_containment(pairs: List[Tuple[int, int, float]], clauses_
     return remaining, entries
 
 
-async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_client) -> ClauseComparisonLLMResponse:
-    """Send one clause pair to the LLM for detailed comparison."""
+_CLAUSE_COMPARISON_PROMPT_PATH = Path(r"src/services/prompts/v1/clause_comparison_prompt.mustache")
+_CLAUSE_COMPARISON_DYNAMIC_MARKER = "<clause_heading>"
 
-    prompt = Path(r"src/services/prompts/v1/clause_comparison_prompt.mustache").read_text()
+
+def _load_clause_comparison_prompt() -> Tuple[str, str]:
+    """Split the clause-comparison template into a cacheable static prefix (system) and a dynamic suffix (user message)."""
+
+    full_prompt = _CLAUSE_COMPARISON_PROMPT_PATH.read_text(encoding="utf-8")
+    split_idx = full_prompt.index(_CLAUSE_COMPARISON_DYNAMIC_MARKER)
+    static_system = full_prompt[:split_idx].rstrip()
+    dynamic_template = full_prompt[split_idx:]
+    return static_system, dynamic_template
+
+
+async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_client) -> ClauseComparisonLLMResponse:
+    """Send one clause pair to the LLM for detailed comparison.
+
+    The prompt is split so the role/context/examples block is sent as a
+    cacheable system message — reused across all per-clause calls within a
+    single compare run.
+    """
+
+    static_system, dynamic_template = _load_clause_comparison_prompt()
 
     context = {
         "clause_heading": clause_a.heading or clause_b.heading or "Unnamed Clause",
@@ -558,9 +577,11 @@ async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_c
         "clause_b_text": clause_b.content,
     }
     return await llm_client.generate(
-        prompt=prompt,
+        prompt=dynamic_template,
         context=context,
         response_model=ClauseComparisonLLMResponse,
+        system_message=static_system,
+        cache_system=True,
     )
 
 
