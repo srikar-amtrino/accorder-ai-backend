@@ -138,10 +138,15 @@ class BedrockModel(BaseLLMModel, Logger):
 
             tool_name: Optional[str] = None
             tool_input_chunks: List[str] = []
+            usage: Dict[str, int] = {}
 
             for chunk in self._iter_events(self._stream_invoke(body)):
                 event_type = chunk.get("type")
-                if event_type == "content_block_start":
+                if event_type == "message_start":
+                    usage.update(chunk.get("message", {}).get("usage", {}))
+                elif event_type == "message_delta":
+                    usage.update(chunk.get("usage", {}))
+                elif event_type == "content_block_start":
                     block = chunk.get("content_block", {})
                     if block.get("type") == "tool_use":
                         tool_name = block.get("name")
@@ -149,6 +154,8 @@ class BedrockModel(BaseLLMModel, Logger):
                     delta = chunk.get("delta", {})
                     if delta.get("type") == "input_json_delta":
                         tool_input_chunks.append(delta.get("partial_json", ""))
+
+            self.logger.info(f"[bedrock-tokens] model={self.model_id} mode=json input={usage.get('input_tokens', 0)} output={usage.get('output_tokens', 0)}")
 
             if tool_name != response_model.__name__:
                 raise EmptyResponseError("Bedrock returned no tool_use block for the requested response model. Try once more or debug the prompt.")
@@ -178,12 +185,19 @@ class BedrockModel(BaseLLMModel, Logger):
             }
 
             text_chunks: List[str] = []
+            usage: Dict[str, int] = {}
             for chunk in self._iter_events(self._stream_invoke(body)):
-                if chunk.get("type") != "content_block_delta":
-                    continue
-                delta = chunk.get("delta", {})
-                if delta.get("type") == "text_delta":
-                    text_chunks.append(delta.get("text", ""))
+                event_type = chunk.get("type")
+                if event_type == "message_start":
+                    usage.update(chunk.get("message", {}).get("usage", {}))
+                elif event_type == "message_delta":
+                    usage.update(chunk.get("usage", {}))
+                elif event_type == "content_block_delta":
+                    delta = chunk.get("delta", {})
+                    if delta.get("type") == "text_delta":
+                        text_chunks.append(delta.get("text", ""))
+
+            self.logger.info(f"[bedrock-tokens] model={self.model_id} mode=markdown input={usage.get('input_tokens', 0)} output={usage.get('output_tokens', 0)}")
 
             response_text = "".join(text_chunks)
             if not response_text:
