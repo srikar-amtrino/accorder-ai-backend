@@ -27,16 +27,32 @@ WHAT TO LOOK FOR IN THE OUTPUT:
 """
 
 import json
+import os
 import sys
 import time
 from pathlib import Path
 
-sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
-
 import boto3
 from botocore.config import Config
 
-from src.config.settings import get_settings
+
+def _load_env_file(path: Path) -> None:
+    """Minimal .env loader — sets os.environ from KEY=value lines. No deps."""
+    if not path.exists():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, _, value = line.partition("=")
+        key = key.strip()
+        value = value.strip().strip('"').strip("'")
+        # Existing real env vars take precedence over .env file
+        os.environ.setdefault(key, value)
+
+
+# Load .env from the repo root (one level above scripts/)
+_load_env_file(Path(__file__).resolve().parent.parent / ".env")
 
 
 # ---------------------------------------------------------------------------
@@ -161,11 +177,10 @@ def print_usage(label, usage):
 
 
 def main():
-    settings = get_settings()
-    model_id = settings.bedrock_model_id
-    region = settings.aws_region
+    model_id = os.environ.get("BEDROCK_MODEL_ID")
+    region = os.environ.get("AWS_REGION")
     if not model_id or not region:
-        sys.exit("ERROR: BEDROCK_MODEL_ID or AWS_REGION not set in .env file.")
+        sys.exit("ERROR: BEDROCK_MODEL_ID or AWS_REGION not set in .env file or environment.")
 
     static_chars = len(STATIC_SYSTEM)
     approx_static_tokens = int(static_chars / 3.5)
