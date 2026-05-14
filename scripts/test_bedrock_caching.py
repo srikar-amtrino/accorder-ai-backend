@@ -242,10 +242,25 @@ def main():
         if elapsed1 and elapsed2:
             print(f"    Call 2 was {elapsed1 / elapsed2:.1f}× faster than call 1 ({elapsed2:.2f}s vs {elapsed1:.2f}s).")
         print()
-        print(" Cost on this demo (Opus 4.7 list pricing — verify on AWS Bedrock pricing page):")
-        print(f"    No-cache equivalent cost: ~${(input_1 + input_2) * 15 / 1_000_000:.4f}")
-        cached_cost = ((cache_write_1 * 18.75) + (cache_read_2 * 1.50) + (input_1 + input_2 - cache_write_1 - cache_read_2) * 15) / 1_000_000
-        print(f"    Actual cost with cache  : ~${cached_cost:.4f}")
+        # Pricing (per million tokens, Opus 4.7 list on Bedrock — verify on AWS pricing page):
+        # input=$15.00, cache_write=$18.75 (1.25x input), cache_read=$1.50 (0.10x input), output=$75.00
+        output_1 = usage1.get("output_tokens", 0)
+        output_2 = usage2.get("output_tokens", 0)
+        # If no caching had been used, the cache tokens would have been billed as fresh input on each call:
+        nocache_input_tokens = (input_1 + cache_write_1) + (input_2 + cache_read_2)
+        nocache_cost = (nocache_input_tokens * 15 + (output_1 + output_2) * 75) / 1_000_000
+        cached_cost = (
+            cache_write_1 * 18.75
+            + cache_read_2 * 1.50
+            + (input_1 + input_2) * 15
+            + (output_1 + output_2) * 75
+        ) / 1_000_000
+        savings_pct = (1 - cached_cost / nocache_cost) * 100 if nocache_cost else 0
+        print(" Cost on this 2-call demo (Opus 4.7 list pricing — verify on AWS Bedrock pricing page):")
+        print(f"    No-cache cost (hypothetical): ~${nocache_cost:.5f}")
+        print(f"    Actual cost WITH cache      : ~${cached_cost:.5f}")
+        print(f"    Savings on this demo        : {savings_pct:.1f}%")
+        print(f"    (Savings scale up with each additional cached call within the 5-minute TTL.)")
     elif cache_write_1 > 0 and cache_read_2 == 0:
         print(" ⚠ PARTIAL: cache was written on call 1, but call 2 did not read it.")
         print("    Possible causes:")
