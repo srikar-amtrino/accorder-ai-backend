@@ -7,8 +7,8 @@ any application code — uses only boto3 and the same streaming method the
 app uses (`invoke_model_with_response_stream`).
 
 USAGE:
-    # Reads BEDROCK_MODEL_ID and AWS_REGION from environment.
-    python scripts/test_bedrock_caching.py
+    # Reads BEDROCK_MODEL_ID and AWS_REGION from the project's .env file.
+    python3 scripts/test_bedrock_caching.py
 
 WHAT IT DOES:
     1. Sends two API calls back-to-back.
@@ -27,12 +27,16 @@ WHAT TO LOOK FOR IN THE OUTPUT:
 """
 
 import json
-import os
 import sys
 import time
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 import boto3
 from botocore.config import Config
+
+from src.config.settings import get_settings
 
 
 # ---------------------------------------------------------------------------
@@ -157,10 +161,11 @@ def print_usage(label, usage):
 
 
 def main():
-    model_id = os.environ.get("BEDROCK_MODEL_ID")
-    region = os.environ.get("AWS_REGION")
+    settings = get_settings()
+    model_id = settings.bedrock_model_id
+    region = settings.aws_region
     if not model_id or not region:
-        sys.exit("ERROR: set BEDROCK_MODEL_ID and AWS_REGION in the environment.")
+        sys.exit("ERROR: BEDROCK_MODEL_ID or AWS_REGION not set in .env file.")
 
     static_chars = len(STATIC_SYSTEM)
     approx_static_tokens = int(static_chars / 3.5)
