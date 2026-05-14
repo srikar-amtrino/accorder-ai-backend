@@ -227,6 +227,8 @@ def main():
 
     # Verdict
     cache_write_1 = usage1.get("cache_creation_input_tokens", 0)
+    cache_read_1 = usage1.get("cache_read_input_tokens", 0)
+    cache_write_2 = usage2.get("cache_creation_input_tokens", 0)
     cache_read_2 = usage2.get("cache_read_input_tokens", 0)
     input_1 = usage1.get("input_tokens", 0)
     input_2 = usage2.get("input_tokens", 0)
@@ -234,24 +236,32 @@ def main():
     print("=" * 72)
     print(" VERDICT")
     print("=" * 72)
-    if cache_write_1 > 0 and cache_read_2 > 0:
+    # Caching is proven if EITHER:
+    #   (a) Call 1 wrote the cache and Call 2 read it (fresh demo, cold start), or
+    #   (b) Either call read from cache — means the cache from a previous run was warm.
+    # Both demonstrate that caching is functional in this account/region/model.
+    if (cache_write_1 > 0 and cache_read_2 > 0) or cache_read_1 > 0 or cache_read_2 > 0:
         print(" ✅ PROMPT CACHING IS WORKING.")
-        print(f"    Call 1 wrote {cache_write_1:,} tokens into the cache.")
-        print(f"    Call 2 read  {cache_read_2:,} tokens from the cache.")
-        print(f"    Call 2 fresh-input tokens: {input_2:,} (vs {input_1:,} on call 1).")
-        if elapsed1 and elapsed2:
-            print(f"    Call 2 was {elapsed1 / elapsed2:.1f}× faster than call 1 ({elapsed2:.2f}s vs {elapsed1:.2f}s).")
+        if cache_write_1 > 0:
+            print(f"    Call 1 wrote {cache_write_1:,} tokens into the cache (fresh — cold start).")
+        elif cache_read_1 > 0:
+            print(f"    Call 1 read  {cache_read_1:,} tokens from cache (cache from a previous run was still warm).")
+        if cache_read_2 > 0:
+            print(f"    Call 2 read  {cache_read_2:,} tokens from the cache.")
         print()
         # Pricing (per million tokens, Opus 4.7 list on Bedrock — verify on AWS pricing page):
         # input=$15.00, cache_write=$18.75 (1.25x input), cache_read=$1.50 (0.10x input), output=$75.00
         output_1 = usage1.get("output_tokens", 0)
         output_2 = usage2.get("output_tokens", 0)
-        # If no caching had been used, the cache tokens would have been billed as fresh input on each call:
-        nocache_input_tokens = (input_1 + cache_write_1) + (input_2 + cache_read_2)
+        # If no caching had been used, every cache-write and cache-read token would have been billed as fresh input.
+        nocache_input_tokens = (
+            input_1 + cache_write_1 + cache_read_1
+            + input_2 + cache_write_2 + cache_read_2
+        )
         nocache_cost = (nocache_input_tokens * 15 + (output_1 + output_2) * 75) / 1_000_000
         cached_cost = (
-            cache_write_1 * 18.75
-            + cache_read_2 * 1.50
+            (cache_write_1 + cache_write_2) * 18.75
+            + (cache_read_1 + cache_read_2) * 1.50
             + (input_1 + input_2) * 15
             + (output_1 + output_2) * 75
         ) / 1_000_000
