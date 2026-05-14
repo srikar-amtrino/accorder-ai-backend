@@ -1,38 +1,12 @@
 """
 Standalone Bedrock prompt-caching demo.
 
-Proves whether Anthropic prompt caching engages for Claude on AWS Bedrock
-in *this* account, *this* region, with *this* model. Does NOT depend on
-any application code — uses only boto3 and the same streaming method the
-app uses (`invoke_model_with_response_stream`).
+Sends three calls and prints what Bedrock returned for each:
+    Call 1: cache_control disabled (baseline)
+    Call 2: cache_control enabled (cache write)
+    Call 3: cache_control enabled (cache read)
 
-USAGE:
-    # Reads BEDROCK_MODEL_ID and AWS_REGION from the project's .env file.
-    python3 scripts/test_bedrock_caching.py
-
-WHAT THIS SCRIPT DOES:
-    Sends THREE API calls back-to-back, then prints what Bedrock returned.
-
-    Call 1: cache_control DISABLED  ← BASELINE — shows the true input cost without caching
-    Call 2: cache_control ENABLED   ← First cached call (cold cache → cache WRITE)
-    Call 3: cache_control ENABLED   ← Second cached call, different user message (cache READ)
-
-    For each call, the raw `usage` JSON object returned by Bedrock is printed
-    verbatim. The script does NOT enforce or hardcode any size threshold —
-    Bedrock applies its own minimum-size policy and decides whether to cache.
-
-WHAT TO LOOK FOR:
-    With a large-enough static prompt:
-        Call 1 (no cache)  : both cache fields = 0  ← honest baseline
-        Call 2 (cache on)  : cache_creation_input_tokens > 0  (cache WRITTEN)
-        Call 3 (cache on)  : cache_read_input_tokens     > 0  (cache READ at ~10% cost)
-
-    With a small static prompt (toggle the line further down in the file):
-        All three calls show 0 in both cache fields — because Bedrock declines
-        to cache a block it considers too small. Our script does not enforce
-        any size rule; the only thing changing behavior is Bedrock itself.
-
-    Compare the two scenarios to prove the cause-and-effect relationship.
+Usage: python3 scripts/test_bedrock_caching.py
 """
 
 import json
@@ -46,7 +20,6 @@ from botocore.config import Config
 
 
 def _load_env_file(path: Path) -> None:
-    """Minimal .env loader — sets os.environ from KEY=value lines. No deps."""
     if not path.exists():
         return
     for raw_line in path.read_text(encoding="utf-8").splitlines():
@@ -54,23 +27,11 @@ def _load_env_file(path: Path) -> None:
         if not line or line.startswith("#") or "=" not in line:
             continue
         key, _, value = line.partition("=")
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        os.environ.setdefault(key, value)
+        os.environ.setdefault(key.strip(), value.strip().strip('"').strip("'"))
 
 
 _load_env_file(Path(__file__).resolve().parent.parent / ".env")
 
-
-# ---------------------------------------------------------------------------
-# STATIC SYSTEM PROMPT
-#
-# The prompt is split into BASE (always included) + EXTENSION (optional).
-# To run the "small-prompt" demo, comment out the "+ STATIC_EXTENSION" line
-# in the assignment to STATIC_SYSTEM further down. When the prompt is small,
-# Bedrock will decline to cache it on its own — not because of any check in
-# this script.
-# ---------------------------------------------------------------------------
 
 STATIC_BASE = """You are a senior contract review analyst. You operate under a strict, deterministic protocol designed to produce structured, defensible findings on commercial contract language. Your role is to evaluate whether contractual paragraphs satisfy a stated playbook rule and to surface deviations, gaps, conflicts, and risks in a uniform machine-readable form. You must reason only from the text presented to you in any given call. You do not bring outside knowledge of any specific deal, party, jurisdiction, or industry to bear unless that information is explicitly stated in the paragraphs under review. Your output is consumed downstream by other systems and by reviewing attorneys, so every field you produce must be precise, traceable, and free of speculation.
 
@@ -133,23 +94,12 @@ A note on robustness to malformed input. Occasionally the upstream pipeline will
 That concludes your operating instructions. You will now receive a rule and a set of paragraphs to evaluate. Apply the protocol above and produce the single JSON object that conforms to the response schema. Do not include any prose, markdown, code fences, or commentary outside the JSON object.
 """
 
-# ===========================================================================
-# DEMO TOGGLE — flip ONE of the two lines below by commenting / uncommenting.
-#
-# This script does NOT enforce any size minimum. Bedrock applies its own
-# policy and silently refuses to cache when the static block is too small.
-# That is what the small-prompt scenario demonstrates.
-# ===========================================================================
-
-# === FULL prompt — Bedrock should engage caching ===
+# Toggle: full prompt (caching engages) vs. base-only (Bedrock declines to cache).
 STATIC_SYSTEM = STATIC_BASE + STATIC_EXTENSION
-
-# === SMALL prompt — Bedrock should decline to cache (size below its policy) ===
 # STATIC_SYSTEM = STATIC_BASE
 
 
 def stream_invoke(client, model_id, body):
-    """Invoke Bedrock with streaming, return (usage_dict, response_text)."""
     response = client.invoke_model_with_response_stream(
         modelId=model_id,
         body=json.dumps(body),
@@ -174,7 +124,6 @@ def stream_invoke(client, model_id, body):
 
 
 def build_body(system_text, user_text, cache_system):
-    """Build the request body. cache_system=True attaches cache_control to the system block."""
     if cache_system:
         system_field = [
             {
@@ -194,16 +143,14 @@ def build_body(system_text, user_text, cache_system):
 
 
 def print_call_result(call_label, cache_flag_label, usage, elapsed, response_text):
-    print(f"  [{call_label}]")
-    print(f"  cache_control on system block : {cache_flag_label}")
-    print(f"  Bedrock raw usage response    : {json.dumps(usage)}")
-    print(f"  Interpreted:")
-    print(f"    input_tokens                : {usage.get('input_tokens', 0)}")
-    print(f"    output_tokens               : {usage.get('output_tokens', 0)}")
-    print(f"    cache_creation_input_tokens : {usage.get('cache_creation_input_tokens', 0)}  (tokens WRITTEN to cache)")
-    print(f"    cache_read_input_tokens     : {usage.get('cache_read_input_tokens', 0)}  (tokens READ from cache)")
-    print(f"    elapsed                     : {elapsed:.2f}s")
-    print(f"    response                    : {response_text.strip()[:120]}")
+    print(f"  cache_control               : {cache_flag_label}")
+    print(f"  Bedrock raw usage           : {json.dumps(usage)}")
+    print(f"  input_tokens                : {usage.get('input_tokens', 0)}")
+    print(f"  output_tokens               : {usage.get('output_tokens', 0)}")
+    print(f"  cache_creation_input_tokens : {usage.get('cache_creation_input_tokens', 0)}")
+    print(f"  cache_read_input_tokens     : {usage.get('cache_read_input_tokens', 0)}")
+    print(f"  elapsed                     : {elapsed:.2f}s")
+    print(f"  response                    : {response_text.strip()[:120]}")
 
 
 def main():
@@ -212,14 +159,12 @@ def main():
     if not model_id or not region:
         sys.exit("ERROR: BEDROCK_MODEL_ID or AWS_REGION not set in .env file or environment.")
 
-    static_chars = len(STATIC_SYSTEM)
     print("=" * 72)
-    print(" Bedrock Prompt-Caching Demo — Standalone")
+    print(" Bedrock Prompt-Caching Demo")
     print("=" * 72)
     print(f"  Model        : {model_id}")
     print(f"  Region       : {region}")
-    print(f"  Static prompt: {static_chars:,} chars")
-    print(f"  (This script does NOT enforce any token-count rule — Bedrock decides.)")
+    print(f"  Static prompt: {len(STATIC_SYSTEM):,} chars")
     print()
 
     client = boto3.client(
@@ -229,36 +174,32 @@ def main():
     )
 
     print("-" * 72)
-    print(" CALL 1 — cache_control DISABLED  (BASELINE — what tokens cost without caching)")
+    print(" CALL 1 — cache_control DISABLED (baseline)")
     print("-" * 72)
     body1 = build_body(STATIC_SYSTEM, "In one sentence, summarize your operating principles.", cache_system=False)
     t0 = time.time()
     usage1, text1 = stream_invoke(client, model_id, body1)
-    elapsed1 = time.time() - t0
-    print_call_result("CALL 1", "DISABLED", usage1, elapsed1, text1)
+    print_call_result("CALL 1", "DISABLED", usage1, time.time() - t0, text1)
     print()
 
     print("-" * 72)
-    print(" CALL 2 — cache_control ENABLED  (first cached call — cache WRITE expected)")
+    print(" CALL 2 — cache_control ENABLED (cache write expected)")
     print("-" * 72)
     body2 = build_body(STATIC_SYSTEM, "In one sentence, what is your role?", cache_system=True)
     t0 = time.time()
     usage2, text2 = stream_invoke(client, model_id, body2)
-    elapsed2 = time.time() - t0
-    print_call_result("CALL 2", "ENABLED", usage2, elapsed2, text2)
+    print_call_result("CALL 2", "ENABLED", usage2, time.time() - t0, text2)
     print()
 
     print("-" * 72)
-    print(" CALL 3 — cache_control ENABLED, same static system, different user message (cache READ expected)")
+    print(" CALL 3 — cache_control ENABLED (cache read expected)")
     print("-" * 72)
     body3 = build_body(STATIC_SYSTEM, "In one sentence, what must you never do?", cache_system=True)
     t0 = time.time()
     usage3, text3 = stream_invoke(client, model_id, body3)
-    elapsed3 = time.time() - t0
-    print_call_result("CALL 3", "ENABLED", usage3, elapsed3, text3)
+    print_call_result("CALL 3", "ENABLED", usage3, time.time() - t0, text3)
     print()
 
-    # Verdict
     cache_write_1 = usage1.get("cache_creation_input_tokens", 0)
     cache_read_1 = usage1.get("cache_read_input_tokens", 0)
     cache_write_2 = usage2.get("cache_creation_input_tokens", 0)
@@ -270,70 +211,42 @@ def main():
     output_2 = usage2.get("output_tokens", 0)
     output_3 = usage3.get("output_tokens", 0)
 
-    call1_no_cache_activity = (cache_write_1 == 0 and cache_read_1 == 0)
-    caching_engaged_on_2_or_3 = (
-        cache_write_2 > 0 or cache_read_2 > 0
-        or cache_write_3 > 0 or cache_read_3 > 0
-    )
+    baseline_ok = cache_write_1 == 0 and cache_read_1 == 0
+    cache_engaged = any((cache_write_2, cache_read_2, cache_write_3, cache_read_3))
 
     print("=" * 72)
     print(" VERDICT")
     print("=" * 72)
-
-    # Part 1: did the BASELINE call (no cache) behave correctly?
-    if call1_no_cache_activity:
-        print(" ✓ BASELINE CHECK PASSED (Call 1, cache_control DISABLED).")
-        print(f"    Bedrock reported cache_creation_input_tokens=0 and cache_read_input_tokens=0.")
-        print(f"    This proves the script reports caching numbers honestly — when we")
-        print(f"    don't ask for caching, the cache fields are 0.")
+    print(f" Baseline (Call 1, no cache): {'OK — cache fields are 0 as expected.' if baseline_ok else 'unexpected cache activity, investigate.'}")
+    if cache_engaged:
+        print(" Caching: engaged on Calls 2 and 3.")
+        if cache_write_2:
+            print(f"   Call 2 wrote {cache_write_2:,} tokens to cache.")
+        elif cache_read_2:
+            print(f"   Call 2 read  {cache_read_2:,} tokens from cache (warm from prior run).")
+        if cache_read_3:
+            print(f"   Call 3 read  {cache_read_3:,} tokens from cache.")
+        elif cache_write_3:
+            print(f"   Call 3 wrote {cache_write_3:,} tokens to cache.")
     else:
-        print(" ⚠ BASELINE CHECK FAILED — unexpected cache activity on Call 1.")
-        print(f"    cache_write_1={cache_write_1}, cache_read_1={cache_read_1}")
-        print(f"    cache_control was DISABLED on this call. Bedrock should not have")
-        print(f"    reported any cache activity. Investigate.")
+        print(" Caching: not engaged. Bedrock declined to cache (its size policy decides).")
 
-    print()
-
-    # Part 2: did caching engage on the cache-enabled calls?
-    if caching_engaged_on_2_or_3:
-        print(" ✅ PROMPT CACHING ENGAGED on calls 2 and 3.")
-        if cache_write_2 > 0:
-            print(f"    Call 2 wrote {cache_write_2:,} tokens into the cache (cold start).")
-        elif cache_read_2 > 0:
-            print(f"    Call 2 read  {cache_read_2:,} tokens from cache (cache from a previous run was still warm).")
-        if cache_read_3 > 0:
-            print(f"    Call 3 read  {cache_read_3:,} tokens from the cache.")
-        elif cache_write_3 > 0:
-            print(f"    Call 3 wrote {cache_write_3:,} tokens into the cache.")
-    else:
-        print(" ✗ CACHING DID NOT ENGAGE on calls 2 and 3.")
-        print("    All cache_creation / cache_read fields came back 0 even though")
-        print("    cache_control was attached. Bedrock declined to cache this request —")
-        print("    most commonly because the static block is too small for its caching")
-        print("    policy. This script does NOT enforce any size minimum; Bedrock decides.")
-
-    # Part 3: cost comparison (only meaningful if caching engaged)
-    if caching_engaged_on_2_or_3:
-        print()
-        # Pricing (per million tokens, Opus 4.7 list on Bedrock — verify on AWS pricing page):
-        # input=$15.00, cache_write=$18.75 (1.25x input), cache_read=$1.50 (0.10x input), output=$75.00
-        nocache_input_tokens_23 = (
-            input_2 + cache_write_2 + cache_read_2
-            + input_3 + cache_write_3 + cache_read_3
-        )
-        nocache_cost_23 = (nocache_input_tokens_23 * 15 + (output_2 + output_3) * 75) / 1_000_000
-        cached_cost_23 = (
+    if cache_engaged:
+        # Opus 4.7 list pricing per 1M tokens: input $15, cache_write $18.75, cache_read $1.50, output $75.
+        nocache_input = input_2 + cache_write_2 + cache_read_2 + input_3 + cache_write_3 + cache_read_3
+        nocache_cost = (nocache_input * 15 + (output_2 + output_3) * 75) / 1_000_000
+        cached_cost = (
             (cache_write_2 + cache_write_3) * 18.75
             + (cache_read_2 + cache_read_3) * 1.50
             + (input_2 + input_3) * 15
             + (output_2 + output_3) * 75
         ) / 1_000_000
-        savings_pct = (1 - cached_cost_23 / nocache_cost_23) * 100 if nocache_cost_23 else 0
-        print(" Cost on the 2 caching-enabled calls (Opus 4.7 list pricing — verify on AWS Bedrock pricing page):")
-        print(f"    No-cache cost (hypothetical): ~${nocache_cost_23:.5f}")
-        print(f"    Actual cost WITH cache      : ~${cached_cost_23:.5f}")
-        print(f"    Savings on this demo        : {savings_pct:.1f}%")
-        print(f"    (Savings scale up with each additional cached call within the 5-minute TTL.)")
+        savings_pct = (1 - cached_cost / nocache_cost) * 100 if nocache_cost else 0
+        print()
+        print(f" Cost on Calls 2 + 3 (Opus 4.7 list pricing):")
+        print(f"   No-cache hypothetical : ${nocache_cost:.5f}")
+        print(f"   With cache            : ${cached_cost:.5f}")
+        print(f"   Savings               : {savings_pct:.1f}%")
     print("=" * 72)
 
 
