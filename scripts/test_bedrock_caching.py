@@ -232,18 +232,18 @@ def main():
         print(" Caching: not engaged. Bedrock declined to cache (its size policy decides).")
 
     if cache_engaged:
-        # Opus 4.7 list pricing per 1M tokens: input $15, cache_write $18.75, cache_read $1.50, output $75.
+        # Opus 4.7 Bedrock pricing per 1M tokens: input $5, output $25, cache_write (5m) $6.25, cache_read $0.50.
         nocache_input = input_2 + cache_write_2 + cache_read_2 + input_3 + cache_write_3 + cache_read_3
-        nocache_cost = (nocache_input * 15 + (output_2 + output_3) * 75) / 1_000_000
+        nocache_cost = (nocache_input * 5 + (output_2 + output_3) * 25) / 1_000_000
         cached_cost = (
-            (cache_write_2 + cache_write_3) * 18.75
-            + (cache_read_2 + cache_read_3) * 1.50
-            + (input_2 + input_3) * 15
-            + (output_2 + output_3) * 75
+            (cache_write_2 + cache_write_3) * 6.25
+            + (cache_read_2 + cache_read_3) * 0.50
+            + (input_2 + input_3) * 5
+            + (output_2 + output_3) * 25
         ) / 1_000_000
         savings_pct = (1 - cached_cost / nocache_cost) * 100 if nocache_cost else 0
         print()
-        print(f" Cost on Calls 2 + 3 (Opus 4.7 list pricing):")
+        print(f" Cost on Calls 2 + 3 (Opus 4.7 Bedrock list pricing):")
         print(f"   No-cache hypothetical : ${nocache_cost:.5f}")
         print(f"   With cache            : ${cached_cost:.5f}")
         print(f"   Savings               : {savings_pct:.1f}%")
