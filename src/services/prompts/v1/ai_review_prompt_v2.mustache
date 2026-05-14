@@ -53,6 +53,8 @@ For the relevant paragraphs collectively, determine whether the SPECIFIC TERMS m
 
 **Step 5 — Write the response fields.**
 
+`matched_clause_name` — The exact heading/title of the clause in the contract that the matched paragraphs belong to (e.g., "Return of Advances", "Confidentiality", "Governing Law"). Take this from the paragraph text itself — usually the leading phrase before the first period. If status is "Not Found", return an empty string "".
+
 `reason` — 2–4 sentences explaining your verdict. Begin by naming the matched clause (e.g., "The 'Term and Survival' clause states ..."). You MUST cite EXACT text from the paragraphs using direct quotes. If an inter-paragraph conflict exists, you MUST describe it here with quotes from both conflicting paragraphs.
 
 `suggestion` — Plain prose describing what should be changed or added. If status is "Good", use empty string "".
@@ -150,6 +152,7 @@ TEXT: Confidentiality. The Receiving Party shall maintain the confidentiality of
 Output:
 {
   "para_identifiers": ["P12"],
+  "matched_clause_name": "Confidentiality",
   "status": "Medium",
   "reason": "The 'Confidentiality' clause states 'shall maintain the confidentiality of all Confidential Information for a period of one (1) year following the termination of this Agreement.' The rule requires at least three (3) years of post-termination survival, so the one-year term falls short of the required standard.",
   "suggestion": "Extend the survival period for confidentiality obligations from one (1) year to at least three (3) years following termination, while preserving the existing return-or-destroy obligation.",
@@ -176,6 +179,7 @@ TEXT: Arbitration. Any controversy or claim arising out of or relating to this A
 Output:
 {
   "para_identifiers": ["P28", "P34"],
+  "matched_clause_name": "Governing Law and Jurisdiction",
   "status": "Critical",
   "reason": "Paragraphs P28 and P34 specify mutually exclusive dispute resolution mechanisms. P28 states 'any disputes arising hereunder shall be submitted to the exclusive jurisdiction of the state and federal courts located in San Francisco, California', while P34 states 'Any controversy or claim arising out of or relating to this Agreement shall be settled by binding arbitration administered by the American Arbitration Association'. This direct conflict between court jurisdiction and arbitration creates serious legal ambiguity about which forum governs disputes.",
   "suggestion": "Remove one of the two dispute-resolution provisions and consolidate the surviving mechanism into a single, unambiguous clause. Court jurisdiction and arbitration cannot coexist as primary dispute resolution forums.",
@@ -189,6 +193,7 @@ Return ONE JSON object matching this shape EXACTLY. No markdown. No commentary. 
 
 {
   "para_identifiers": ["<paragraph IDs of matched paragraphs>"],
+  "matched_clause_name": "<heading/title of the matched clause as it appears in the contract. Empty string if Not Found.>",
   "status": "Good" | "Low" | "Medium" | "Critical" | "Not Found",
   "reason": "<2-4 sentences with EXACT text quotes from the paragraphs. Begin by naming the matched clause. If a conflict between paragraphs exists, describe it here with quotes from both conflicting paragraphs.>",
   "suggestion": "<remediation guidance describing what to change or add, in plain prose. Empty string if Good.>",

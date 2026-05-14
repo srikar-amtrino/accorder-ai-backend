@@ -1,5 +1,6 @@
 import asyncio
 import hashlib
+import html
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -126,7 +127,7 @@ async def _process_rule(
         logger.warning(f"No extracted paragraphs for rule {rule.title}. " "Falling back to full document.")
         matched_paras = full_document
 
-    paragraph_context = "\n\n".join(f"PARA_ID: {p.paraindetifier}\nTEXT: {p.text.strip()}" for p in matched_paras)
+    paragraph_context = "\n\n".join(f"PARA_ID: {p.paraindetifier}\nTEXT: {html.unescape(p.text).strip()}" for p in matched_paras)
 
     result = RuleResult(
         title=rule.title,
@@ -251,16 +252,9 @@ async def review_document(
         len(all_reviews),
     )
 
-    # Build reviewed rules summary and evaluate missing clauses (no caching)
-    reviewed: Dict[Tuple[str, str], PlayBookReviewResponse] = {key: result for key, result in updates}
-
-    full_text = "\n\n".join(f"PARA_ID: {p.paraindetifier}\nTEXT: {p.text}" for p in request.textinformation)
-    reviewed_summary = _build_reviewed_rules_summary(reviewed)
-    missing_clauses = await get_missing_clauses(llm_model, full_text, reviewed_summary)
-
     return PlayBookReviewFinalResponse(
         rules_review=all_reviews,
-        missing_clauses=missing_clauses,
+        missing_clauses=None,
     )
 
 
