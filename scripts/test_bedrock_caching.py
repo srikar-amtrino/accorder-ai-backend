@@ -10,20 +10,29 @@ USAGE:
     # Reads BEDROCK_MODEL_ID and AWS_REGION from the project's .env file.
     python3 scripts/test_bedrock_caching.py
 
-WHAT IT DOES:
-    1. Sends two API calls back-to-back.
-    2. Both calls use the SAME static system prompt (~5,000 tokens — over
-       the 4,096-token caching minimum for Opus 4.7).
-    3. cache_control: ephemeral is attached to the system block.
-    4. The user message differs between the two calls so you can see that
-       the cache key is the static section, not the whole request.
+WHAT THIS SCRIPT DOES:
+    Sends THREE API calls back-to-back, then prints what Bedrock returned.
 
-WHAT TO LOOK FOR IN THE OUTPUT:
-    Call 1: cache_creation_input_tokens > 0  (the cache was WRITTEN)
-    Call 2: cache_read_input_tokens     > 0  (the cache was READ at ~10% cost)
+    Call 1: cache_control ENABLED on the static system block
+    Call 2: cache_control ENABLED on the same static system block (different user message)
+    Call 3: cache_control DISABLED  ← control / negative-proof call
 
-    If both are 0 on both calls → caching is silently disabled
-    (most likely cause: static block under the model's token minimum).
+    For each call, the raw `usage` JSON object returned by Bedrock is printed
+    verbatim. The script does NOT enforce or hardcode any size threshold —
+    Bedrock applies its own minimum-size policy and decides whether to cache.
+
+WHAT TO LOOK FOR:
+    With a large-enough static prompt:
+        Call 1: cache_creation_input_tokens > 0  (cache WRITTEN — or read if warm from prior run)
+        Call 2: cache_read_input_tokens     > 0  (cache READ at ~10% cost)
+        Call 3: both fields = 0                  (we did not request caching)
+
+    With a small static prompt (uncomment the small-prompt line further down):
+        All three calls show 0 in both cache fields — because Bedrock declines
+        to cache a block it considers too small. Our script does not enforce
+        any size rule; the only thing changing behavior is Bedrock itself.
+
+    Compare the two scenarios to prove the cause-and-effect relationship.
 """
 
 import json
@@ -47,31 +56,33 @@ def _load_env_file(path: Path) -> None:
         key, _, value = line.partition("=")
         key = key.strip()
         value = value.strip().strip('"').strip("'")
-        # Existing real env vars take precedence over .env file
         os.environ.setdefault(key, value)
 
 
-# Load .env from the repo root (one level above scripts/)
 _load_env_file(Path(__file__).resolve().parent.parent / ".env")
 
 
 # ---------------------------------------------------------------------------
-# A self-contained "static" system prompt.
+# STATIC SYSTEM PROMPT
 #
-# This is the cache key. Must be ≥ 4,096 tokens for Opus 4.7 to cache it.
-# We use generic contract-analyst instructions here purely as filler with
-# realistic shape — the LLM never has to act on this; we just need a large
-# identical block on both calls.
+# The prompt is split into BASE (always included) + EXTENSION (optional).
+# To run the "small-prompt" demo, comment out the "+ STATIC_EXTENSION" line
+# in the assignment to STATIC_SYSTEM further down. When the prompt is small,
+# Bedrock will decline to cache it on its own — not because of any check in
+# this script.
 # ---------------------------------------------------------------------------
-STATIC_SYSTEM = """You are a senior contract review analyst. You operate under a strict, deterministic protocol designed to produce structured, defensible findings on commercial contract language. Your role is to evaluate whether contractual paragraphs satisfy a stated playbook rule and to surface deviations, gaps, conflicts, and risks in a uniform machine-readable form. You must reason only from the text presented to you in any given call. You do not bring outside knowledge of any specific deal, party, jurisdiction, or industry to bear unless that information is explicitly stated in the paragraphs under review. Your output is consumed downstream by other systems and by reviewing attorneys, so every field you produce must be precise, traceable, and free of speculation.
+
+STATIC_BASE = """You are a senior contract review analyst. You operate under a strict, deterministic protocol designed to produce structured, defensible findings on commercial contract language. Your role is to evaluate whether contractual paragraphs satisfy a stated playbook rule and to surface deviations, gaps, conflicts, and risks in a uniform machine-readable form. You must reason only from the text presented to you in any given call. You do not bring outside knowledge of any specific deal, party, jurisdiction, or industry to bear unless that information is explicitly stated in the paragraphs under review. Your output is consumed downstream by other systems and by reviewing attorneys, so every field you produce must be precise, traceable, and free of speculation.
 
 Your operating principles, in priority order, are as follows. First, accuracy beats volume — it is always better to return a smaller number of high-confidence findings than to invent issues to appear thorough. Second, you must anchor every claim to specific words you can quote from the source paragraphs; if you cannot quote text that supports a claim, you must not make the claim. Third, you must not hallucinate, infer, assume, or paraphrase legal effect that is not unambiguously present in the text. Fourth, you must respect the schema of your output exactly as defined and must not introduce additional fields, narrative, or commentary outside the JSON payload you are asked to produce. Fifth, you must remain neutral in tone — your role is to surface facts, not to advocate for either party.
 
 You will be given three categories of input on every call: a rule description (with a title, an instruction, and a longer explanatory description), a list of contract paragraphs each identified by a stable paragraph identifier, and a small amount of metadata about the rule's type and priority. The paragraphs are pre-selected by an upstream matcher whose recall is favored over precision; this means you will sometimes receive paragraphs that look related to the rule by superficial keyword overlap but in fact address a different legal topic. Your first job on every call is to verify that the paragraphs you have been given are actually on-topic for the rule. If they are not, you must say so and decline to produce a compliance verdict, because scoring an off-topic clause as compliant or non-compliant is itself a defect.
 
 Your second job on every call is to detect inter-paragraph conflicts. A contract may contain two or more clauses that purport to govern the same legal topic but reach incompatible conclusions — for example, one clause directing disputes to a court and another directing the same disputes to arbitration; one clause assigning indemnification responsibility to Party A and another assigning it to Party B; one clause specifying a thirty-day notice period and another specifying ninety days for the same termination trigger. These conflicts are easy to miss when you are focused on evaluating compliance against a single rule, which is why you must scan for them up front, before you decide whether the contract complies with the rule. Conflicts always carry a minimum risk level regardless of whether the individual paragraphs, taken in isolation, appear acceptable.
+"""
 
-Your third job is to evaluate compliance. Compliance is a function of whether the *specific terms* in the relevant paragraphs satisfy the *specific requirements* of the rule's instruction. Existence is not compliance: a paragraph that merely mentions the rule's topic without satisfying the rule's substance is not compliant. You must compare numbers to numbers, durations to durations, jurisdictions to jurisdictions, scopes to scopes, and obligations to obligations. Where the rule requires a specific protection — a survival period, a notice period, a cure right, a liability cap, a most-favored-nation clause, an audit right, a return-or-destroy obligation — and no paragraph in the input addresses it, you must call out the omission rather than rate the rule favorably by default.
+
+STATIC_EXTENSION = """Your third job is to evaluate compliance. Compliance is a function of whether the *specific terms* in the relevant paragraphs satisfy the *specific requirements* of the rule's instruction. Existence is not compliance: a paragraph that merely mentions the rule's topic without satisfying the rule's substance is not compliant. You must compare numbers to numbers, durations to durations, jurisdictions to jurisdictions, scopes to scopes, and obligations to obligations. Where the rule requires a specific protection — a survival period, a notice period, a cure right, a liability cap, a most-favored-nation clause, an audit right, a return-or-destroy obligation — and no paragraph in the input addresses it, you must call out the omission rather than rate the rule favorably by default.
 
 Your fourth job is to produce remediation guidance. The remediation must do two things at once: it must explain in prose what should change in the contract and why, and it must produce a drop-in replacement clause that the user can paste into the contract verbatim. The drop-in replacement is the highest-stakes field in your output. It must be a complete, self-contained clause in the same legal register as the contract. It must not contain placeholder tokens, square-bracket variables, markdown formatting, code fences, or any meta-prefix language like "Suggested:" or "Replace with:" or "Consider:". It must preserve every sentence and obligation present in the original matched clause that is not directly tied to the deviation you are correcting, because the user will paste your text in place of the entire original clause and a one-line edit would silently destroy surrounding obligations. It must use the actual party names, defined terms, and capitalized references that already appear in the matched paragraphs — never generic placeholders. Where the rule states a concrete value (a number, a duration, a percentage, a dollar amount, a jurisdiction, a statutory reference, a named party), that value must appear in your replacement text exactly as written in the rule, not paraphrased or approximated.
 
@@ -122,6 +133,11 @@ A note on robustness to malformed input. Occasionally the upstream pipeline will
 That concludes your operating instructions. You will now receive a rule and a set of paragraphs to evaluate. Apply the protocol above and produce the single JSON object that conforms to the response schema. Do not include any prose, markdown, code fences, or commentary outside the JSON object.
 """
 
+# To run the SMALL-PROMPT demo (Bedrock should decline to cache the small block
+# on its own), comment out the "+ STATIC_EXTENSION" part of the line below.
+# Our script does NOT enforce a size minimum; only Bedrock does.
+STATIC_SYSTEM = STATIC_BASE + STATIC_EXTENSION
+
 
 def stream_invoke(client, model_id, body):
     """Invoke Bedrock with streaming, return (usage_dict, response_text)."""
@@ -168,12 +184,17 @@ def build_body(system_text, user_text, cache_system):
     }
 
 
-def print_usage(label, usage):
-    print(f"  [{label}]")
+def print_call_result(call_label, cache_flag_label, usage, elapsed, response_text):
+    print(f"  [{call_label}]")
+    print(f"  cache_control on system block : {cache_flag_label}")
+    print(f"  Bedrock raw usage response    : {json.dumps(usage)}")
+    print(f"  Interpreted:")
     print(f"    input_tokens                : {usage.get('input_tokens', 0)}")
     print(f"    output_tokens               : {usage.get('output_tokens', 0)}")
     print(f"    cache_creation_input_tokens : {usage.get('cache_creation_input_tokens', 0)}  (tokens WRITTEN to cache)")
     print(f"    cache_read_input_tokens     : {usage.get('cache_read_input_tokens', 0)}  (tokens READ from cache)")
+    print(f"    elapsed                     : {elapsed:.2f}s")
+    print(f"    response                    : {response_text.strip()[:120]}")
 
 
 def main():
@@ -183,16 +204,13 @@ def main():
         sys.exit("ERROR: BEDROCK_MODEL_ID or AWS_REGION not set in .env file or environment.")
 
     static_chars = len(STATIC_SYSTEM)
-    approx_static_tokens = int(static_chars / 3.5)
-
     print("=" * 72)
     print(" Bedrock Prompt-Caching Demo — Standalone")
     print("=" * 72)
     print(f"  Model        : {model_id}")
     print(f"  Region       : {region}")
-    print(f"  Static prompt: {static_chars:,} chars  (~{approx_static_tokens:,} tokens)")
-    print(f"  Threshold    : 4,096 tokens (Opus 4.7 minimum for caching)")
-    print(f"  Over threshold? {'YES' if approx_static_tokens >= 4096 else 'NO — caching will silently fail'}")
+    print(f"  Static prompt: {static_chars:,} chars")
+    print(f"  (This script does NOT enforce any token-count rule — Bedrock decides.)")
     print()
 
     client = boto3.client(
@@ -202,27 +220,33 @@ def main():
     )
 
     print("-" * 72)
-    print(" CALL 1 — cache_control attached to static system prompt")
+    print(" CALL 1 — cache_control ENABLED on the static system prompt")
     print("-" * 72)
     body1 = build_body(STATIC_SYSTEM, "In one sentence, what is your role?", cache_system=True)
     t0 = time.time()
     usage1, text1 = stream_invoke(client, model_id, body1)
     elapsed1 = time.time() - t0
-    print_usage("usage", usage1)
-    print(f"    elapsed                     : {elapsed1:.2f}s")
-    print(f"    response                    : {text1.strip()[:120]}")
+    print_call_result("CALL 1", "ENABLED", usage1, elapsed1, text1)
     print()
 
     print("-" * 72)
-    print(" CALL 2 — same static system prompt, different user message")
+    print(" CALL 2 — cache_control ENABLED, same static system, different user message")
     print("-" * 72)
     body2 = build_body(STATIC_SYSTEM, "In one sentence, what must you never do?", cache_system=True)
     t0 = time.time()
     usage2, text2 = stream_invoke(client, model_id, body2)
     elapsed2 = time.time() - t0
-    print_usage("usage", usage2)
-    print(f"    elapsed                     : {elapsed2:.2f}s")
-    print(f"    response                    : {text2.strip()[:120]}")
+    print_call_result("CALL 2", "ENABLED", usage2, elapsed2, text2)
+    print()
+
+    print("-" * 72)
+    print(" CALL 3 — cache_control DISABLED  (control / negative-proof call)")
+    print("-" * 72)
+    body3 = build_body(STATIC_SYSTEM, "In one sentence, summarize your operating principles.", cache_system=False)
+    t0 = time.time()
+    usage3, text3 = stream_invoke(client, model_id, body3)
+    elapsed3 = time.time() - t0
+    print_call_result("CALL 3", "DISABLED", usage3, elapsed3, text3)
     print()
 
     # Verdict
@@ -230,61 +254,75 @@ def main():
     cache_read_1 = usage1.get("cache_read_input_tokens", 0)
     cache_write_2 = usage2.get("cache_creation_input_tokens", 0)
     cache_read_2 = usage2.get("cache_read_input_tokens", 0)
+    cache_write_3 = usage3.get("cache_creation_input_tokens", 0)
+    cache_read_3 = usage3.get("cache_read_input_tokens", 0)
     input_1 = usage1.get("input_tokens", 0)
     input_2 = usage2.get("input_tokens", 0)
+    output_1 = usage1.get("output_tokens", 0)
+    output_2 = usage2.get("output_tokens", 0)
+
+    caching_engaged_on_1_or_2 = (
+        cache_write_1 > 0 or cache_read_1 > 0
+        or cache_write_2 > 0 or cache_read_2 > 0
+    )
+    call3_no_cache_activity = (cache_write_3 == 0 and cache_read_3 == 0)
 
     print("=" * 72)
     print(" VERDICT")
     print("=" * 72)
-    # Caching is proven if EITHER:
-    #   (a) Call 1 wrote the cache and Call 2 read it (fresh demo, cold start), or
-    #   (b) Either call read from cache — means the cache from a previous run was warm.
-    # Both demonstrate that caching is functional in this account/region/model.
-    if (cache_write_1 > 0 and cache_read_2 > 0) or cache_read_1 > 0 or cache_read_2 > 0:
-        print(" ✅ PROMPT CACHING IS WORKING.")
+
+    # Part 1: did caching engage on the cache-enabled calls?
+    if caching_engaged_on_1_or_2:
+        print(" ✅ PROMPT CACHING ENGAGED on calls 1 and 2.")
         if cache_write_1 > 0:
-            print(f"    Call 1 wrote {cache_write_1:,} tokens into the cache (fresh — cold start).")
+            print(f"    Call 1 wrote {cache_write_1:,} tokens into the cache (cold start).")
         elif cache_read_1 > 0:
             print(f"    Call 1 read  {cache_read_1:,} tokens from cache (cache from a previous run was still warm).")
         if cache_read_2 > 0:
             print(f"    Call 2 read  {cache_read_2:,} tokens from the cache.")
+    else:
+        print(" ✗ CACHING DID NOT ENGAGE on calls 1 and 2.")
+        print("    All cache_creation / cache_read fields came back 0.")
+        print("    Bedrock declined to cache this request — most commonly because the")
+        print("    static block is too small for it to bother caching. (This script does")
+        print("    not enforce any size minimum; Bedrock applies its own policy.)")
+
+    # Part 2: did the no-cache control call behave as expected?
+    print()
+    if call3_no_cache_activity:
+        print(" ✓ CONTROL CHECK PASSED.")
+        print(f"    Call 3 had cache_control DISABLED. As expected, Bedrock reported")
+        print(f"    cache_creation_input_tokens=0 and cache_read_input_tokens=0.")
+        print(f"    This proves the script reports caching numbers honestly — when we")
+        print(f"    don't ask for caching, the cache fields are 0.")
+    else:
+        print(" ⚠ CONTROL CHECK FAILED — unexpected cache activity on Call 3.")
+        print(f"    cache_write_3={cache_write_3}, cache_read_3={cache_read_3}")
+        print(f"    cache_control was DISABLED on this call. Bedrock should not have")
+        print(f"    reported any cache activity. Investigate.")
+
+    # Part 3: cost comparison (only meaningful if caching engaged)
+    if caching_engaged_on_1_or_2:
         print()
         # Pricing (per million tokens, Opus 4.7 list on Bedrock — verify on AWS pricing page):
         # input=$15.00, cache_write=$18.75 (1.25x input), cache_read=$1.50 (0.10x input), output=$75.00
-        output_1 = usage1.get("output_tokens", 0)
-        output_2 = usage2.get("output_tokens", 0)
-        # If no caching had been used, every cache-write and cache-read token would have been billed as fresh input.
-        nocache_input_tokens = (
+        nocache_input_tokens_12 = (
             input_1 + cache_write_1 + cache_read_1
             + input_2 + cache_write_2 + cache_read_2
         )
-        nocache_cost = (nocache_input_tokens * 15 + (output_1 + output_2) * 75) / 1_000_000
-        cached_cost = (
+        nocache_cost_12 = (nocache_input_tokens_12 * 15 + (output_1 + output_2) * 75) / 1_000_000
+        cached_cost_12 = (
             (cache_write_1 + cache_write_2) * 18.75
             + (cache_read_1 + cache_read_2) * 1.50
             + (input_1 + input_2) * 15
             + (output_1 + output_2) * 75
         ) / 1_000_000
-        savings_pct = (1 - cached_cost / nocache_cost) * 100 if nocache_cost else 0
-        print(" Cost on this 2-call demo (Opus 4.7 list pricing — verify on AWS Bedrock pricing page):")
-        print(f"    No-cache cost (hypothetical): ~${nocache_cost:.5f}")
-        print(f"    Actual cost WITH cache      : ~${cached_cost:.5f}")
+        savings_pct = (1 - cached_cost_12 / nocache_cost_12) * 100 if nocache_cost_12 else 0
+        print(" Cost on the 2 caching-enabled calls (Opus 4.7 list pricing — verify on AWS Bedrock pricing page):")
+        print(f"    No-cache cost (hypothetical): ~${nocache_cost_12:.5f}")
+        print(f"    Actual cost WITH cache      : ~${cached_cost_12:.5f}")
         print(f"    Savings on this demo        : {savings_pct:.1f}%")
         print(f"    (Savings scale up with each additional cached call within the 5-minute TTL.)")
-    elif cache_write_1 > 0 and cache_read_2 == 0:
-        print(" ⚠ PARTIAL: cache was written on call 1, but call 2 did not read it.")
-        print("    Possible causes:")
-        print("      - TTL expired between the two calls (cache TTL is ~5 minutes)")
-        print("      - Static prompt content differed byte-for-byte between calls")
-    else:
-        print(" ✗ PROMPT CACHING IS NOT ENGAGING.")
-        print(f"    cache_write on call 1 = {cache_write_1} (expected > 0)")
-        print(f"    cache_read  on call 2 = {cache_read_2} (expected > 0)")
-        print()
-        print("    Most likely cause: static prompt below the 4,096-token caching minimum")
-        print("    for Opus 4.7. Bedrock silently ignores cache_control when the cached")
-        print("    block is under the threshold. Other possible causes: region does not")
-        print("    yet support prompt caching for this model, or the body format is wrong.")
     print("=" * 72)
 
 
