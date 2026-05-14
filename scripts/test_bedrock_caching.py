@@ -142,10 +142,10 @@ That concludes your operating instructions. You will now receive a rule and a se
 # ===========================================================================
 
 # === FULL prompt — Bedrock should engage caching ===
-# STATIC_SYSTEM = STATIC_BASE + STATIC_EXTENSION
+STATIC_SYSTEM = STATIC_BASE + STATIC_EXTENSION
 
 # === SMALL prompt — Bedrock should decline to cache (size below its policy) ===
-STATIC_SYSTEM = STATIC_BASE
+# STATIC_SYSTEM = STATIC_BASE
 
 
 def stream_invoke(client, model_id, body):
