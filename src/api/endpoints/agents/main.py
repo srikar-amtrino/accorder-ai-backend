@@ -5,6 +5,7 @@ from docx import Document
 from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile
 
 from src.api.session_utils import get_session_id
+from src.core.auth import generate_access_token, verify_token
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
 from src.schemas.describe_and_draft import DraftRequest, DraftResponse
 from src.schemas.doc_chat import DocChatResponse
@@ -25,8 +26,17 @@ from src.tools.playbook_review import review_document as playbook_review_service
 router = APIRouter(tags=["agents"])
 
 
+@router.get("/generate-access-token")
+def get_access_token() -> Any:
+    """Generate an access token for the application."""
+
+    access_token = generate_access_token()
+
+    return access_token
+
+
 @router.post("/compare-documents")
-async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Header(..., alias="X-Session-Id")) -> Any:
+async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Header(..., alias="X-Session-Id"), user: dict = Depends(verify_token)) -> Any:
     """Compare two documents and return their differences."""
 
     document_a = Document(io.BytesIO(await file_a.read()))
@@ -74,7 +84,7 @@ async def contract_analyzer_endpoint(file: UploadFile, session_id: str = Header(
     document = Document(io.BytesIO(await file.read()))
     document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
 
-    analysis_result: ContractAnalyzerResponse = await contract_analyzer_service(content=document_data, session_id=session_id)
+    analysis_result: ContractAnalyzerResponse = await contract_analyzer_service(content=document_data, session_id=session_id)  # type: ignore
     return analysis_result
 
 

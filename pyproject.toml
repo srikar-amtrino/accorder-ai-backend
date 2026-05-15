@@ -33,6 +33,7 @@ faiss-cpu = "*"
 types-requests = "*"
 pystache = "*"
 boto3 = "*"
+python-jose = "*"
 torch = { version = "*", source = "pytorch-cpu" }
 
 [build-system]

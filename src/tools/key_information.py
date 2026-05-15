@@ -1,5 +1,5 @@
 from pathlib import Path
-from typing import Optional
+from typing import Any, Optional
 
 from pydantic import BaseModel
 
@@ -14,7 +14,7 @@ _llm = BedrockModel()
 AGENT_NAME = "Contract Analyzer"
 
 
-async def get_key_information_document(content: str, session_id: str) -> str:
+async def get_key_information_document(content: str, session_id: str) -> Any:
     """Extract structured key contract details from the given document content."""
 
     container = get_service_container()
@@ -42,7 +42,7 @@ async def get_key_information_document(content: str, session_id: str) -> str:
     return response
 
 
-async def get_key_information(session_id: Optional[str] = None, response_format: str = "JSON") -> str | BaseModel:
+async def get_key_information(session_id: Optional[str] = None, response_format: str = "JSON") -> Any | BaseModel:
     """Extract structured key contract details from the currently ingested document."""
 
     container = get_service_container()
