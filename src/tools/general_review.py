@@ -93,31 +93,28 @@ MATCH_SIMILARITY_THRESHOLD = 0.30
 # narrates what other clauses don't contain.
 MAX_MATCHED_CLAUSES = 3
 
-# --- Prompt paths ------------------------------------------------------------
+# --- Prompts -----------------------------------------------------------------
+#
+# Each agent's prompt is split into a static system block (rules, examples,
+# output schema) and a small dynamic user block (just the per-call inputs).
+# This puts the rules into Claude's system slot for stronger adherence and
+# keeps the user message focused on data. Loaded once at import so per-call
+# file I/O drops to zero.
+#
+# Caching note: these system blocks are all well under Opus 4.7's 4,096-token
+# cache minimum (~560–1,250 tokens each), so cache_control is NOT wired in.
+# The split is for architecture quality, not cost.
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
-_CLAUSE_REVIEW_PROMPT_PATH = _PROMPTS_DIR / "general_review_clause_prompt.mustache"
-_RELEVANCE_PROMPT_PATH = _PROMPTS_DIR / "general_review_relevance_check_prompt.mustache"
-_PROMPT_SPLITTER_PROMPT_PATH = _PROMPTS_DIR / "general_review_prompt_splitter_prompt.mustache"
 
-_REVIEW_SYSTEM_MESSAGE = (
-    "You are an expert Contract Review Analyst for Accorder AI. "
-    "Return only apply/dismiss suggestions that are clearly grounded in the clause text "
-    "and clearly applicable to the reviewer's instruction. "
-    "Every original_text must be an exact verbatim substring of the clause text. "
-    "Return ONLY valid JSON matching the schema."
-)
+_CLAUSE_REVIEW_SYSTEM = (_PROMPTS_DIR / "general_review_clause_system.mustache").read_text(encoding="utf-8")
+_CLAUSE_REVIEW_USER = (_PROMPTS_DIR / "general_review_clause_user.mustache").read_text(encoding="utf-8")
 
-_RELEVANCE_SYSTEM_MESSAGE = (
-    "You are a gatekeeper for a contract review assistant. " "Decide whether the reviewer's query applies to the selected clause. " "Return ONLY valid JSON matching the schema."
-)
+_RELEVANCE_SYSTEM = (_PROMPTS_DIR / "general_review_relevance_system.mustache").read_text(encoding="utf-8")
+_RELEVANCE_USER = (_PROMPTS_DIR / "general_review_relevance_user.mustache").read_text(encoding="utf-8")
 
-_SPLITTER_SYSTEM_MESSAGE = (
-    "You are a query planner for a contract review assistant. "
-    "Split multi-topic reviewer instructions into atomic sub-instructions so "
-    "downstream retrieval can find the right clause for each topic. "
-    "Return ONLY valid JSON matching the schema."
-)
+_SPLITTER_SYSTEM = (_PROMPTS_DIR / "general_review_prompt_splitter_system.mustache").read_text(encoding="utf-8")
+_SPLITTER_USER = (_PROMPTS_DIR / "general_review_prompt_splitter_user.mustache").read_text(encoding="utf-8")
 
 
 # --- Session helpers ---------------------------------------------------------
@@ -159,14 +156,13 @@ async def _split_prompt_into_subtopics(user_prompt: str) -> List[str]:
     """
     container = get_service_container()
     llm = container.llm_model
-    template = _PROMPT_SPLITTER_PROMPT_PATH.read_text(encoding="utf-8")
     try:
         parsed: PromptSplitLLMResponse = await llm.generate(
-            prompt=template,
+            prompt=_SPLITTER_USER,
             context={"user_prompt": user_prompt},
             response_model=PromptSplitLLMResponse,
             mode="JSON",
-            system_message=_SPLITTER_SYSTEM_MESSAGE,
+            system_message=_SPLITTER_SYSTEM,
         )
     except Exception as exc:
         logger.exception("Prompt splitter failed; falling back to full prompt: %s", exc)
@@ -187,9 +183,8 @@ async def _run_relevance_check(
     """Ask the gate LLM whether the user's query applies to the selected clause."""
     container = get_service_container()
     llm = container.llm_model
-    template = _RELEVANCE_PROMPT_PATH.read_text(encoding="utf-8")
     return await llm.generate(
-        prompt=template,
+        prompt=_RELEVANCE_USER,
         context={
             "clause_title": clause_title,
             "clause_text": clause_text,
@@ -197,7 +192,7 @@ async def _run_relevance_check(
         },
         response_model=RelevanceCheckLLMResponse,
         mode="JSON",
-        system_message=_RELEVANCE_SYSTEM_MESSAGE,
+        system_message=_RELEVANCE_SYSTEM,
     )
 
 
@@ -215,9 +210,8 @@ async def _run_clause_review(
     """
     container = get_service_container()
     llm = container.llm_model
-    template = _CLAUSE_REVIEW_PROMPT_PATH.read_text(encoding="utf-8")
     parsed: ClauseSuggestionsLLMResponse = await llm.generate(
-        prompt=template,
+        prompt=_CLAUSE_REVIEW_USER,
         context={
             "clause_title": clause_title,
             "clause_text": clause_text,
@@ -225,7 +219,7 @@ async def _run_clause_review(
         },
         response_model=ClauseSuggestionsLLMResponse,
         mode="JSON",
-        system_message=_REVIEW_SYSTEM_MESSAGE,
+        system_message=_CLAUSE_REVIEW_SYSTEM,
     )
 
     valid: List[Suggestion] = []
