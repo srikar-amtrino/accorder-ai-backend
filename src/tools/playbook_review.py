@@ -24,7 +24,12 @@ logger = get_logger(__name__)
 
 AGENT_NAME = "playbook_review_agent"
 
-SIMILARITY_PROMPT = Path(r"src/services/prompts/v1/ai_review_prompt_v2.mustache").read_text(encoding="utf-8")
+# Split into a cacheable static system block + a small dynamic user block.
+# The system block is ~5K tokens — comfortably above Opus 4.7's 4,096-token
+# cache minimum — and is reused across every rule call in a document, so
+# prompt caching turns into a large per-document cost win.
+SIMILARITY_SYSTEM_PROMPT = Path(r"src/services/prompts/v1/ai_review_system.mustache").read_text(encoding="utf-8")
+SIMILARITY_USER_PROMPT = Path(r"src/services/prompts/v1/ai_review_user.mustache").read_text(encoding="utf-8")
 
 MISSING_CLAUSES_PROMPT = Path(r"src/services/prompts/v1/missing_clauses.mustache").read_text(encoding="utf-8")
 
@@ -142,7 +147,7 @@ async def _process_rule(
 
     try:
         llm_response: PlayBookReviewLLMResponse = await llm_model.generate(
-            prompt=SIMILARITY_PROMPT,
+            prompt=SIMILARITY_USER_PROMPT,
             context={
                 "rule_title": result.title,
                 "rule_instruction": result.instruction,
@@ -151,6 +156,8 @@ async def _process_rule(
                 "rule_type": current_rule_type,
             },
             response_model=PlayBookReviewLLMResponse,
+            system_message=SIMILARITY_SYSTEM_PROMPT,
+            cache_system=True,
         )
 
     except Exception as exc:
