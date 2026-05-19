@@ -1,6 +1,6 @@
 import os
 from functools import lru_cache
-from typing import Union
+from typing import List, Union
 
 from pydantic import Field
 from pydantic_settings import BaseSettings
@@ -13,6 +13,17 @@ class Settings(BaseSettings):
     api_host: str = Field(default="0.0.0.0", description="Interface the FastAPI server binds to. '0.0.0.0' listens on all interfaces (needed for EC2/external access); 'localhost' for local-only.")
     api_port: int = Field(default=8000, description="API port number")
     debug: bool = Field(default=False, description="Enable or disable debug mode")
+
+    # CORS settings — comma-separated origins, or "*" to allow all (dev only).
+    # Word task-pane add-ins load from the manifest's SourceLocation host, so list that origin here.
+    cors_allow_origins: str = Field(default="*", description="Comma-separated allowed origins for CORS, or '*' to allow all.")
+
+    @property
+    def cors_origins_list(self) -> List[str]:
+        raw = (self.cors_allow_origins or "").strip()
+        if raw == "*" or raw == "":
+            return ["*"]
+        return [o.strip() for o in raw.split(",") if o.strip()]
 
     # Chunking settings
     chunk_size: int = Field(default=1000, description="Size of each text chunk")

@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI, Request
+from fastapi.middleware.cors import CORSMiddleware
 
 from src.api.context import (
     clear_context,
@@ -38,6 +39,18 @@ app = FastAPI(
     version="1.0.0",
     debug=settings.debug,
     lifespan=lifespan,
+)
+
+
+# CORS — must be added before other middleware so preflight responses include the headers.
+_cors_origins = settings.cors_origins_list
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=_cors_origins,
+    allow_credentials=_cors_origins != ["*"],
+    allow_methods=["*"],
+    allow_headers=["*"],
+    expose_headers=["X-Process-Time"],
 )
 
 
