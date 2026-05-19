@@ -15,6 +15,13 @@ from src.services.vector_store.manager import (
     get_faiss_vector_store,
 )
 
+# Prompt split into static system (rules, examples, schema) and dynamic user
+# (just the original query). Loaded once at module import — well below the
+# Opus 4.7 cache minimum, so no cache_control.
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts" / "v1"
+_QUERY_REWRITER_SYSTEM = (_PROMPTS_DIR / "query_rewriter_system.mustache").read_text(encoding="utf-8")
+_QUERY_REWRITER_USER = (_PROMPTS_DIR / "query_rewriter_user.mustache").read_text(encoding="utf-8")
+
 
 class RetrievalService(Logger):
     """Retrieval Service for retrieving the data."""
@@ -28,7 +35,6 @@ class RetrievalService(Logger):
         service_container = get_service_container()
         self.embedding_service: BaseEmbeddingService = service_container.embedding_service
         self.llm: BaseLLMModel = service_container.llm_model
-        self.rewrite_query_prompt = Path(r"src/services/prompts/v1/query_rewriter.mustache").read_text()
         self.vector_store = get_faiss_vector_store(self.embedding_service.get_embedding_dimensions())
 
     async def rewrite_query(self, query: str) -> List[str]:
@@ -38,7 +44,12 @@ class RetrievalService(Logger):
             "query": query,
         }
         self.logger.info(f"Rewriting query: {query}")
-        response: QueryRewriterResponse = await self.llm.generate(prompt=self.rewrite_query_prompt, context=context, response_model=QueryRewriterResponse)
+        response: QueryRewriterResponse = await self.llm.generate(
+            prompt=_QUERY_REWRITER_USER,
+            context=context,
+            response_model=QueryRewriterResponse,
+            system_message=_QUERY_REWRITER_SYSTEM,
+        )
         return [q.query for q in response.queries]
 
     async def retrieve_document(self) -> Dict[str, Any]:
