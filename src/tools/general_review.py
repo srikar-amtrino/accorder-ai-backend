@@ -80,12 +80,17 @@ MAX_CLAUSE_CHARS = 40_000
 SMALL_DOC_CLAUSE_LIMIT = 8
 
 # Cosine similarity threshold for a clause to count as "matched" to the user's
-# prompt. With BGE embeddings (L2-normalized), 0.30 filters out clauses that
-# only share a few common words but are not actually about the topic. If no
-# clause clears the threshold we return an empty match list and the caller
-# emits a "not found in document" finding — much better UX than topping up
-# with irrelevant clauses and letting the LLM invent content for them.
-MATCH_SIMILARITY_THRESHOLD = 0.30
+# prompt. The pipeline uses sentence-transformers/all-MiniLM-L6-v2 (see
+# HuggingFaceEmbeddingService), whose topical-match scores typically land in
+# the 0.20–0.50 band — appreciably lower than BGE's. 0.20 catches honest
+# topical matches without becoming permissive. The earlier 0.30 was tuned
+# for BGE and produced false negatives on MiniLM (e.g. a governing-law
+# query scoring 0.247 against a governing-law clause was dropped).
+#
+# Re-tune empirically once enough real-contract data has accumulated in the
+# logs — every Mode-2 call emits the top-5 (clause_title, score) pairs per
+# sub-topic via logger.info.
+MATCH_SIMILARITY_THRESHOLD = 0.20
 
 # Hard cap on the number of clauses we send for per-clause review per
 # sub-topic. Kept small on purpose: most user queries target one or two
@@ -409,13 +414,25 @@ async def _match_clauses_for_subtopic(
     query_vec = await embedding_service.generate_embeddings(subtopic)
     scores = _cosine_scores(query_vec, clauses)
     matched = _select_matched_clauses(clauses, scores)
+
+    # Top-5 (clause_title, score) snapshot for empirical re-tuning of the
+    # threshold. Grep the logs by sub-topic to see the score distribution
+    # MiniLM produces on real contracts. Kept at INFO so it shows up
+    # without needing debug-level logging in prod.
+    top_scored = sorted(
+        [(_clause_display_title(c), float(s)) for c, s in zip(clauses, scores.tolist())],
+        key=lambda kv: kv[1],
+        reverse=True,
+    )[:5]
+    top_5_str = "; ".join(f"{title!r}={score:.3f}" for title, score in top_scored)
+
     logger.info(
-        "Subtopic '%s': matched %d of %d clauses (threshold=%.2f, top score=%.3f).",
+        "Subtopic '%s': matched %d of %d clauses (threshold=%.2f). Top 5: %s",
         subtopic,
         len(matched),
         len(clauses),
         MATCH_SIMILARITY_THRESHOLD,
-        float(scores.max()) if len(scores) else 0.0,
+        top_5_str,
     )
     return matched
 
