@@ -10,6 +10,12 @@ from src.services.vector_store.manager import get_all_chunks
 
 llm_service = BedrockModel()
 
+# Prompt split into static system (rules + 1 example) and dynamic user
+# (just the document text). System ~750 tokens — below cache minimum.
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
+_SUMMARIZER_SYSTEM = (_PROMPTS_DIR / "summarizer_system.mustache").read_text(encoding="utf-8")
+_SUMMARIZER_USER = (_PROMPTS_DIR / "summarizer_user.mustache").read_text(encoding="utf-8")
+
 
 async def get_summary(session_id: Optional[str], response: str = "JSON") -> str | BaseModel:
     """Summary tool for the orchestrator agent or API."""
@@ -37,10 +43,15 @@ async def get_summary(session_id: Optional[str], response: str = "JSON") -> str 
 
     full_text = "\n\n".join((chunk.content for chunk in results.values() if getattr(chunk, "content", None)))
 
-    prompt_template = Path(r"src/services/prompts/v1/summary_prompt_template.mustache").read_text()
     context = {"text": full_text}
 
-    summary: str | SummaryToolResponse = await llm_service.generate(prompt=prompt_template, context=context, response_model=None, mode="markdown")
+    summary: str | SummaryToolResponse = await llm_service.generate(
+        prompt=_SUMMARIZER_USER,
+        context=context,
+        response_model=None,
+        mode="markdown",
+        system_message=_SUMMARIZER_SYSTEM,
+    )
 
     # Store the result in session if session exists
     if session:
