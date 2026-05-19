@@ -1438,9 +1438,16 @@ class DocxParser(BaseParser, Logger):
     _CLAUSE_PREFIX_RE = re.compile(r"^(\d+[\.\)]\d*[\.\d]*\s|" r"\([a-z]+\)\s|" r"[a-z]\)\s)")
 
     def _clean_text(self, text: str) -> str:
-        """Clean text while preserving clause numbering prefixes."""
+        """Clean text while preserving clause numbering prefixes.
+
+        Returns an empty string when given empty/whitespace input. Callers
+        already check `if not cleaned: continue` to skip those cases. Raising
+        here aborted the entire document parse whenever a table cell happened
+        to be empty (very common — header/value tables, divider cells), so
+        we degrade to "" and let the caller filter.
+        """
         if not text or not text.strip():
-            raise EmptyTextException("Text cannot be empty.")
+            return ""
 
         # Replace special whitespace chars
         text = text.replace("\u00a0", " ")
