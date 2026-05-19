@@ -13,6 +13,15 @@ _llm = BedrockModel()
 
 AGENT_NAME = "Contract Analyzer"
 
+# Prompt split into a static system block (rules, examples, output schema) and
+# a small dynamic user block (just the contract text). Loaded at import so
+# per-call file I/O drops to zero. System block is ~1.8K tokens — below the
+# Opus 4.7 cache minimum, so no cache_control. Split is for adherence quality
+# and architectural consistency with the other agents.
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
+_KEY_INFO_SYSTEM = (_PROMPTS_DIR / "key_information_system.mustache").read_text(encoding="utf-8")
+_KEY_INFO_USER = (_PROMPTS_DIR / "key_information_user.mustache").read_text(encoding="utf-8")
+
 
 async def get_key_information_document(content: str, session_id: str) -> Any:
     """Extract structured key contract details from the given document content."""
@@ -28,13 +37,12 @@ async def get_key_information_document(content: str, session_id: str) -> Any:
     if agent_cache:
         return agent_cache
 
-    prompt_path = Path(r"src/services/prompts/v1/key_information_prompt.mustache").read_text(encoding="utf-8")
-
     response: str = await llm_model.generate(
-        prompt=prompt_path,
+        prompt=_KEY_INFO_USER,
         context={"contract_text": content},
         response_model=ContractAnalyzerResponse,
         mode="JSON",
+        system_message=_KEY_INFO_SYSTEM,
     )
 
     session_data.tool_results[AGENT_NAME] = response
@@ -71,13 +79,12 @@ async def get_key_information(session_id: Optional[str] = None, response_format:
 
     full_text = "\n\n".join(chunk.content for chunk in results.values() if getattr(chunk, "content", None))
 
-    prompt_path = Path(r"src/services/prompts/v1/key_information_prompt.mustache").read_text(encoding="utf-8")
-
     response: str | KeyInformationToolResponse = await _llm.generate(
-        prompt=prompt_path,
+        prompt=_KEY_INFO_USER,
         context={"contract_text": full_text},
         response_model=None,
         mode="markdown",
+        system_message=_KEY_INFO_SYSTEM,
     )
 
     # Store the result in session if session exists
