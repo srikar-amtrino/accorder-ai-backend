@@ -4,6 +4,13 @@ from typing import Any, Dict
 from src.dependencies import get_service_container
 from src.schemas.doc_chat import DocChatResponse
 
+# Prompt split into static system (rules, examples, schema) and dynamic user
+# (retrieved context chunks + question). System block ~2K tokens — below the
+# Opus 4.7 cache minimum, so no cache_control.
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
+_DOC_CHAT_SYSTEM = (_PROMPTS_DIR / "doc_chat_system.mustache").read_text(encoding="utf-8")
+_DOC_CHAT_USER = (_PROMPTS_DIR / "doc_chat_user.mustache").read_text(encoding="utf-8")
+
 
 async def query_document(query: str, session_id: str) -> DocChatResponse:
     """Query the document chunks based on the given query and session ID."""
@@ -12,9 +19,7 @@ async def query_document(query: str, session_id: str) -> DocChatResponse:
     service_container = get_service_container()
     session_manager = service_container.session_manager
     retrieval_service = service_container.retrieval_service
-    azure_model = service_container.llm_model
-
-    prompt = Path(r"src/services/prompts/v1/llm_response.mustache").read_text(encoding="utf-8")
+    llm_model = service_container.llm_model
 
     # Get session data
     session_data = session_manager.get_session(session_id)
@@ -34,5 +39,10 @@ async def query_document(query: str, session_id: str) -> DocChatResponse:
         "question": query,
     }
 
-    llm_result: DocChatResponse = await azure_model.generate(prompt=prompt, context=data, response_model=DocChatResponse)
+    llm_result: DocChatResponse = await llm_model.generate(
+        prompt=_DOC_CHAT_USER,
+        context=data,
+        response_model=DocChatResponse,
+        system_message=_DOC_CHAT_SYSTEM,
+    )
     return llm_result
