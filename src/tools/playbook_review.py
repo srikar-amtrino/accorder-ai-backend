@@ -259,9 +259,18 @@ async def review_document(
         len(all_reviews),
     )
 
+    # After all per-rule reviews finish, run the missing-clauses evaluation.
+    # It takes the full document plus a summary of which rules were checked and
+    # what was found, then identifies clauses that are standard for this
+    # contract type but NOT addressed by any of the user's rules. This runs
+    # sequentially after the per-rule fan-out because it consumes the summary.
+    full_text = "\n\n".join(f"PARA_ID: {p.paraindetifier}\nTEXT: {p.text}" for p in request.textinformation)
+    reviewed_rules_summary = _build_reviewed_rules_summary(dict(updates))
+    missing_clauses = await get_missing_clauses(llm_model, full_text, reviewed_rules_summary)
+
     return PlayBookReviewFinalResponse(
         rules_review=all_reviews,
-        missing_clauses=None,
+        missing_clauses=missing_clauses,
     )
 
 
