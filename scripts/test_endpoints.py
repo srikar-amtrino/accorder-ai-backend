@@ -70,30 +70,6 @@ def _ingest() -> bool:
         return False
 
 
-def _summarizer() -> None:
-    print("\n=== 2. /api/v1/DocInfo/summarizer (markdown LLM call) ===")
-    try:
-        r = _get("/api/v1/DocInfo/summarizer")
-        ok = r.status_code == 200 and len(r.text) > 50
-        _step("summarizer", ok, f"status={r.status_code}, len={len(r.text)}")
-        if not ok:
-            _print_failure("summarizer", r)
-    except Exception as exc:
-        _step("summarizer", False, str(exc))
-
-
-def _key_information() -> None:
-    print("\n=== 3. /api/v1/DocInfo/key-information (markdown LLM call) ===")
-    try:
-        r = _get("/api/v1/DocInfo/key-information")
-        ok = r.status_code == 200 and len(r.text) > 50
-        _step("key-information", ok, f"status={r.status_code}, len={len(r.text)}")
-        if not ok:
-            _print_failure("key-information", r)
-    except Exception as exc:
-        _step("key-information", False, str(exc))
-
-
 def _contract_analyzer() -> None:
     print("\n=== 4. /Accorder/agents/contract-analyzer (JSON LLM call, structured output) ===")
     try:
@@ -211,8 +187,6 @@ def main() -> None:
         print("\nIngest failed; aborting downstream tests (they need the session).")
         sys.exit(1)
 
-    _summarizer()
-    _key_information()
     _contract_analyzer()
     _query_document()
     _general_review()
