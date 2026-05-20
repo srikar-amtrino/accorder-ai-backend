@@ -66,15 +66,37 @@ class BedrockModel(BaseLLMModel, Logger):
         )
         return response["body"]
 
-    @staticmethod
-    def _iter_events(stream: Any) -> Any:
-        """Yield parsed event dicts from a Bedrock event stream."""
+    def _iter_events(self, stream: Any) -> Any:
+        """Yield parsed event dicts from a Bedrock event stream.
 
+        Emits visibility logs so a `tail -f` of the log file shows the stream
+        progressing in real time. INFO level for start/complete (also visible
+        on console/CloudWatch); DEBUG level for per-chunk snippets (log file
+        only, so production stdout stays clean).
+        """
+
+        chunk_count = 0
+        delta_count = 0
         for event in stream:
             chunk_bytes = event.get("chunk", {}).get("bytes")
             if not chunk_bytes:
                 continue
-            yield json.loads(chunk_bytes)
+            chunk_count += 1
+            parsed = json.loads(chunk_bytes)
+
+            event_type = parsed.get("type")
+            if event_type == "message_start":
+                self.logger.info("[stream] started — first chunk received from Bedrock")
+            elif event_type == "content_block_delta":
+                delta_count += 1
+                if delta_count % 10 == 0:
+                    delta = parsed.get("delta", {})
+                    snippet = (delta.get("text") or delta.get("partial_json") or "")[:40].replace("\n", " ")
+                    self.logger.debug(f"[stream] chunk #{chunk_count} (delta #{delta_count}): {snippet!r}")
+            elif event_type == "message_stop":
+                self.logger.info(f"[stream] complete — {chunk_count} chunks, {delta_count} text deltas")
+
+            yield parsed
 
     async def stream(self, prompt: str, context: Dict[str, Any]) -> Any:
         """Stream text deltas from Claude as they arrive."""
