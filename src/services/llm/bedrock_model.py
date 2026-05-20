@@ -97,7 +97,7 @@ class BedrockModel(BaseLLMModel, Logger):
 
             yield parsed
 
-    async def stream(self, prompt: str, context: Dict[str, Any]) -> Any:
+    async def stream(self, prompt: str, context: Dict[str, Any], system_message: Optional[str] = None) -> Any:
         """Stream text deltas from Claude as they arrive."""
 
         prompt = self.render_prompt_template(prompt=prompt, context=context)
@@ -108,7 +108,7 @@ class BedrockModel(BaseLLMModel, Logger):
                 "anthropic_version": "bedrock-2023-05-31",
                 "max_tokens": 16384,
                 "messages": [{"role": "user", "content": prompt}],
-                "system": "Extract the information and return valid JSON.",
+                "system": system_message or "Extract the information and return valid JSON.",
             }
 
             for chunk in self._iter_events(self._stream_invoke(body)):

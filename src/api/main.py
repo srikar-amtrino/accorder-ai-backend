@@ -16,6 +16,7 @@ from src.api.endpoints.agents.main import router as agents_router
 from src.api.endpoints.clause_extraction.router import (
     router as clause_extraction_router,
 )
+from src.api.endpoints.describe_draft.router import router as describe_draft_router
 from src.api.endpoints.ingestion.router import router as ingestion_router
 from src.config.logging import setup_logging
 from src.config.settings import get_settings
@@ -89,8 +90,40 @@ async def add_process_time_header(request: Request, call_next):
 
 app.include_router(ingestion_router, prefix="/api/v1")
 app.include_router(clause_extraction_router, prefix="/api/v1/clause-extraction")
+app.include_router(describe_draft_router, prefix="/api/v1/describe-draft")
 app.include_router(admin_router, prefix="/admin")
 app.include_router(agents_router, prefix="/Accorder/agents")
+
+
+# Mounted only when DEBUG=true. Lets you open the URL in a browser and watch
+# Claude's response stream in token-by-token — the visual proof that the
+# Bedrock streaming layer is doing what it claims.
+if settings.debug:
+    from fastapi.responses import StreamingResponse
+
+    from src.services.llm.bedrock_model import BedrockModel
+
+    _demo_bedrock = BedrockModel()
+
+    @app.get("/demo/stream")
+    async def demo_stream(
+        prompt: str = "Explain what an indemnification clause does in a commercial contract, in 3 short paragraphs.",
+    ):
+        """Stream Claude's response token-by-token to the browser as plain text."""
+
+        async def token_stream():
+            async for token in _demo_bedrock.stream(
+                prompt=prompt,
+                context={},
+                system_message="You are a helpful assistant. Answer the user clearly in plain English.",
+            ):
+                yield token
+
+        return StreamingResponse(
+            token_stream(),
+            media_type="text/plain; charset=utf-8",
+            headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache"},
+        )
 
 
 def main_entry() -> None:
