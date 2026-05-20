@@ -69,10 +69,9 @@ class BedrockModel(BaseLLMModel, Logger):
     def _iter_events(self, stream: Any) -> Any:
         """Yield parsed event dicts from a Bedrock event stream.
 
-        Emits visibility logs so a `tail -f` of the log file shows the stream
-        progressing in real time. INFO level for start/complete (also visible
-        on console/CloudWatch); DEBUG level for per-chunk snippets (log file
-        only, so production stdout stays clean).
+        Emits INFO-level progress logs so a `tail -f` of the log file shows
+        the stream progressing in real time — start, every-25th delta with a
+        text snippet, and complete.
         """
 
         chunk_count = 0
@@ -89,10 +88,10 @@ class BedrockModel(BaseLLMModel, Logger):
                 self.logger.info("[stream] started — first chunk received from Bedrock")
             elif event_type == "content_block_delta":
                 delta_count += 1
-                if delta_count % 10 == 0:
+                if delta_count % 25 == 0:
                     delta = parsed.get("delta", {})
                     snippet = (delta.get("text") or delta.get("partial_json") or "")[:40].replace("\n", " ")
-                    self.logger.debug(f"[stream] chunk #{chunk_count} (delta #{delta_count}): {snippet!r}")
+                    self.logger.info(f"[stream] chunk #{chunk_count} (delta #{delta_count}): {snippet!r}")
             elif event_type == "message_stop":
                 self.logger.info(f"[stream] complete — {chunk_count} chunks, {delta_count} text deltas")
 
