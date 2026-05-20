@@ -7,7 +7,6 @@ from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile
 from src.api.session_utils import get_session_id
 from src.core.auth import generate_access_token, verify_token
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
-from src.schemas.describe_and_draft import DraftRequest, DraftResponse
 from src.schemas.doc_chat import DocChatResponse
 from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
 from src.schemas.playbook_review import (
@@ -15,7 +14,6 @@ from src.schemas.playbook_review import (
     RuleCheckRequest,
 )
 from src.tools.comparision import run as compare_documents_service
-from src.tools.describe_and_draft import draft_document as draft_document_service
 from src.tools.doc_chat import query_document as query_document_service
 from src.tools.general_review import clause_review, full_document_review
 from src.tools.key_information import (
@@ -94,11 +92,3 @@ async def query_document_endpoint(query: str, session_id: str = Depends(get_sess
 
     llm_result = await query_document_service(query=query, session_id=session_id)
     return llm_result
-
-
-@router.post("/draft", response_model=DraftResponse)
-async def draft_document_endpoint(request: DraftRequest, session_id: str = Depends(get_session_id)) -> DraftResponse:
-    """Draft the document/clause  for the user given query."""
-
-    result = await draft_document_service(request, session_id)
-    return result
