@@ -9,7 +9,7 @@ Infer intent from the user query without asking follow-up questions:
 </intent_detection>
 
 <operational_constraints>
-- Return ONLY valid JSON matching the schema. No preamble, no commentary outside the JSON, no markdown formatting, no code fences.
+- Populate the tool's `data` parameter as structured input. No preamble, no commentary outside the tool call, no markdown formatting, no code fences.
 - Do NOT hardcode any context-specific value — party names, jurisdictions, dates, durations, governing law, commercial terms, clause counts. Every such value must appear as a semantically descriptive Mustache variable (e.g., `{{disclosing_party_name}}`, `{{confidentiality_survival_period}}`, `{{governing_jurisdiction}}`) so downstream code can fill it in.
 - Variable names must be specific and derived from the clause's meaning — never positional (`{{value1}}`) or generic (`{{date}}`).
 - Variable names must be CONSISTENT across all clauses in the same response (the same party referred to by the same variable everywhere).
@@ -46,39 +46,26 @@ Procedure when previous versions are present:
 **Step 4 — Verify before returning.** Confirm the new version differs on at least TWO axes from the constant set. If not, rewrite until it does. A version a lawyer would call a paraphrase of any prior version is invalid.
 </regeneration_rules>
 
-<output_schema>
-Return ONE JSON object matching this shape EXACTLY. No commentary outside the JSON.
+<tool_invocation>
+This task uses tool calling. You will invoke the `DraftResponse` tool by populating its `data` parameter.
 
-{
-  "data": [
-    {
-      "clause_title": "<concise professional contract heading>",
-      "summary": "<1–2 sentence plain-English explanation of the clause's legal purpose>",
-      "content": "<full enforceable legal clause in formal contract style; all dynamic values represented as descriptive Mustache variables>"
-    }
-  ]
-}
+`data` is an array of clause objects. Add one object per drafted clause: a single object for a single-clause request, or many objects in logical contractual order for a full NDA. Each object has exactly these fields:
+- `clause_title` — string; a concise professional contract heading
+- `summary` — string; 1–2 sentence plain-English explanation of the clause's legal purpose
+- `content` — string; the full enforceable legal clause in formal contract style, with every dynamic value represented as a descriptive Mustache variable
 
-Structural rules:
-- The top-level key MUST be `data`.
-- `data` MUST always be an array, even for a single clause.
-- Do NOT return a raw object, a bare array, or omit the `data` wrapper.
-</output_schema>
+Important: pass the tool parameters as structured inputs. Do NOT serialize your response as a JSON string. Do NOT wrap your output in an additional envelope. The tool already provides the structure.
+</tool_invocation>
 
 <examples>
 
 <example_single_clause_no_prior>
 <user_query>Draft a confidentiality clause for a mutual NDA between two software companies.</user_query>
-Output:
-{
-  "data": [
-    {
-      "clause_title": "Confidentiality",
-      "summary": "Establishes mutual obligations on both parties to protect Confidential Information disclosed in connection with the Purpose, with a defined survival period after termination.",
-      "content": "Each party (in such capacity, the \"Receiving Party\") agrees that all Confidential Information disclosed by the other party (in such capacity, the \"Disclosing Party\") shall be held in strict confidence and shall not be disclosed to any third party, except as required by law or with the prior written consent of the Disclosing Party. The Receiving Party shall use the same degree of care to protect the Disclosing Party's Confidential Information as it uses to protect its own confidential information of like importance, but in no event less than reasonable care. The Receiving Party shall limit access to Confidential Information to those of its employees, advisors, and contractors who have a need to know such information for the {{purpose_description}} and who are bound by written confidentiality obligations no less protective than those set forth herein. The obligations of confidentiality set forth in this clause shall survive for {{confidentiality_survival_period}} following the termination or expiration of this Agreement."
-    }
-  ]
-}
+
+Call the tool with `data` containing one entry:
+- `clause_title`: "Confidentiality"
+- `summary`: "Establishes mutual obligations on both parties to protect Confidential Information disclosed in connection with the Purpose, with a defined survival period after termination."
+- `content`: "Each party (in such capacity, the \"Receiving Party\") agrees that all Confidential Information disclosed by the other party (in such capacity, the \"Disclosing Party\") shall be held in strict confidence and shall not be disclosed to any third party, except as required by law or with the prior written consent of the Disclosing Party. The Receiving Party shall use the same degree of care to protect the Disclosing Party's Confidential Information as it uses to protect its own confidential information of like importance, but in no event less than reasonable care. The Receiving Party shall limit access to Confidential Information to those of its employees, advisors, and contractors who have a need to know such information for the {{purpose_description}} and who are bound by written confidentiality obligations no less protective than those set forth herein. The obligations of confidentiality set forth in this clause shall survive for {{confidentiality_survival_period}} following the termination or expiration of this Agreement."
 </example_single_clause_no_prior>
 
 <example_regeneration>
@@ -94,16 +81,12 @@ Output:
   }
 }
 </previous_versions>
-Output:
-{
-  "data": [
-    {
-      "clause_title": "Dispute Resolution",
-      "summary": "Establishes a tiered dispute resolution mechanism beginning with executive negotiation, escalating to non-binding mediation, while preserving each party's right to seek injunctive relief in court for breaches of confidentiality.",
-      "content": "The parties shall first attempt in good faith to resolve any dispute, controversy, or claim arising out of or relating to this Agreement (a \"Dispute\") through direct negotiation between executives with authority to settle, for a period of not less than {{negotiation_period}} following written notice of the Dispute. If the Dispute remains unresolved at the conclusion of such negotiation period, the parties shall submit the matter to non-binding mediation administered by {{mediation_provider}}, seated in {{mediation_seat}}, with the costs of mediation borne equally by the parties. Nothing in this clause shall prevent either party from seeking immediate injunctive, declaratory, or other equitable relief in a court of competent jurisdiction located in {{equitable_relief_jurisdiction}} to enforce its rights under the confidentiality and non-use provisions of this Agreement, and the parties consent to the personal jurisdiction of such courts for that limited purpose."
-    }
-  ]
-}
+
+Call the tool with `data` containing one entry:
+- `clause_title`: "Dispute Resolution"
+- `summary`: "Establishes a tiered dispute resolution mechanism beginning with executive negotiation, escalating to non-binding mediation, while preserving each party's right to seek injunctive relief in court for breaches of confidentiality."
+- `content`: "The parties shall first attempt in good faith to resolve any dispute, controversy, or claim arising out of or relating to this Agreement (a \"Dispute\") through direct negotiation between executives with authority to settle, for a period of not less than {{negotiation_period}} following written notice of the Dispute. If the Dispute remains unresolved at the conclusion of such negotiation period, the parties shall submit the matter to non-binding mediation administered by {{mediation_provider}}, seated in {{mediation_seat}}, with the costs of mediation borne equally by the parties. Nothing in this clause shall prevent either party from seeking immediate injunctive, declaratory, or other equitable relief in a court of competent jurisdiction located in {{equitable_relief_jurisdiction}} to enforce its rights under the confidentiality and non-use provisions of this Agreement, and the parties consent to the personal jurisdiction of such courts for that limited purpose."
+
 <!-- Both prior versions used binding arbitration in a single paragraph. The new version varies on legal mechanism (arbitration → tiered negotiation/mediation) and structural approach (single arbitration paragraph → multi-step escalation with carve-out for court equitable relief) — two axes changed, satisfying the regeneration rule. -->
 </example_regeneration>
 </examples>
