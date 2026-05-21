@@ -130,7 +130,7 @@ if settings.debug:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bedrock Streaming · Claude</title>
+<title>AWS Bedrock · Claude Opus 4.7 — Live Streaming Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -470,14 +470,13 @@ if settings.debug:
   <header class="hero">
     <div class="hero-tag">
       <span class="dot"></span>
-      Bedrock · Live Streaming Demo
+      AWS Bedrock · Claude Opus 4.7
     </div>
-    <h1>Watch Claude Think.</h1>
+    <h1>Claude Opus 4.7 — Live Streaming on AWS Bedrock</h1>
     <p class="lede">
-      Tokens stream from AWS Bedrock to your browser the moment Claude generates them — no buffering,
-      no waiting for the complete response. Pick a prompt below and feel the difference between
-      <em style="color: var(--text); font-style: normal; font-weight: 500;">words arriving live</em>
-      and the usual wait-then-dump spinner customers complain about.
+      This demo connects to Claude Opus 4.7 on AWS Bedrock using the streaming API.
+      Each character is rendered the moment Claude generates it — no buffering, no waiting
+      for the full response. Pick a prompt below to see it in action.
     </p>
   </header>
 
@@ -565,7 +564,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
     <div class="response-header">
       <div class="response-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-        Claude Response
+        Claude Opus 4.7 Response
       </div>
       <div class="live-pill" id="live-pill">
         <span class="pulse"></span>
@@ -575,13 +574,13 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
     <div class="response-body empty" id="out">
       <div>
         <svg class="placeholder-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-        Response will stream here. Pick a chip or click <strong style="color: var(--text);">Stream response</strong>.
+        Output will appear here. Pick a prompt above or click <strong style="color: var(--text);">Stream response</strong>.
       </div>
     </div>
   </div>
 
   <footer class="footer">
-    <span class="brand">Powered by <strong>AWS Bedrock</strong> · <code>invoke_model_with_response_stream</code></span>
+    <span class="brand"><strong>AWS Bedrock</strong> · Claude Opus 4.7 · <code>invoke_model_with_response_stream</code></span>
     <span>Gated by <code>DEBUG=true</code> · Not for production</span>
   </footer>
 
