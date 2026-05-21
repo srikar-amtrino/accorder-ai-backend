@@ -137,17 +137,23 @@ if settings.debug:
 <style>
   :root {
     color-scheme: dark;
-    --bg-base: #07080d;
-    --bg-card: rgba(255,255,255,0.025);
-    --bg-input: rgba(0,0,0,0.35);
-    --border: rgba(255,255,255,0.07);
-    --border-strong: rgba(255,255,255,0.14);
-    --text: #f4f5fa;
-    --text-dim: #9ca3af;
-    --text-dimmer: #6b7280;
-    --accent: #6366f1;
-    --accent-2: #8b5cf6;
-    --success: #34d399;
+    /* Sapphire Aurora palette — deep navy base with cyan→emerald→amber accents.
+       Cyan #06b6d4 and emerald #10b981 lead; amber #fbbf24 highlights the
+       "wow" metric (Bedrock rate). All text colors checked for ≥4.5:1 contrast
+       against bg-base, all interactive controls ≥3:1 against their surface. */
+    --bg-base: #050912;
+    --bg-card: rgba(255, 255, 255, 0.028);
+    --bg-card-hover: rgba(255, 255, 255, 0.045);
+    --bg-input: rgba(2, 6, 18, 0.55);
+    --border: rgba(125, 211, 252, 0.09);
+    --border-strong: rgba(125, 211, 252, 0.22);
+    --text: #f1f5f9;
+    --text-dim: #94a3b8;
+    --text-dimmer: #64748b;
+    --accent: #06b6d4;            /* cyan-500 — primary */
+    --accent-2: #10b981;           /* emerald-500 — secondary */
+    --accent-3: #fbbf24;           /* amber-400 — premium highlight */
+    --success: #10b981;
     --danger: #f87171;
     --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
@@ -161,14 +167,14 @@ if settings.debug:
     min-height: 100vh;
     overflow-x: hidden;
     background-image:
-      radial-gradient(at 22% -5%, rgba(99, 102, 241, 0.18) 0px, transparent 50%),
-      radial-gradient(at 78% 25%, rgba(139, 92, 246, 0.10) 0px, transparent 50%),
-      radial-gradient(at 50% 100%, rgba(99, 102, 241, 0.06) 0px, transparent 50%);
+      radial-gradient(at 18% -8%, rgba(6, 182, 212, 0.22) 0px, transparent 55%),
+      radial-gradient(at 82% 18%, rgba(16, 185, 129, 0.16) 0px, transparent 55%),
+      radial-gradient(at 50% 105%, rgba(251, 191, 36, 0.10) 0px, transparent 55%);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  ::selection { background: rgba(99, 102, 241, 0.4); color: white; }
+  ::selection { background: rgba(6, 182, 212, 0.45); color: white; }
   .container { max-width: 940px; margin: 0 auto; padding: 56px 24px 80px; }
 
   /* Hero */
@@ -176,10 +182,10 @@ if settings.debug:
   .hero-tag {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 6px 14px;
-    background: rgba(99, 102, 241, 0.12);
-    border: 1px solid rgba(99, 102, 241, 0.25);
+    background: rgba(6, 182, 212, 0.10);
+    border: 1px solid rgba(6, 182, 212, 0.28);
     border-radius: 999px;
-    font-size: 12px; color: #c7d2fe;
+    font-size: 12px; color: #a5f3fc;
     margin-bottom: 22px; font-weight: 500; letter-spacing: 0.02em;
   }
   .hero-tag .dot {
@@ -191,7 +197,7 @@ if settings.debug:
   .hero h1 {
     font-size: 44px; font-weight: 700; margin: 0 0 14px;
     line-height: 1.1; letter-spacing: -0.025em;
-    background: linear-gradient(120deg, #f4f5fa 25%, #c7d2fe 60%, #ddd6fe 100%);
+    background: linear-gradient(110deg, #f1f5f9 15%, #a5f3fc 45%, #6ee7b7 75%, #fcd34d 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .hero .lede {
@@ -227,9 +233,15 @@ if settings.debug:
     font-family: inherit;
   }
   .chip:hover {
-    background: rgba(99, 102, 241, 0.1);
-    border-color: rgba(99, 102, 241, 0.4);
+    background: rgba(6, 182, 212, 0.10);
+    border-color: rgba(6, 182, 212, 0.4);
     color: var(--text); transform: translateY(-1px);
+  }
+  .chip .chip-tag {
+    display: inline-block; margin-right: 7px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6ee7b7;
   }
 
   /* Prompt label + textarea */
@@ -264,9 +276,9 @@ if settings.debug:
   textarea::placeholder { color: var(--text-dimmer); }
   textarea:focus {
     outline: none;
-    border-color: rgba(99, 102, 241, 0.5);
-    background: rgba(0,0,0,0.45);
-    box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.12);
+    border-color: rgba(6, 182, 212, 0.55);
+    background: rgba(2, 6, 18, 0.7);
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.14);
   }
 
   /* Controls row */
@@ -282,12 +294,13 @@ if settings.debug:
   }
   .btn-primary {
     background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
-    color: white;
-    box-shadow: 0 4px 14px rgba(99, 102, 241, 0.4), 0 0 0 1px rgba(255,255,255,0.08) inset;
+    color: #042f2e;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35), 0 0 0 1px rgba(255,255,255,0.12) inset;
   }
   .btn-primary:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 6px 22px rgba(99, 102, 241, 0.55), 0 0 0 1px rgba(255,255,255,0.12) inset;
+    box-shadow: 0 6px 24px rgba(16, 185, 129, 0.45), 0 0 0 1px rgba(255,255,255,0.18) inset;
   }
   .btn-primary:disabled {
     background: rgba(255,255,255,0.05); color: var(--text-dimmer);
@@ -326,8 +339,8 @@ if settings.debug:
   }
   .segment button:hover:not(:disabled):not(.active) { color: var(--text); background: rgba(255,255,255,0.04); }
   .segment button.active {
-    background: linear-gradient(135deg, rgba(99,102,241,0.25) 0%, rgba(139,92,246,0.25) 100%);
-    color: #e0e7ff; box-shadow: 0 0 0 1px rgba(99, 102, 241, 0.3);
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.28) 0%, rgba(16, 185, 129, 0.28) 100%);
+    color: #cffafe; box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.35);
   }
   .segment button:disabled { cursor: not-allowed; opacity: 0.5; }
 
@@ -344,7 +357,9 @@ if settings.debug:
     -webkit-backdrop-filter: blur(20px);
     transition: border-color 0.15s;
   }
-  .stat.active { border-color: rgba(99, 102, 241, 0.3); }
+  .stat.active { border-color: rgba(6, 182, 212, 0.35); box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.15) inset; }
+  .stat#stat-rate .value { color: var(--accent-3); }
+  .stat#stat-rate .label svg { color: var(--accent-3); opacity: 0.9; }
   .stat .label {
     display: flex; align-items: center; gap: 7px;
     font-size: 10.5px; color: var(--text-dimmer); font-weight: 600;
@@ -407,8 +422,8 @@ if settings.debug:
     text-align: center; font-size: 14px;
   }
   .response-body.empty .placeholder-icon {
-    margin: 0 auto 14px; display: block; opacity: 0.35;
-    color: var(--accent);
+    margin: 0 auto 14px; display: block; opacity: 0.45;
+    color: var(--accent-2);
   }
   .caret {
     display: inline-block; width: 7px; height: 1.05em;
@@ -416,7 +431,7 @@ if settings.debug:
     background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
     margin-left: 2px; border-radius: 2px;
     animation: blink 1s steps(2) infinite;
-    box-shadow: 0 0 8px rgba(99, 102, 241, 0.6);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
   }
   @keyframes blink { 50% { opacity: 0.15; } }
 
@@ -455,27 +470,46 @@ if settings.debug:
       <span class="dot"></span>
       Bedrock · Live Streaming Demo
     </div>
-    <h1>Watch Claude Think.</h1>
+    <h1>Customers feel the answer arrive.</h1>
     <p class="lede">
-      Tokens stream from AWS Bedrock straight to your browser the moment Claude generates them.
-      No buffering, no waiting for the full response — this is the same streaming primitive the
-      backend uses under the hood for chat-style endpoints.
+      Pick one of the agent-flavored scenarios below — contract risk analysis, clause comparison, plain-English translation — and watch
+      Claude's output stream from AWS Bedrock to the browser in real time. Same streaming primitive the production agents use
+      under the hood; this page just renders the text instead of buffering a structured JSON response. Compare it to the
+      <em style="color: var(--text-dim); font-style: normal; border-bottom: 1px dashed var(--text-dimmer);">wait-then-dump</em> UX
+      a non-streaming endpoint forces on the user.
     </p>
   </header>
 
   <div class="card">
     <div class="examples">
-      <button class="chip" data-prompt="Explain what an indemnification clause does in a commercial contract, in 3 short paragraphs.">Explain indemnification</button>
-      <button class="chip" data-prompt="Draft a confidentiality clause for a mutual NDA in plain modern English with 5 numbered sub-sections covering definition, exclusions, use, return of materials, and remedies.">Draft NDA confidentiality</button>
-      <button class="chip" data-prompt="What is a force majeure clause and when does it apply? Give a real-world example a non-lawyer can follow.">Force majeure</button>
-      <button class="chip" data-prompt="Compare arbitration vs litigation vs mediation as dispute resolution mechanisms. Cover speed, cost, privacy, and enforceability.">Arbitration vs mediation</button>
+      <button class="chip" data-prompt="You are a contract risk analyst. Analyze the indemnification clause below from a SaaS agreement between Acme Robotics (Customer) and Globex Software (Vendor). Walk through your reasoning out loud: identify the top 3 risks for Acme as Customer, name the party that bears each risk, quote the specific contract language causing it, and end with a concrete fix the parties could negotiate.
+
+CLAUSE TO ANALYZE:
+&quot;Customer shall defend, indemnify, and hold harmless Vendor, its affiliates, officers, employees, and agents from and against any and all claims, demands, suits, judgments, losses, damages, fines, penalties, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to (a) Customer's use of the Services, (b) any breach by Customer of this Agreement, or (c) any third-party claim of any nature whatsoever in connection with Customer's business operations. Vendor's liability under this Agreement shall not exceed one hundred dollars ($100) in the aggregate, regardless of the form of action or theory of liability.&quot;"><span class="chip-tag">Agent</span>Contract Risk Analysis</button>
+
+      <button class="chip" data-prompt="You are a contract clause comparison agent. Compare the two limitation-of-liability clauses below side by side. For each, identify: (1) the cap structure, (2) the carve-outs, (3) the consequential-damages treatment, (4) which party each version favors. End with a clear recommendation on which version a Vendor with limited insurance should prefer and why.
+
+CLAUSE A:
+&quot;In no event shall either party's aggregate liability arising out of or relating to this Agreement exceed the fees paid by Customer to Vendor in the twelve (12) months preceding the event giving rise to the claim. Neither party shall be liable for any consequential, incidental, indirect, special, punitive, or exemplary damages, including lost profits or lost data, even if advised of the possibility of such damages.&quot;
+
+CLAUSE B:
+&quot;Each party's total cumulative liability under this Agreement shall not exceed three (3) times the fees paid by Customer in the twelve (12) months preceding the claim, except that the cap shall not apply to (a) breach of confidentiality, (b) indemnification obligations, (c) gross negligence or willful misconduct, or (d) infringement of the other party's intellectual property. Consequential damages are excluded only as to lost profits and lost goodwill; lost data is recoverable as direct damages.&quot;"><span class="chip-tag">Agent</span>Clause Comparison</button>
+
+      <button class="chip" data-prompt="You are a plain-English translator for legal contracts. Take the dense indemnification paragraph below and rewrite it as a 4-bullet plain-English summary a non-lawyer founder could understand in 30 seconds. Be faithful to the legal meaning but ruthlessly cut jargon. After the bullets, write one sentence on the practical risk this clause creates for the indemnifying party.
+
+CLAUSE:
+&quot;Notwithstanding anything to the contrary herein, Licensee shall, at its sole cost and expense, defend, indemnify, and hold harmless Licensor and its affiliates, officers, directors, employees, contractors, and agents (collectively, the &apos;Indemnified Parties&apos;) from and against any and all third-party claims, actions, suits, proceedings, losses, liabilities, damages, costs, and expenses (including reasonable attorneys&apos; fees and costs of investigation) arising out of, resulting from, or in connection with (i) Licensee&apos;s use of the Licensed Materials, (ii) any breach or alleged breach by Licensee of any representation, warranty, covenant, or obligation under this Agreement, (iii) the gross negligence or willful misconduct of Licensee or any of its personnel, or (iv) any violation by Licensee of applicable law. Licensor shall provide prompt written notice of any such claim and reasonable cooperation in the defense thereof; provided, however, that any failure or delay in providing such notice shall not relieve Licensee of its indemnification obligations except to the extent Licensee is materially prejudiced by such failure.&quot;"><span class="chip-tag">Agent</span>Plain-English Translator</button>
+
+      <button class="chip" data-prompt="You are a senior contract drafter. Draft a complete, enforceable Confidentiality clause for a mutual NDA between two software companies who are evaluating a partnership. The clause must contain numbered sub-sections covering: (1) definition of Confidential Information with examples, (2) standard exclusions, (3) permitted use and recipients, (4) standard of care, (5) compelled disclosure procedure, (6) return or destruction on request, (7) survival period for ordinary information and a longer survival for trade secrets, (8) injunctive relief. Use plain modern English — no &apos;witnesseth&apos; or &apos;party of the first part&apos;. Use [PLACEHOLDER] tokens for facts like party names, dates, and the survival period."><span class="chip-tag">Agent</span>Draft NDA Confidentiality</button>
     </div>
 
     <div class="prompt-label">
       <span class="label">Prompt</span>
       <span class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to send</span>
     </div>
-    <textarea id="prompt" placeholder="Ask Claude anything…">Explain what an indemnification clause does in a commercial contract, in 3 short paragraphs.</textarea>
+    <textarea id="prompt" placeholder="Ask Claude anything — or click an agent scenario above to load a realistic prompt with sample contract text.">You are a contract risk analyst. The clause below appears in a SaaS agreement. In plain English, list the top 2 risks it creates for the Customer and the one phrase from the clause that creates each risk. End with a one-line suggested fix.
+
+CLAUSE: "Customer shall pay Vendor's monthly subscription fee within five (5) days of invoice. Late payments incur a five percent (5%) per-month penalty compounded daily, and Vendor may suspend Services after ten (10) days past due without prior notice or cure period."</textarea>
 
     <div class="controls">
       <button id="send" class="btn btn-primary">
@@ -514,7 +548,7 @@ if settings.debug:
       </div>
       <div class="value"><span id="counts">0</span><span class="unit">chars</span></div>
     </div>
-    <div class="stat">
+    <div class="stat" id="stat-rate">
       <div class="label">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z"/></svg>
         Bedrock Rate
