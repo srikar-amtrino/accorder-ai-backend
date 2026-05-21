@@ -451,6 +451,137 @@ if settings.debug:
   }
   .footer .brand { color: var(--text-dim); font-weight: 500; }
 
+  /* Agent panel — amber accent so it's visually distinct from cyan streaming */
+  .btn-agent {
+    background: linear-gradient(135deg, var(--accent-3) 0%, #f97316 100%);
+    color: #451a03; font-weight: 600;
+    box-shadow: 0 4px 14px rgba(251, 191, 36, 0.32), 0 0 0 1px rgba(255,255,255,0.12) inset;
+  }
+  .btn-agent:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 24px rgba(251, 191, 36, 0.5), 0 0 0 1px rgba(255,255,255,0.18) inset;
+  }
+  .btn-agent:disabled {
+    background: rgba(255,255,255,0.05); color: var(--text-dimmer);
+    box-shadow: none; cursor: not-allowed;
+  }
+  .agent-card { display: none; }
+  .agent-card.show { display: block; }
+  .agent-title svg { color: var(--accent-3); }
+  .latency-pill {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 5px 11px;
+    background: rgba(251, 191, 36, 0.10);
+    border: 1px solid rgba(251, 191, 36, 0.32);
+    border-radius: 999px;
+    font-size: 11px; color: var(--accent-3);
+    font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
+    font-family: var(--mono);
+  }
+  .agent-loading {
+    display: flex; align-items: center; justify-content: center;
+    flex-direction: column; gap: 14px;
+    padding: 50px 20px;
+  }
+  .spinner {
+    width: 28px; height: 28px;
+    border: 2.5px solid rgba(255,255,255,0.07);
+    border-top-color: var(--accent-3);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .agent-loading .label { font-size: 13px; color: var(--text-dim); font-weight: 500; }
+  .agent-loading .sub { font-size: 11px; color: var(--text-dimmer); font-family: var(--mono); }
+  .mode-badges { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .mode-badge {
+    display: inline-block; padding: 4px 10px; border-radius: 6px;
+    font-size: 10px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.06em;
+  }
+  .mode-badge.list   { background: rgba(6, 182, 212, 0.15);  color: #67e8f9; border: 1px solid rgba(6, 182, 212, 0.32); }
+  .mode-badge.single { background: rgba(16, 185, 129, 0.15); color: #6ee7b7; border: 1px solid rgba(16, 185, 129, 0.32); }
+  .mode-badge.exists { background: rgba(251, 191, 36, 0.15); color: #fcd34d; border: 1px solid rgba(251, 191, 36, 0.32); }
+  .mode-badge.clarif { background: rgba(248, 113, 113, 0.15); color: #fca5a5; border: 1px solid rgba(248, 113, 113, 0.32); }
+  .mode-badge.grounded { background: rgba(125, 211, 252, 0.10); color: #bae6fd; border: 1px solid rgba(125, 211, 252, 0.25); }
+  .agreement-summary {
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.06) 0%, rgba(16, 185, 129, 0.04) 100%);
+    border: 1px solid rgba(6, 182, 212, 0.18);
+    border-radius: 10px; padding: 16px 18px; margin-bottom: 18px;
+    font-size: 14px; line-height: 1.65; color: var(--text);
+  }
+  .agreement-summary .header {
+    font-size: 10px; font-weight: 700;
+    color: #67e8f9; text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 8px;
+  }
+  .clause-card {
+    background: rgba(2, 6, 18, 0.45);
+    border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px; margin-bottom: 12px;
+    transition: border-color 0.15s;
+  }
+  .clause-card:hover { border-color: var(--border-strong); }
+  .clause-card .title {
+    display: flex; align-items: center; gap: 10px;
+    font-size: 15px; font-weight: 600; color: var(--text); margin-bottom: 6px;
+  }
+  .clause-card .title .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 24px; height: 24px;
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.25), rgba(16, 185, 129, 0.25));
+    color: #cffafe; border-radius: 7px;
+    font-size: 11px; font-weight: 700; font-family: var(--mono);
+  }
+  .clause-card .summary {
+    font-size: 13px; color: var(--text-dim);
+    margin-bottom: 10px; line-height: 1.55;
+  }
+  .clause-card .body {
+    font-size: 13px; line-height: 1.7;
+    color: var(--text);
+    background: rgba(0, 0, 0, 0.28);
+    border: 1px solid var(--border);
+    border-radius: 6px; padding: 11px 13px;
+    white-space: pre-wrap; max-height: 220px; overflow-y: auto;
+    font-family: var(--mono);
+  }
+  .clause-card .placeholders {
+    margin-top: 10px; display: flex; flex-wrap: wrap; gap: 6px;
+  }
+  .placeholder-chip {
+    display: inline-block; padding: 3px 8px;
+    background: rgba(251, 191, 36, 0.10);
+    border: 1px solid rgba(251, 191, 36, 0.28);
+    border-radius: 5px;
+    font-size: 11px; font-family: var(--mono);
+    color: #fcd34d;
+  }
+  .clarification-box, .error-box {
+    display: flex; gap: 14px; align-items: flex-start;
+    padding: 18px 20px;
+    border-radius: 10px;
+  }
+  .clarification-box {
+    background: rgba(248, 113, 113, 0.05);
+    border: 1px solid rgba(248, 113, 113, 0.22);
+  }
+  .error-box {
+    background: rgba(248, 113, 113, 0.06);
+    border: 1px solid rgba(248, 113, 113, 0.32);
+  }
+  .clarification-box svg, .error-box svg {
+    flex-shrink: 0; color: #fca5a5; margin-top: 2px;
+  }
+  .clarification-box .text, .error-box .text {
+    font-size: 14px; line-height: 1.6; color: var(--text); flex: 1;
+  }
+  .clarification-box .text strong, .error-box .text strong {
+    display: block; color: #fca5a5; font-size: 11px;
+    text-transform: uppercase; letter-spacing: 0.08em;
+    margin-bottom: 6px; font-weight: 600;
+  }
+
   /* Responsive */
   @media (max-width: 700px) {
     .container { padding: 32px 16px 56px; }
@@ -472,11 +603,11 @@ if settings.debug:
     </div>
     <h1>Customers feel the answer arrive.</h1>
     <p class="lede">
-      Pick one of the agent-flavored scenarios below — contract risk analysis, clause comparison, plain-English translation — and watch
-      Claude's output stream from AWS Bedrock to the browser in real time. Same streaming primitive the production agents use
-      under the hood; this page just renders the text instead of buffering a structured JSON response. Compare it to the
-      <em style="color: var(--text-dim); font-style: normal; border-bottom: 1px dashed var(--text-dimmer);">wait-then-dump</em> UX
-      a non-streaming endpoint forces on the user.
+      Two buttons. Same Bedrock model, same prompt. <strong style="color: #a5f3fc;">Stream response</strong> renders Claude's
+      text as it arrives — the customer sees words within ~200ms. <strong style="color: #fcd34d;">Run real agent</strong> calls
+      the production <code style="background: rgba(255,255,255,0.06); padding: 1px 6px; border-radius: 4px; font-size: 13px;">/api/v1/describe-draft/generate</code>
+      endpoint, which buffers a structured JSON response — same engine, but the customer waits.
+      Click both with the same prompt and feel the difference.
     </p>
   </header>
 
@@ -519,6 +650,11 @@ CLAUSE: "Customer shall pay Vendor's monthly subscription fee within five (5) da
       <button id="stop" class="btn btn-secondary" disabled>
         <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="2"/></svg>
         Stop
+      </button>
+
+      <button id="run-agent" class="btn btn-agent">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
+        Run real agent
       </button>
 
       <div class="pace">
@@ -581,6 +717,20 @@ CLAUSE: "Customer shall pay Vendor's monthly subscription fee within five (5) da
         Response will stream here. Pick a prompt or click <strong style="color: var(--text-dim)">Stream response</strong>.
       </div>
     </div>
+  </div>
+
+  <!-- Real agent panel — only visible after first "Run real agent" click. -->
+  <div class="card response-card agent-card" id="agent-card">
+    <div class="response-header">
+      <div class="response-title agent-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l3 7h7l-5.5 4.5L18 21l-6-4-6 4 1.5-7.5L2 9h7z"/></svg>
+        Production Agent · POST /api/v1/describe-draft/generate
+      </div>
+      <div class="latency-pill" id="agent-latency" style="display: none;">
+        <span id="agent-latency-text">—</span>
+      </div>
+    </div>
+    <div class="response-body" id="agent-body" style="min-height: 100px;"></div>
   </div>
 
   <footer class="footer">
@@ -739,6 +889,161 @@ CLAUSE: "Customer shall pay Vendor's monthly subscription fee within five (5) da
   $('prompt').addEventListener('keydown', (e) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') startStream();
   });
+
+  // ---------- Production agent panel ----------
+  // Calls the real /api/v1/describe-draft/generate endpoint and renders the
+  // structured response as clause cards. Same Bedrock model, but tool_use
+  // mode forces a Pydantic-validated JSON response — which means no token
+  // streaming, hence the spinner. Side-by-side with the streaming card
+  // above, this is the wait-vs-streamed UX comparison.
+
+  function uuid() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+      const r = (Math.random() * 16) | 0;
+      return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+  }
+  const agentSessionId = uuid();
+  let agentTimer = null;
+
+  function esc(s) {
+    return String(s == null ? '' : s).replace(/[&<>"']/g, c =>
+      ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  }
+
+  function clauseCard(c, idx) {
+    const placeholders = (c.placeholders && c.placeholders.length)
+      ? '<div class="placeholders">' + c.placeholders.map(p =>
+          '<span class="placeholder-chip">' + esc(p) + '</span>').join('') + '</div>'
+      : '';
+    return (
+      '<div class="clause-card">' +
+      '  <div class="title"><span class="num">' + (idx + 1) + '</span>' + esc(c.title || 'Untitled') + '</div>' +
+      '  <div class="summary">' + esc(c.summary || '') + '</div>' +
+      '  <div class="body">' + esc(c.drafted_clause || c.content || '') + '</div>' +
+      placeholders +
+      '</div>'
+    );
+  }
+
+  function renderAgentResponse(data, latencyMs) {
+    $('agent-latency').style.display = 'inline-flex';
+    const modeStr = data.mode || 'unknown';
+    $('agent-latency-text').textContent = (latencyMs / 1000).toFixed(1) + 's · ' + modeStr;
+
+    const body = $('agent-body');
+
+    if (data.status === 'error') {
+      body.innerHTML =
+        '<div class="error-box">' +
+        '  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>' +
+        '  <div class="text"><strong>Error · ' + esc(data.error_type || 'unknown') + '</strong>' +
+        esc(data.error_message || 'No error details returned.') + '</div>' +
+        '</div>';
+      return;
+    }
+
+    if (data.mode === 'clarification') {
+      body.innerHTML =
+        '<div class="mode-badges"><span class="mode-badge clarif">Clarification</span></div>' +
+        '<div class="clarification-box">' +
+        '  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3M12 17h.01"/></svg>' +
+        '  <div class="text"><strong>Agent needs more detail</strong>' +
+        esc(data.clarification_question || '') + '</div>' +
+        '</div>';
+      return;
+    }
+
+    let badges = '';
+    if (data.mode === 'list_of_clauses') {
+      badges = '<span class="mode-badge list">List of Clauses · ' + (data.clauses ? data.clauses.length : 0) + '</span>';
+    } else if (data.mode === 'single_clause') {
+      badges = '<span class="mode-badge single">Single Clause</span>';
+    } else if (data.mode === 'single_clause_exists') {
+      badges = '<span class="mode-badge exists">Existing Clause Detected</span>';
+    }
+    if (data.grounded_in_document) badges += '<span class="mode-badge grounded">Doc-Grounded</span>';
+    if (data.regenerated) badges += '<span class="mode-badge exists">Regenerated</span>';
+
+    let html = '<div class="mode-badges">' + badges + '</div>';
+
+    if (data.agreement_summary) {
+      html += '<div class="agreement-summary">' +
+              '  <div class="header">Agreement Summary</div>' +
+              esc(data.agreement_summary) +
+              '</div>';
+    }
+    if (data.clauses && data.clauses.length) {
+      html += data.clauses.map((c, i) => clauseCard(c, i)).join('');
+    }
+    if (data.versions && data.versions.length) {
+      html += data.versions.map((c, i) => clauseCard(c, i)).join('');
+    }
+    if (data.existing_clause) {
+      html += '<div class="mode-badges" style="margin-top: 14px;"><span class="mode-badge exists">From Uploaded Document</span></div>';
+      html += clauseCard(data.existing_clause, 0);
+    }
+
+    body.innerHTML = html;
+  }
+
+  async function runRealAgent() {
+    const prompt = $('prompt').value.trim();
+    if (!prompt) return;
+
+    $('agent-card').classList.add('show');
+    $('agent-card').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    $('run-agent').disabled = true;
+    $('send').disabled = true;
+    $('agent-latency').style.display = 'none';
+
+    const body = $('agent-body');
+    body.innerHTML =
+      '<div class="agent-loading">' +
+      '  <div class="spinner"></div>' +
+      '  <div class="label">Calling describe-draft agent…</div>' +
+      '  <div class="sub" id="agent-elapsed">0.0s · structured tool_use response (no token streaming)</div>' +
+      '</div>';
+
+    const start = performance.now();
+    agentTimer = setInterval(() => {
+      const e = document.getElementById('agent-elapsed');
+      if (!e) return;
+      const sec = ((performance.now() - start) / 1000).toFixed(1);
+      e.textContent = sec + 's · structured tool_use response (no token streaming)';
+    }, 100);
+
+    try {
+      const res = await fetch('/api/v1/describe-draft/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Session-ID': agentSessionId,
+        },
+        body: JSON.stringify({ prompt }),
+      });
+      const elapsed = performance.now() - start;
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        throw new Error('HTTP ' + res.status + (text ? ': ' + text.slice(0, 200) : ''));
+      }
+      const data = await res.json();
+      renderAgentResponse(data, elapsed);
+    } catch (err) {
+      body.innerHTML =
+        '<div class="error-box">' +
+        '  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>' +
+        '  <div class="text"><strong>Request failed</strong>' + esc(err.message || String(err)) + '</div>' +
+        '</div>';
+    } finally {
+      clearInterval(agentTimer);
+      $('run-agent').disabled = false;
+      $('send').disabled = false;
+    }
+  }
+
+  $('run-agent').addEventListener('click', runRealAgent);
 </script>
 </body>
 </html>"""
