@@ -613,34 +613,20 @@ if settings.debug:
 
   <div class="card">
     <div class="examples">
-      <button class="chip" data-prompt="You are a contract risk analyst. Analyze the indemnification clause below from a SaaS agreement between Acme Robotics (Customer) and Globex Software (Vendor). Walk through your reasoning out loud: identify the top 3 risks for Acme as Customer, name the party that bears each risk, quote the specific contract language causing it, and end with a concrete fix the parties could negotiate.
+      <button class="chip" data-prompt="Draft a Confidentiality clause for a mutual NDA between two software companies. Use plain modern English with numbered sub-sections covering definition of Confidential Information, exclusions, permitted use, standard of care, compelled disclosure, return or destruction, survival period, and injunctive relief. Use [PLACEHOLDER] tokens for party names, dates, and the survival period.">Draft NDA Confidentiality</button>
 
-CLAUSE TO ANALYZE:
-&quot;Customer shall defend, indemnify, and hold harmless Vendor, its affiliates, officers, employees, and agents from and against any and all claims, demands, suits, judgments, losses, damages, fines, penalties, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to (a) Customer's use of the Services, (b) any breach by Customer of this Agreement, or (c) any third-party claim of any nature whatsoever in connection with Customer's business operations. Vendor's liability under this Agreement shall not exceed one hundred dollars ($100) in the aggregate, regardless of the form of action or theory of liability.&quot;"><span class="chip-tag">Agent</span>Contract Risk Analysis</button>
+      <button class="chip" data-prompt="Draft a Limitation of Liability clause for a SaaS subscription agreement. Include a tiered cap (fees-based for general liability, higher cap for confidentiality and IP), exclusion of consequential damages with carve-outs, and a super-cap clause. Use [PLACEHOLDER] tokens for cap amounts and the look-back period.">Draft Limitation of Liability</button>
 
-      <button class="chip" data-prompt="You are a contract clause comparison agent. Compare the two limitation-of-liability clauses below side by side. For each, identify: (1) the cap structure, (2) the carve-outs, (3) the consequential-damages treatment, (4) which party each version favors. End with a clear recommendation on which version a Vendor with limited insurance should prefer and why.
+      <button class="chip" data-prompt="Generate a complete mutual Non-Disclosure Agreement between two software companies evaluating a partnership. Include all standard clauses an NDA should contain — parties, definitions, confidentiality obligations, exclusions, permitted use, return of materials, term and survival, remedies, governing law, and notices. Use [PLACEHOLDER] tokens for party names and other facts.">Generate full NDA</button>
 
-CLAUSE A:
-&quot;In no event shall either party's aggregate liability arising out of or relating to this Agreement exceed the fees paid by Customer to Vendor in the twelve (12) months preceding the event giving rise to the claim. Neither party shall be liable for any consequential, incidental, indirect, special, punitive, or exemplary damages, including lost profits or lost data, even if advised of the possibility of such damages.&quot;
-
-CLAUSE B:
-&quot;Each party's total cumulative liability under this Agreement shall not exceed three (3) times the fees paid by Customer in the twelve (12) months preceding the claim, except that the cap shall not apply to (a) breach of confidentiality, (b) indemnification obligations, (c) gross negligence or willful misconduct, or (d) infringement of the other party's intellectual property. Consequential damages are excluded only as to lost profits and lost goodwill; lost data is recoverable as direct damages.&quot;"><span class="chip-tag">Agent</span>Clause Comparison</button>
-
-      <button class="chip" data-prompt="You are a plain-English translator for legal contracts. Take the dense indemnification paragraph below and rewrite it as a 4-bullet plain-English summary a non-lawyer founder could understand in 30 seconds. Be faithful to the legal meaning but ruthlessly cut jargon. After the bullets, write one sentence on the practical risk this clause creates for the indemnifying party.
-
-CLAUSE:
-&quot;Notwithstanding anything to the contrary herein, Licensee shall, at its sole cost and expense, defend, indemnify, and hold harmless Licensor and its affiliates, officers, directors, employees, contractors, and agents (collectively, the &apos;Indemnified Parties&apos;) from and against any and all third-party claims, actions, suits, proceedings, losses, liabilities, damages, costs, and expenses (including reasonable attorneys&apos; fees and costs of investigation) arising out of, resulting from, or in connection with (i) Licensee&apos;s use of the Licensed Materials, (ii) any breach or alleged breach by Licensee of any representation, warranty, covenant, or obligation under this Agreement, (iii) the gross negligence or willful misconduct of Licensee or any of its personnel, or (iv) any violation by Licensee of applicable law. Licensor shall provide prompt written notice of any such claim and reasonable cooperation in the defense thereof; provided, however, that any failure or delay in providing such notice shall not relieve Licensee of its indemnification obligations except to the extent Licensee is materially prejudiced by such failure.&quot;"><span class="chip-tag">Agent</span>Plain-English Translator</button>
-
-      <button class="chip" data-prompt="You are a senior contract drafter. Draft a complete, enforceable Confidentiality clause for a mutual NDA between two software companies who are evaluating a partnership. The clause must contain numbered sub-sections covering: (1) definition of Confidential Information with examples, (2) standard exclusions, (3) permitted use and recipients, (4) standard of care, (5) compelled disclosure procedure, (6) return or destruction on request, (7) survival period for ordinary information and a longer survival for trade secrets, (8) injunctive relief. Use plain modern English — no &apos;witnesseth&apos; or &apos;party of the first part&apos;. Use [PLACEHOLDER] tokens for facts like party names, dates, and the survival period."><span class="chip-tag">Agent</span>Draft NDA Confidentiality</button>
+      <button class="chip" data-prompt="Draft a Dispute Resolution clause with a tiered approach: good-faith negotiation between executives first, then non-binding mediation, then binding arbitration as a fallback. Carve out injunctive relief in court for confidentiality, IP, and payment breaches. Use [PLACEHOLDER] tokens for periods, mediation provider, arbitration seat, and governing law.">Draft Dispute Resolution</button>
     </div>
 
     <div class="prompt-label">
       <span class="label">Prompt</span>
       <span class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to send</span>
     </div>
-    <textarea id="prompt" placeholder="Ask Claude anything — or click an agent scenario above to load a realistic prompt with sample contract text.">You are a contract risk analyst. The clause below appears in a SaaS agreement. In plain English, list the top 2 risks it creates for the Customer and the one phrase from the clause that creates each risk. End with a one-line suggested fix.
-
-CLAUSE: "Customer shall pay Vendor's monthly subscription fee within five (5) days of invoice. Late payments incur a five percent (5%) per-month penalty compounded daily, and Vendor may suspend Services after ten (10) days past due without prior notice or cure period."</textarea>
+    <textarea id="prompt" placeholder="Ask Claude anything — or click a chip above to load a real drafting prompt.">Draft a Confidentiality clause for a mutual NDA between two software companies. Use plain modern English with numbered sub-sections covering definition of Confidential Information, exclusions, permitted use, standard of care, compelled disclosure, return or destruction, survival period, and injunctive relief. Use [PLACEHOLDER] tokens for party names, dates, and the survival period.</textarea>
 
     <div class="controls">
       <button id="send" class="btn btn-primary">
@@ -1014,27 +1000,61 @@ CLAUSE: "Customer shall pay Vendor's monthly subscription fee within five (5) da
       e.textContent = sec + 's · structured tool_use response (no token streaming)';
     }, 100);
 
+    // Diagnostic: log the request so you can see it in DevTools → Console.
+    const url = '/api/v1/describe-draft/generate';
+    const reqBody = JSON.stringify({ prompt });
+    console.log('[demo] →', 'POST', url, { headers: { 'X-Session-ID': agentSessionId }, body: reqBody });
+
     try {
-      const res = await fetch('/api/v1/describe-draft/generate', {
+      const res = await fetch(url, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'X-Session-ID': agentSessionId,
         },
-        body: JSON.stringify({ prompt }),
+        body: reqBody,
       });
       const elapsed = performance.now() - start;
+      const responseText = await res.text();
+      console.log('[demo] ← HTTP', res.status, res.statusText, '(' + responseText.length + ' bytes)');
+      console.log('[demo] ← body:', responseText.slice(0, 2000));
+
       if (!res.ok) {
-        const text = await res.text().catch(() => '');
-        throw new Error('HTTP ' + res.status + (text ? ': ' + text.slice(0, 200) : ''));
+        // Surface the FULL server response so we can see Pydantic/422/500 details.
+        const snippet = responseText ? responseText.slice(0, 600) : '(empty response body)';
+        body.innerHTML =
+          '<div class="error-box">' +
+          '  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>' +
+          '  <div class="text">' +
+          '    <strong>HTTP ' + res.status + ' · ' + esc(res.statusText) + '</strong>' +
+          '    <div style="margin-bottom: 8px;">URL: <code>' + esc(url) + '</code> · Session: <code>' + esc(agentSessionId.slice(0, 8)) + '…</code></div>' +
+          '    <pre style="margin: 8px 0 0; padding: 10px; background: rgba(0,0,0,0.35); border-radius: 6px; font-family: var(--mono); font-size: 12px; white-space: pre-wrap; word-break: break-word; max-height: 220px; overflow-y: auto;">' + esc(snippet) + '</pre>' +
+          '  </div>' +
+          '</div>';
+        return;
       }
-      const data = await res.json();
+
+      let data;
+      try { data = JSON.parse(responseText); }
+      catch (parseErr) {
+        body.innerHTML =
+          '<div class="error-box">' +
+          '  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01"/></svg>' +
+          '  <div class="text"><strong>Response is not JSON</strong>' +
+          '  <pre style="margin: 8px 0 0; padding: 10px; background: rgba(0,0,0,0.35); border-radius: 6px; font-family: var(--mono); font-size: 12px; white-space: pre-wrap;">' + esc(responseText.slice(0, 600)) + '</pre>' +
+          '  </div></div>';
+        return;
+      }
       renderAgentResponse(data, elapsed);
     } catch (err) {
+      console.error('[demo] network/fetch error:', err);
       body.innerHTML =
         '<div class="error-box">' +
         '  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/></svg>' +
-        '  <div class="text"><strong>Request failed</strong>' + esc(err.message || String(err)) + '</div>' +
+        '  <div class="text"><strong>Network / fetch error</strong>' +
+        '  ' + esc(err.message || String(err)) +
+        '  <div style="margin-top: 8px; font-size: 12px; color: var(--text-dimmer);">Common causes: server not running, reverse-proxy stripped path, CORS, or timeout. Open browser DevTools → Network tab to inspect.</div>' +
+        '  </div>' +
         '</div>';
     } finally {
       clearInterval(agentTimer);
