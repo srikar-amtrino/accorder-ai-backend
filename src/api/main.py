@@ -180,12 +180,19 @@ if settings.debug:
   <div class=\"row\">
     <button id=\"send\">Stream response</button>
     <button id=\"stop\" class=\"secondary\" disabled>Stop</button>
+    <label for=\"pace\" style=\"margin: 0 0 0 8px;\">Pace:</label>
+    <select id=\"pace\" style=\"background: #181c27; color: #e8eaf2; border: 1px solid #2a2f3d; border-radius: 6px; padding: 8px 10px; font: inherit;\">
+      <option value=\"15\">Slow (15 ch/s)</option>
+      <option value=\"40\" selected>Demo (40 ch/s)</option>
+      <option value=\"100\">Fast (100 ch/s)</option>
+      <option value=\"0\">Raw — full Bedrock speed</option>
+    </select>
   </div>
 
   <div class=\"meta\">
     <span>Status: <b id=\"status\">Idle</b></span>
     <span>Output: <b id=\"counts\">0 chars</b></span>
-    <span>Rate: <b id=\"rate\">— ch/s</b></span>
+    <span>Bedrock rate: <b id=\"rate\">— ch/s</b></span>
     <span>Elapsed: <b id=\"elapsed\">0.0 s</b></span>
   </div>
 
@@ -202,6 +209,7 @@ async function startStream() {
   if (!prompt) return;
   $('send').disabled = true;
   $('stop').disabled = false;
+  $('pace').disabled = true;
   $('out').textContent = '';
   $('counts').textContent = '0 chars';
   $('rate').textContent = '— ch/s';
@@ -210,23 +218,58 @@ async function startStream() {
   $('badge').textContent = 'streaming';
   $('badge').classList.add('live');
 
+  // Pace: characters per second to RENDER. 0 = render every chunk immediately
+  // (raw Bedrock speed). Bedrock streams as fast as it can; this throttle is
+  // a client-side typewriter effect so a human can actually read along during
+  // a live demo. The Bedrock rate meter still shows the true ingest speed,
+  // so the audience sees both: \"text we're seeing\" vs \"text the model produced\".
+  const pace = parseInt($('pace').value, 10);
+  const msPerChar = pace > 0 ? Math.max(8, Math.round(1000 / pace)) : 0;
+
   const start = performance.now();
-  let chars = 0;
+  let charsIngested = 0;
   const tick = setInterval(() => {
     const sec = (performance.now() - start) / 1000;
     $('elapsed').textContent = sec.toFixed(1) + ' s';
-    if (sec > 0.1) $('rate').textContent = (chars / sec).toFixed(0) + ' ch/s';
+    if (sec > 0.1) $('rate').textContent = (charsIngested / sec).toFixed(0) + ' ch/s';
   }, 100);
 
   controller = new AbortController();
+
+  // Render buffer + drain loop. Chunks land here as Bedrock pushes them;
+  // the drain loop pops one char at a time at the chosen pace.
+  let buffer = '';
+  let streamDone = false;
+  let drainResolve;
+  const drainComplete = new Promise(r => { drainResolve = r; });
+  const out = $('out');
+  out.innerHTML = '<span class=\"caret\" id=\"caret\"></span>';
+  const caret = $('caret');
+
+  function drainOnce() {
+    if (buffer.length === 0) {
+      if (streamDone) drainResolve();
+      else setTimeout(drainOnce, 20);
+      return;
+    }
+    if (msPerChar === 0) {
+      // Raw mode — flush whatever has arrived this frame.
+      caret.insertAdjacentText('beforebegin', buffer);
+      buffer = '';
+      requestAnimationFrame(drainOnce);
+    } else {
+      const ch = buffer.charAt(0);
+      buffer = buffer.slice(1);
+      caret.insertAdjacentText('beforebegin', ch);
+      setTimeout(drainOnce, msPerChar);
+    }
+  }
+  drainOnce();
+
   try {
     const res = await fetch('/demo/stream?prompt=' + encodeURIComponent(prompt), { signal: controller.signal });
     if (!res.ok) throw new Error('HTTP ' + res.status);
     $('status').textContent = 'Streaming…';
-
-    const out = $('out');
-    out.innerHTML = '<span class=\"caret\" id=\"caret\"></span>';
-    const caret = $('caret');
 
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
@@ -235,16 +278,19 @@ async function startStream() {
       if (done) break;
       const chunk = decoder.decode(value, { stream: true });
       if (!chunk) continue;
-      chars += chunk.length;
-      caret.insertAdjacentText('beforebegin', chunk);
-      $('counts').textContent = chars + ' chars';
+      charsIngested += chunk.length;
+      buffer += chunk;
+      $('counts').textContent = charsIngested + ' chars';
     }
+    streamDone = true;
+    await drainComplete;
     caret.remove();
     const sec = ((performance.now() - start) / 1000).toFixed(1);
     $('status').textContent = 'Done in ' + sec + ' s';
     $('badge').textContent = 'done';
     $('badge').classList.remove('live');
   } catch (err) {
+    streamDone = true;
     if (err.name === 'AbortError') {
       $('status').textContent = 'Stopped by user';
       $('badge').textContent = 'stopped';
@@ -257,6 +303,7 @@ async function startStream() {
     clearInterval(tick);
     $('send').disabled = false;
     $('stop').disabled = true;
+    $('pace').disabled = false;
     controller = null;
   }
 }
