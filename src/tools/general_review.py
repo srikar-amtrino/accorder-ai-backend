@@ -106,9 +106,12 @@ MAX_MATCHED_CLAUSES = 3
 # keeps the user message focused on data. Loaded once at import so per-call
 # file I/O drops to zero.
 #
-# Caching note: these system blocks are all well under Opus 4.7's 4,096-token
-# cache minimum (~560–1,250 tokens each), so cache_control is NOT wired in.
-# The split is for architecture quality, not cost.
+# Caching note (Sonnet 4.6, 1,024-token cache minimum):
+#   - clause review system (~1,640 tokens) + the forced tool schema clears the
+#     minimum, and Mode 2 fans this same block out across every matched clause
+#     per sub-topic, so cache_system=True is wired in on _run_clause_review.
+#   - relevance (~750) and splitter (~825) system blocks are below the minimum
+#     and each run once per request, so caching them would never engage — left off.
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
 
@@ -225,6 +228,7 @@ async def _run_clause_review(
         response_model=ClauseSuggestionsLLMResponse,
         mode="JSON",
         system_message=_CLAUSE_REVIEW_SYSTEM,
+        cache_system=True,
     )
 
     valid: List[Suggestion] = []
