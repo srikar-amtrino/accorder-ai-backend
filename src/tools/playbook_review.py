@@ -25,7 +25,7 @@ logger = get_logger(__name__)
 AGENT_NAME = "playbook_review_agent"
 
 # Split into a cacheable static system block + a small dynamic user block.
-# The system block is ~5K tokens — comfortably above Opus 4.7's 4,096-token
+# The system block is ~4,500 tokens — comfortably above Sonnet 4.6's 1,024-token
 # cache minimum — and is reused across every rule call in a document, so
 # prompt caching turns into a large per-document cost win.
 SIMILARITY_SYSTEM_PROMPT = Path(r"src/services/prompts/v1/ai_review_system.mustache").read_text(encoding="utf-8")

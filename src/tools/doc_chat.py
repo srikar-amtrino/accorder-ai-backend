@@ -5,8 +5,12 @@ from src.dependencies import get_service_container
 from src.schemas.doc_chat import DocChatResponse
 
 # Prompt split into static system (rules, examples, schema) and dynamic user
-# (retrieved context chunks + question). System block ~2K tokens — below the
-# Opus 4.7 cache minimum, so no cache_control.
+# (retrieved context chunks + question).
+#
+# Caching (Sonnet 4.6, 1,024-token minimum): the ~2,080-token system block
+# clears the minimum, but query_document runs once per question — no in-request
+# reuse — so cache_system is left off. Worth enabling only if sustained traffic
+# makes the same block recur within the ~5-min cache TTL.
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
 _DOC_CHAT_SYSTEM = (_PROMPTS_DIR / "doc_chat_system.mustache").read_text(encoding="utf-8")
 _DOC_CHAT_USER = (_PROMPTS_DIR / "doc_chat_user.mustache").read_text(encoding="utf-8")

@@ -8,9 +8,13 @@ AGENT_NAME = "Contract Analyzer"
 
 # Prompt split into a static system block (rules, examples, output schema) and
 # a small dynamic user block (just the contract text). Loaded at import so
-# per-call file I/O drops to zero. System block is ~2.5K tokens — below the
-# Opus 4.7 cache minimum, so no cache_control. Split is for adherence quality
-# and architectural consistency with the other agents.
+# per-call file I/O drops to zero.
+#
+# Caching (Sonnet 4.6, 1,024-token minimum): the ~2,650-token system block
+# clears the minimum, but this agent runs at most once per request (and is
+# session-cached on top), so there is no in-request reuse to amortize a cache
+# write against. cache_system is left off; it would only pay off under
+# sustained cross-request traffic hitting the same block within the ~5-min TTL.
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
 _KEY_INFO_SYSTEM = (_PROMPTS_DIR / "key_information_system.mustache").read_text(encoding="utf-8")
 _KEY_INFO_USER = (_PROMPTS_DIR / "key_information_user.mustache").read_text(encoding="utf-8")
