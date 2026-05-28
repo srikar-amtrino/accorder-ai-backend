@@ -1,6 +1,6 @@
 # Accorder AI — Contract Review Backend
 
-> A production-grade FastAPI backend for AI-assisted contract review, powered by **Claude Opus 4.7** on **AWS Bedrock**.
+> A production-grade FastAPI backend for AI-assisted contract review, powered by **Claude Sonnet 4.6** on **AWS Bedrock**.
 
 Accorder AI ingests legal contracts, performs semantic chunking and embedding, and exposes a suite of LLM-powered endpoints for summarization, structured analysis, clause comparison, playbook validation, document Q&A, and AI-assisted drafting. Built for legal and procurement teams who need fast, accurate, and explainable contract review at scale.
 
@@ -43,7 +43,7 @@ Interactive API documentation is available at `http://<host>:8000/docs` once the
 ## Tech Stack
 
 - **API:** FastAPI · Uvicorn · Pydantic v2
-- **LLM:** Claude Opus 4.7 via AWS Bedrock (streaming `invoke_model_with_response_stream` with Anthropic tool-use forcing for structured outputs)
+- **LLM:** Claude Sonnet 4.6 via AWS Bedrock (streaming `invoke_model_with_response_stream` with Anthropic tool-use forcing for structured outputs)
 - **Embeddings:** sentence-transformers / MiniLM-L6-v2, running locally on CPU
 - **Vector store:** FAISS, in-memory and per-session
 - **Document parsing:** python-docx · LangChain `RecursiveCharacterTextSplitter`
@@ -142,5 +142,5 @@ The endpoint sweep reports pass/fail per endpoint and dumps the server response 
 ## Operational Notes
 
 - **Logging.** Application logs are rotated daily to `logs/AI_Contract_Review_YYYYMMDD.log`. ERROR-level events are mirrored to `logs/errors.log`.
-- **Bedrock quotas.** Claude Opus has a per-account TPS quota — typically 1–4 requests per second by default. Fan-out endpoints (`compare-documents`, `general-review`, `playbook-review`) may encounter `ThrottlingException` under heavy load. Request a quota increase via AWS Service Quotas as traffic grows.
+- **Bedrock quotas.** Claude models have per-account TPS/TPM quotas on Bedrock (Claude Sonnet's defaults are generally higher than Opus's, but still finite). Fan-out endpoints (`compare-documents`, `general-review`, `playbook-review`) may encounter `ThrottlingException` under heavy load. Request a quota increase via AWS Service Quotas as traffic grows.
 - **Prompt versioning.** Prompt templates live under `src/services/prompts/v1/`. New revisions ship under `v2/` and are activated by changing the caller's template path — no schema or interface changes required.
