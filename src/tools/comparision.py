@@ -22,6 +22,19 @@ from src.services.registry.registry import ParserRegistry
 
 AGENT_NAME = "document_comparison_agent"
 
+# Split into a static system block (role, schema, field semantics, examples) and
+# a tiny dynamic user block (just the two clause texts). Loaded once at import.
+#
+# Caching: the static block is ~1,650 tokens and, together with the forced
+# tool schema that precedes the system block in the cached prefix, clears
+# Sonnet 4.6's 1,024-token cache minimum. This agent fans out up to
+# MAX_LLM_CALLS comparisons per document, every one re-sending the identical
+# block, so cache_system=True turns that repetition into cache reads — the
+# largest per-document caching win in the app.
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
+_COMPARISON_SYSTEM = (_PROMPTS_DIR / "clause_comparison_system.mustache").read_text(encoding="utf-8")
+_COMPARISON_USER = (_PROMPTS_DIR / "clause_comparison_user.mustache").read_text(encoding="utf-8")
+
 registry = None
 
 
@@ -550,17 +563,17 @@ def _reconcile_matched_containment(pairs: List[Tuple[int, int, float]], clauses_
 async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_client) -> ClauseComparisonLLMResponse:
     """Send one clause pair to the LLM for detailed comparison."""
 
-    prompt = Path(r"src/services/prompts/v1/clause_comparison_prompt.mustache").read_text(encoding="utf-8")
-
     context = {
         "clause_heading": clause_a.heading or clause_b.heading or "Unnamed Clause",
         "clause_a_text": clause_a.content,
         "clause_b_text": clause_b.content,
     }
     return await llm_client.generate(
-        prompt=prompt,
+        prompt=_COMPARISON_USER,
         context=context,
         response_model=ClauseComparisonLLMResponse,
+        system_message=_COMPARISON_SYSTEM,
+        cache_system=True,
     )
 
 
