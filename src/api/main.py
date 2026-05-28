@@ -95,10 +95,16 @@ app.include_router(admin_router, prefix="/admin")
 app.include_router(agents_router, prefix="/Accorder/agents")
 
 
-# Mounted only when DEBUG=true. Lets you open the URL in a browser and watch
-# Claude's response stream in token-by-token — the visual proof that the
-# Bedrock streaming layer is doing what it claims.
-if settings.debug:
+# --- Streaming demo (DISABLED) ---------------------------------------------
+# This whole block is kept for future reuse but is currently switched OFF: the
+# `if False` gate means none of the demo routes (/demo/stream, /demo/stream-ui)
+# are ever mounted. To bring the demo back, change `if False:` to
+# `if settings.debug:` and run with DEBUG=true.
+#
+# What it does when enabled: lets you open the URL in a browser and watch
+# Claude's response stream in token-by-token — visual proof that the Bedrock
+# streaming layer is doing what it claims.
+if False:  # was: if settings.debug
     from fastapi.responses import HTMLResponse, StreamingResponse
 
     from src.services.llm.bedrock_model import BedrockModel
@@ -130,7 +136,7 @@ if settings.debug:
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AWS Bedrock · Claude Opus 4.7 — Live Streaming Demo</title>
+<title>AWS Bedrock · Claude Sonnet 4.6 — Live Streaming Demo</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -470,11 +476,11 @@ if settings.debug:
   <header class="hero">
     <div class="hero-tag">
       <span class="dot"></span>
-      AWS Bedrock · Claude Opus 4.7
+      AWS Bedrock · Claude Sonnet 4.6
     </div>
-    <h1>Claude Opus 4.7 — Live Streaming on AWS Bedrock</h1>
+    <h1>Claude Sonnet 4.6 — Live Streaming on AWS Bedrock</h1>
     <p class="lede">
-      This demo connects to Claude Opus 4.7 on AWS Bedrock using the streaming API.
+      This demo connects to Claude Sonnet 4.6 on AWS Bedrock using the streaming API.
       Each character is rendered the moment Claude generates it — no buffering, no waiting
       for the full response. Pick a prompt below to see it in action.
     </p>
@@ -564,7 +570,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
     <div class="response-header">
       <div class="response-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-        Claude Opus 4.7 Response
+        Claude Sonnet 4.6 Response
       </div>
       <div class="live-pill" id="live-pill">
         <span class="pulse"></span>
@@ -580,7 +586,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
   </div>
 
   <footer class="footer">
-    <span class="brand"><strong>AWS Bedrock</strong> · Claude Opus 4.7 · <code>invoke_model_with_response_stream</code></span>
+    <span class="brand"><strong>AWS Bedrock</strong> · Claude Sonnet 4.6 · <code>invoke_model_with_response_stream</code></span>
     <span>Gated by <code>DEBUG=true</code> · Not for production</span>
   </footer>
 
