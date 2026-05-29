@@ -6,6 +6,7 @@ POST /api/v1/describe-draft/generate
   Header: X-Session-ID
   Response: DescribeDraftResponse
 """
+
 import logging
 
 from fastapi import APIRouter, Body, Depends

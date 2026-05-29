@@ -34,7 +34,7 @@ def get_access_token() -> Any:
 
 
 @router.post("/compare-documents")
-async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Header(..., alias="X-Session-Id"), user: dict = Depends(verify_token)) -> Any:
+async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Depends(get_session_id)) -> Any:
     """Compare two documents and return their differences."""
 
     document_a = Document(io.BytesIO(await file_a.read()))
@@ -45,7 +45,7 @@ async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, ses
 
 
 @router.post("/playbook-review", response_model=PlayBookReviewFinalResponse)
-async def playbook_review_endpoint(request: RuleCheckRequest, session_id: str = Header(..., alias="X-Session-Id")) -> PlayBookReviewFinalResponse:
+async def playbook_review_endpoint(request: RuleCheckRequest, session_id: str = Depends(get_session_id)) -> PlayBookReviewFinalResponse:
     """Run playbook validation checks."""
 
     review_result = await playbook_review_service(session_id=session_id, request=request)
@@ -76,7 +76,7 @@ async def review_contract(request: GeneralReviewRequest, session_id: str = Depen
 
 
 @router.post("/contract-analyzer")
-async def contract_analyzer_endpoint(file: UploadFile, session_id: str = Depends(get_session_id), auth: dict = Depends(verify_token)) -> ContractAnalyzerResponse:
+async def contract_analyzer_endpoint(file: UploadFile, session_id: str = Depends(get_session_id)) -> ContractAnalyzerResponse:
     """Analyze a contract document and extract key information."""
 
     document = Document(io.BytesIO(await file.read()))
