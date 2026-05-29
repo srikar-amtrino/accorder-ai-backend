@@ -41,7 +41,7 @@ class FAISSVectorStore(BaseVectorStore, Logger):
 
     async def index_embedding(self, embedding: List[float]) -> None:
         """Add a single embedding vector to the FAISS index."""
-        if not embedding:
+        if embedding is None or len(embedding) == 0:
             raise FAISSEmptyEmbeddingException("Cannot index an empty embedding vector.")
 
         vector = np.array(embedding, dtype=np.float32)
@@ -64,7 +64,7 @@ class FAISSVectorStore(BaseVectorStore, Logger):
     async def search_index(self, query_embedding: List[float], top_k: int = 5) -> Dict[str, Any]:
         """Perform cosine similarity and return the top-k indices."""
 
-        if not query_embedding:
+        if query_embedding is None or len(query_embedding) == 0:
             raise FAISSEmptyQueryException("Query Embedding cannot be empty.")
 
         try:

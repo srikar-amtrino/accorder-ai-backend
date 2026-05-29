@@ -5,6 +5,8 @@ from typing import List, Optional
 class BaseEmbeddingService(ABC):
     """Base Class for Embedding Serivces."""
 
+    model_name: str
+
     @abstractmethod
     def get_embedding_dimensions(self) -> int:
         """Returns the embedding dimension of the model used."""

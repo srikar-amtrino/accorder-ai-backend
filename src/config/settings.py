@@ -56,6 +56,9 @@ class Settings(BaseSettings):
     aws_cognito_issuer: str = Field(default=..., description="")
     aws_cognito_jwks_url: str = Field(default=..., description="")
 
+    aws_access_key_id: Union[str, None] = Field(default=None, description="AWS Access Key ID for Bedrock authentication. Optional if using IAM roles or other credential providers.")
+    aws_secret_access_key: Union[str, None] = Field(default=None, description="AWS Secret Access Key for Bedrock authentication. Optional if using IAM roles or other credential providers.")
+
     # Session management settings
     session_ttl_minutes: int = Field(default=120, description="Session TTL in minutes (default: 2 hours).")
     session_cleanup_interval_minutes: float = Field(default=10.0, description="How often to check for expired sessions, in minutes.")

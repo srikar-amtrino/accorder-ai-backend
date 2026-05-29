@@ -168,15 +168,15 @@ async def initialize_dependencies() -> ServiceContainer:
     container = get_service_container()
     container.initialize()
 
-    # Start cleanup worker in the running event loop if session manager exists
-    if container._session_manager:
-        try:
-            # Use SessionManager helper to create background task
-            container._session_manager.start_cleanup_worker_sync()
-            container.logger.info("Session cleanup worker started")
-        except RuntimeError:
-            # No running loop; caller must ensure cleanup worker is started
-            container.logger.warning("Could not start cleanup worker: no running event loop")
+    # # Start cleanup worker in the running event loop if session manager exists
+    # if container._session_manager:
+    #     try:
+    #         # Use SessionManager helper to create background task
+    #         container._session_manager.start_cleanup_worker_sync()
+    #         container.logger.info("Session cleanup worker started")
+    #     except RuntimeError:
+    #         # No running loop; caller must ensure cleanup worker is started
+    #         container.logger.warning("Could not start cleanup worker: no running event loop")
 
     return container
 

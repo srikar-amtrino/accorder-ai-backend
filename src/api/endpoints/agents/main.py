@@ -4,8 +4,8 @@ from typing import Any
 from docx import Document
 from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile
 
-from src.api.session_utils import get_session_id
-from src.core.auth import generate_access_token, verify_token
+# from src.api.session_utils import get_session_id
+from src.core.auth import generate_access_token, get_session_id, verify_token
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
 from src.schemas.doc_chat import DocChatResponse
 from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
@@ -76,7 +76,7 @@ async def review_contract(request: GeneralReviewRequest, session_id: str = Depen
 
 
 @router.post("/contract-analyzer")
-async def contract_analyzer_endpoint(file: UploadFile, session_id: str = Header(..., alias="X-Session-Id")) -> ContractAnalyzerResponse:
+async def contract_analyzer_endpoint(file: UploadFile, session_id: str = Depends(get_session_id), auth: dict = Depends(verify_token)) -> ContractAnalyzerResponse:
     """Analyze a contract document and extract key information."""
 
     document = Document(io.BytesIO(await file.read()))

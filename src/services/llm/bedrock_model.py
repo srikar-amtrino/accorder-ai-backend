@@ -49,7 +49,13 @@ class BedrockModel(BaseLLMModel, Logger):
         self.client = boto3.client(
             "bedrock-runtime",
             region_name=self.region,
-            config=Config(read_timeout=300, connect_timeout=10, retries={"max_attempts": 1}),
+            aws_access_key_id=self.settings.aws_access_key_id,
+            aws_secret_access_key=self.settings.aws_secret_access_key,
+            config=Config(
+                read_timeout=300,
+                connect_timeout=10,
+                retries={"max_attempts": 1},
+            ),
         )
 
     def render_prompt_template(self, prompt: str, context: Dict[str, Any]) -> Any:
