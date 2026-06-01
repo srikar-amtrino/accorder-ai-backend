@@ -7,7 +7,11 @@ import numpy as np
 from docx.document import Document
 
 from src.config.logging import Logger
-from src.dependencies import get_service_container
+from src.core.container import (
+    get_bedrock_model,
+    get_embedding_service,
+    get_session_manager,
+)
 from src.schemas.comparision import (
     ChangeEntry,
     ClauseComparisonLLMResponse,
@@ -801,9 +805,9 @@ async def extract_text(document: Document) -> str:
 async def run(session_id: str, document_a: Document, document_b: Document) -> CompareResponse:
     """Execute the full document comparison pipeline."""
 
-    container = get_service_container()
-    embedding_service = container.embedding_service
-    llm_client = container.llm_model
+    embedding_service = get_embedding_service()
+    llm_client = get_bedrock_model
+    session_manager = get_session_manager()
 
     parser = get_parser()
 
@@ -815,8 +819,9 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
 
     # Cache hit only if BOTH document hashes match in the same order — A→B and B→A
     # produce different comparisons, so the cache key is direction-sensitive.
-    session_data = container.session_manager.get_session(session_id=session_id)
-    cached_data = session_data.tool_results.get(AGENT_NAME)
+    session_data = session_manager.get_session(session_id=session_id)
+    if session_data is not None:
+        cached_data = session_data.tool_results.get(AGENT_NAME)
     if cached_data and cached_data.get("doc_1_hash") == hash_a and cached_data.get("doc_2_hash") == hash_b:
         logger.info(f"Cache hit for session {session_id} agent {AGENT_NAME} — returning cached response")
         return CompareResponse(

@@ -1,7 +1,11 @@
 from pathlib import Path
 from typing import Any, Dict
 
-from src.dependencies import get_service_container
+from src.core.container import (
+    get_bedrock_model,
+    get_retrieval_service,
+    get_session_manager,
+)
 from src.schemas.doc_chat import DocChatResponse
 
 # Prompt split into static system (rules, examples, schema) and dynamic user
@@ -20,10 +24,9 @@ async def query_document(query: str, session_id: str) -> DocChatResponse:
     """Query the document chunks based on the given query and session ID."""
 
     # Get service container and session manager
-    service_container = get_service_container()
-    session_manager = service_container.session_manager
-    retrieval_service = service_container.retrieval_service
-    llm_model = service_container.llm_model
+    llm_model = get_bedrock_model()
+    session_manager = get_session_manager()
+    retrieval_service = get_retrieval_service()
 
     # Get session data
     session_data = session_manager.get_session(session_id)

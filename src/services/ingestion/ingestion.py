@@ -30,7 +30,7 @@ class IngestionService(Logger):
         self.settings = get_settings()
         self.registry = ParserRegistry()
         self.vector_store = None
-        from src.dependencies import get_service_container
+        from src.core.container import get_service_container
 
         service_container = get_service_container()
         self.embedding_service: BaseEmbeddingService = service_container.embedding_service

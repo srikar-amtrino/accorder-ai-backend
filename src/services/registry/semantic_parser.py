@@ -270,7 +270,7 @@ class DocxParser(BaseParser, Logger):
     def __init__(self) -> None:
         super().__init__()
         self.settings = get_settings()
-        from src.dependencies import get_service_container
+        from src.core.container import get_service_container
 
         sc = get_service_container()
         self.embedding_service: BaseEmbeddingService = sc.embedding_service

@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import numpy as np
 
 from src.config.logging import get_logger
-from src.dependencies import get_service_container
+from src.core.container import get_service_container
 from src.schemas.playbook_review import (
     MissingClausesLLMResponse,
     ParaSimilarity,

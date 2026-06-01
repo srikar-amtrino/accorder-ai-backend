@@ -1,44 +1,3 @@
-# from pathlib import Path
-
-# from src.dependencies import get_service_container
-# from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
-
-
-# async def general_review(request: GeneralReviewRequest) -> GeneralReviewResponse:
-#     """General review function for any custom review between rules and paras."""
-
-#     service_container = get_service_container()
-#     llm_service = service_container.llm_model
-#     # faiss_store = service_container.faiss_store
-
-#     prompt = Path(r"src/services/prompts/v1/general_review.mustache").read_text()
-
-#     context = {
-#         "paragraph": request.paragraph,
-#         "rule": request.rule,
-#     }
-
-#     response: GeneralReviewResponse = await llm_service.generate(prompt=prompt, context=context, response_model=GeneralReviewResponse)
-
-#     return response
-
-"""
-General Review Tool — analyzes contract clauses for apply/dismiss suggestions.
-
-Two modes:
-
-  1. ``clause_review``  — the user selected a specific clause. Runs a
-     relevance gate first: if the user's query doesn't apply to that
-     clause, we short-circuit with an alert. Otherwise we review the
-     clause and return suggestions.
-
-  2. ``full_document_review`` — no selection. Extracts every clause from
-     the session using the shared clause extractor, matches clauses to
-     the user's prompt via cosine similarity on embeddings, and reviews
-     only the matched clauses in parallel. Small documents skip the
-     matching step and review every clause.
-"""
-
 import asyncio
 import logging
 from pathlib import Path
@@ -46,7 +5,11 @@ from typing import Any, Dict, List, Optional, Tuple
 
 import numpy as np
 
-from src.dependencies import get_service_container
+from src.core.container import (
+    get_bedrock_model,
+    get_embedding_service,
+    get_session_manager,
+)
 from src.schemas.general_review import (
     ClauseSuggestionsLLMResponse,
     GeneralReviewResponse,
@@ -130,8 +93,8 @@ _SPLITTER_USER = (_PROMPTS_DIR / "general_review_prompt_splitter_user.mustache")
 
 def _get_session(session_id: str) -> SessionData:
     """Retrieve session data or raise ``ValueError``."""
-    container = get_service_container()
-    session = container.session_manager.get_session(session_id)
+    session_manager = get_session_manager()
+    session = session_manager.get_session(session_id)
     if not session:
         raise ValueError(f"Session '{session_id}' not found or expired.")
     if len(session.chunk_store) == 0:
@@ -162,8 +125,7 @@ async def _split_prompt_into_subtopics(user_prompt: str) -> List[str]:
       - If the splitter returns an empty list (schema violation), same
         fallback.
     """
-    container = get_service_container()
-    llm = container.llm_model
+    llm = get_bedrock_model()
     try:
         parsed: PromptSplitLLMResponse = await llm.generate(
             prompt=_SPLITTER_USER,
@@ -189,8 +151,7 @@ async def _run_relevance_check(
     user_prompt: str,
 ) -> RelevanceCheckLLMResponse:
     """Ask the gate LLM whether the user's query applies to the selected clause."""
-    container = get_service_container()
-    llm = container.llm_model
+    llm = get_bedrock_model()
     return await llm.generate(
         prompt=_RELEVANCE_USER,
         context={
@@ -216,8 +177,7 @@ async def _run_clause_review(
     dropped with a warning. This protects the apply button from ever being
     handed an un-anchored fix.
     """
-    container = get_service_container()
-    llm = container.llm_model
+    llm = get_bedrock_model()
     parsed: ClauseSuggestionsLLMResponse = await llm.generate(
         prompt=_CLAUSE_REVIEW_USER,
         context={
@@ -495,8 +455,7 @@ async def full_document_review(
       5. Sort the final list by clause document order for a natural UX.
     """
     session = _get_session(session_id)
-    container = get_service_container()
-    embedding_service = container.embedding_service
+    embedding_service = get_embedding_service()
 
     # Scope to the most recently ingested document so a session that has
     # accumulated multiple uploads (e.g. for the compare agent) does not

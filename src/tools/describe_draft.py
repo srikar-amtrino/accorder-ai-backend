@@ -16,12 +16,13 @@ is no regenerate flow and no cross-call session memory.
 All business logic for the Describe & Draft Agent lives here. The agent module
 (src/agents/describe_draft.py) is a thin dispatcher that delegates to this module.
 """
+
 import logging
 import re
 import time
 from typing import List, Optional, Tuple
 
-from src.dependencies import get_service_container
+from src.core.container import get_service_container
 from src.schemas.describe_draft import (
     ClauseListEntry,
     ClauseListLLMResponse,
@@ -241,8 +242,7 @@ def _validate_draft_response(
         # user-fillable facts — failing them is a worse UX than accepting a
         # placeholder-free template. Log rather than reject.
         logger.info(
-            "describe_draft single_clause draft contains no [PLACEHOLDER] tokens "
-            "in no-doc mode (title=%r) — accepting as boilerplate-style clause",
+            "describe_draft single_clause draft contains no [PLACEHOLDER] tokens " "in no-doc mode (title=%r) — accepting as boilerplate-style clause",
             version.title,
         )
     if forbid_placeholders and found_placeholders:
@@ -270,10 +270,7 @@ def _validate_clause_list(
     lists, NO clause may contain party-identity or governing-law placeholder tokens.
     """
     if len(response.clauses) < 12:
-        raise ValueError(
-            f"Expected at least 12 clauses for a complete agreement, "
-            f"got {len(response.clauses)}"
-        )
+        raise ValueError(f"Expected at least 12 clauses for a complete agreement, " f"got {len(response.clauses)}")
     if not response.agreement_summary or not response.agreement_summary.strip():
         raise ValueError("agreement_summary is empty")
     if len(response.agreement_summary.strip()) < 60:
@@ -313,10 +310,7 @@ def _validate_clause_list(
         if not clause.drafted_clause or not clause.drafted_clause.strip():
             raise ValueError(f"Clause {idx}: drafted_clause is empty")
         if len(clause.drafted_clause.strip()) < _MIN_LIST_CLAUSE_BODY_LEN:
-            raise ValueError(
-                f"Clause {idx}: drafted_clause suspiciously short "
-                f"({len(clause.drafted_clause.strip())} chars)"
-            )
+            raise ValueError(f"Clause {idx}: drafted_clause suspiciously short " f"({len(clause.drafted_clause.strip())} chars)")
         body_lower = clause.drafted_clause.lower()
         for phrase in _BANNED_PHRASES:
             if phrase in body_lower:
@@ -344,9 +338,10 @@ def _validate_clause_list(
             # Log only — do not reject. Even when the LLM under-uses placeholders,
             # the drafted clauses are still usable and the user can find-and-replace.
             logger.info(
-                "describe_draft list mode below recommended placeholder coverage: "
-                "%d/%d clauses have [PLACEHOLDER] tokens (recommended ≥%d). Returning anyway.",
-                clauses_with_placeholders, total, recommended_min,
+                "describe_draft list mode below recommended placeholder coverage: " "%d/%d clauses have [PLACEHOLDER] tokens (recommended ≥%d). Returning anyway.",
+                clauses_with_placeholders,
+                total,
+                recommended_min,
             )
 
     # Aggregate depth — log only, do not reject. A "thin" list is still usable output.
@@ -354,18 +349,17 @@ def _validate_clause_list(
     avg_body_len = total_body_chars / len(response.clauses)
     if avg_body_len < _MIN_LIST_AVG_CLAUSE_BODY_LEN:
         logger.info(
-            "describe_draft list mode below recommended depth: avg=%.0f chars "
-            "across %d clauses (recommended ≥%d). Returning anyway.",
-            avg_body_len, len(response.clauses), _MIN_LIST_AVG_CLAUSE_BODY_LEN,
+            "describe_draft list mode below recommended depth: avg=%.0f chars " "across %d clauses (recommended ≥%d). Returning anyway.",
+            avg_body_len,
+            len(response.clauses),
+            _MIN_LIST_AVG_CLAUSE_BODY_LEN,
         )
 
 
 async def _classify_intent(prompt: str) -> IntentClassification:
     container = get_service_container()
     llm = container.llm_model
-    rendered = load_prompt(
-        "describe_draft_classifier_prompt", context={"user_prompt": prompt}
-    )
+    rendered = load_prompt("describe_draft_classifier_prompt", context={"user_prompt": prompt})
     return await llm.generate(
         prompt=rendered,
         context={},
@@ -395,12 +389,8 @@ def _get_document_text(session_id: str) -> Optional[str]:
     chunk_store = getattr(session, "chunk_store", None)
     if not chunk_store:
         return None
-    ordered_chunks = sorted(
-        chunk_store.values(), key=lambda c: getattr(c, "chunk_index", 0)
-    )
-    content = "\n\n".join(
-        c.content for c in ordered_chunks if getattr(c, "content", None)
-    )
+    ordered_chunks = sorted(chunk_store.values(), key=lambda c: getattr(c, "chunk_index", 0))
+    content = "\n\n".join(c.content for c in ordered_chunks if getattr(c, "content", None))
     return content.strip() or None
 
 
@@ -417,9 +407,7 @@ async def _generate_clause_draft(
     """
     container = get_service_container()
     llm = container.llm_model
-    mode_instruction = (
-        f"Draft a {agreement_type or 'legal'} clause as requested by the user."
-    )
+    mode_instruction = f"Draft a {agreement_type or 'legal'} clause as requested by the user."
     has_document_context = bool(document_text)
 
     context = {
@@ -452,11 +440,7 @@ async def _generate_clause_list(
     """list_of_clauses mode: return ONE comprehensive clause list with drafted bodies."""
     container = get_service_container()
     llm = container.llm_model
-    mode_instruction = (
-        f"List all clauses that should appear in a "
-        f"{agreement_type or 'legal agreement'} as requested by the user, "
-        f"and draft the body of each one."
-    )
+    mode_instruction = f"List all clauses that should appear in a " f"{agreement_type or 'legal agreement'} as requested by the user, " f"and draft the body of each one."
     has_document_context = bool(document_text)
 
     context = {
@@ -527,19 +511,19 @@ async def _run_single_clause_generation(
             validation_error = str(ve)
             logger.warning(
                 "describe_draft validation failed session=%s attempt=%d error=%s",
-                session_id, attempt + 1, validation_error,
+                session_id,
+                attempt + 1,
+                validation_error,
             )
         except Exception as e:
             error_msg = str(e)
             logger.error(
                 "describe_draft generation error session=%s attempt=%d error=%s",
-                session_id, attempt + 1, error_msg,
+                session_id,
+                attempt + 1,
+                error_msg,
             )
-            error_type = (
-                DescribeDraftErrorType.RATE_LIMITED
-                if "rate" in error_msg.lower()
-                else DescribeDraftErrorType.LLM_FAILED
-            )
+            error_type = DescribeDraftErrorType.RATE_LIMITED if "rate" in error_msg.lower() else DescribeDraftErrorType.LLM_FAILED
             return None, _error_response(
                 session_id,
                 "single_clause",
@@ -594,9 +578,7 @@ async def generate_describe_draft(
     try:
         classification = await _classify_intent(clean_prompt)
     except Exception as e:
-        logger.error(
-            "describe_draft classify error session=%s error=%s", session_id, str(e)
-        )
+        logger.error("describe_draft classify error session=%s error=%s", session_id, str(e))
         return _error_response(
             session_id,
             "single_clause",
@@ -616,8 +598,7 @@ async def generate_describe_draft(
         document_text = _get_document_text(session_id)
         if document_text is None:
             logger.info(
-                "describe_draft session=%s use_document_context=true but no document "
-                "text could be loaded — falling back to no-doc template mode",
+                "describe_draft session=%s use_document_context=true but no document " "text could be loaded — falling back to no-doc template mode",
                 session_id,
             )
     grounded = bool(document_text)
@@ -643,22 +624,20 @@ async def generate_describe_draft(
                 validation_error = str(ve)
                 logger.warning(
                     "describe_draft list validation failed session=%s attempt=%d error=%s",
-                    session_id, attempt + 1, validation_error,
+                    session_id,
+                    attempt + 1,
+                    validation_error,
                 )
             except Exception as e:
                 error_msg = str(e)
                 logger.error(
                     "describe_draft list generation error session=%s attempt=%d error=%s",
-                    session_id, attempt + 1, error_msg,
+                    session_id,
+                    attempt + 1,
+                    error_msg,
                 )
-                error_type = (
-                    DescribeDraftErrorType.RATE_LIMITED
-                    if "rate" in error_msg.lower()
-                    else DescribeDraftErrorType.LLM_FAILED
-                )
-                return _error_response(
-                    session_id, mode, error_type, f"LLM generation failed: {error_msg}"
-                )
+                error_type = DescribeDraftErrorType.RATE_LIMITED if "rate" in error_msg.lower() else DescribeDraftErrorType.LLM_FAILED
+                return _error_response(session_id, mode, error_type, f"LLM generation failed: {error_msg}")
 
         if list_response is None:
             return _error_response(
@@ -670,8 +649,7 @@ async def generate_describe_draft(
 
         latency_ms = int((time.time() - start_time) * 1000)
         logger.info(
-            "describe_draft_audit session=%s mode=list_of_clauses agreement_type=%s "
-            "units_generated=%d grounded=%s latency_ms=%d",
+            "describe_draft_audit session=%s mode=list_of_clauses agreement_type=%s " "units_generated=%d grounded=%s latency_ms=%d",
             session_id,
             agreement_type or "unknown",
             len(list_response.clauses),
@@ -700,8 +678,7 @@ async def generate_describe_draft(
 
     latency_ms = int((time.time() - start_time) * 1000)
     logger.info(
-        "describe_draft_audit session=%s mode=single_clause agreement_type=%s "
-        "units_generated=1 grounded=%s latency_ms=%d",
+        "describe_draft_audit session=%s mode=single_clause agreement_type=%s " "units_generated=1 grounded=%s latency_ms=%d",
         session_id,
         agreement_type or "unknown",
         grounded,

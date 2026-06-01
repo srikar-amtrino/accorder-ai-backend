@@ -4,7 +4,7 @@ from typing import List
 from fastapi import APIRouter, Depends, UploadFile
 
 from src.api.session_utils import get_session_id
-from src.dependencies import get_service_container
+from src.core.container import get_service_container
 from src.schemas.playbook_review import TextInfo
 from src.schemas.registry import ParseResult
 

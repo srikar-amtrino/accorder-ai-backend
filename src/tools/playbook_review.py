@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from src.config.logging import get_logger
-from src.dependencies import get_service_container
+from src.core.container import get_bedrock_model, get_session_manager
 from src.schemas.playbook_review import (
     MissingClausesLLMResponse,
     PlayBookReviewFinalResponse,
@@ -207,10 +207,10 @@ async def review_document(
 
     force_update_rules = force_update_rules or []
 
-    container = get_service_container()
-    llm_model = container.llm_model
+    llm_model = get_bedrock_model()
 
-    session_data = container.session_manager.get_session(session_id)
+    session_manager = get_session_manager()
+    session_data = session_manager.get_session(session_id)
 
     if not session_data:
         return PlayBookReviewFinalResponse(

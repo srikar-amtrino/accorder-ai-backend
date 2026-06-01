@@ -29,12 +29,12 @@ class RetrievalService(Logger):
     def __init__(self) -> None:
         super().__init__()
 
-        self.settings = get_settings()
-        from src.dependencies import get_service_container
+        from src.core.container import get_bedrock_model, get_embedding_service
 
-        service_container = get_service_container()
-        self.embedding_service: BaseEmbeddingService = service_container.embedding_service
-        self.llm: BaseLLMModel = service_container.llm_model
+        self.settings = get_settings()
+
+        self.embedding_service = get_embedding_service()
+        self.llm = get_bedrock_model()
         self.vector_store = get_faiss_vector_store(self.embedding_service.get_embedding_dimensions())
 
     async def rewrite_query(self, query: str) -> List[str]:
