@@ -6,7 +6,7 @@ from typing import Dict, List, Optional, Tuple
 import numpy as np
 from docx.document import Document
 
-from src.config.logging import Logger
+from src.config.logging import get_logger
 from src.core.container import (
     get_bedrock_model,
     get_embedding_service,
@@ -22,19 +22,16 @@ from src.schemas.comparision import (
     SectionGroup,
 )
 from src.schemas.registry import ParseResult
+from src.services.llm.base_model import BaseLLMModel
 from src.services.registry.registry import ParserRegistry
+from src.services.vector_store.embeddings.base_embedding_service import (
+    BaseEmbeddingService,
+)
+
+logger = get_logger(__name__)
 
 AGENT_NAME = "document_comparison_agent"
 
-# Split into a static system block (role, schema, field semantics, examples) and
-# a tiny dynamic user block (just the two clause texts). Loaded once at import.
-#
-# Caching: the static block is ~1,650 tokens and, together with the forced
-# tool schema that precedes the system block in the cached prefix, clears
-# Sonnet 4.6's 1,024-token cache minimum. This agent fans out up to
-# MAX_LLM_CALLS comparisons per document, every one re-sending the identical
-# block, so cache_system=True turns that repetition into cache reads — the
-# largest per-document caching win in the app.
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
 _COMPARISON_SYSTEM = (_PROMPTS_DIR / "clause_comparison_system.mustache").read_text(encoding="utf-8")
 _COMPARISON_USER = (_PROMPTS_DIR / "clause_comparison_user.mustache").read_text(encoding="utf-8")
@@ -42,7 +39,7 @@ _COMPARISON_USER = (_PROMPTS_DIR / "clause_comparison_user.mustache").read_text(
 registry = None
 
 
-def get_registry():
+def get_registry() -> ParserRegistry:
     global registry
     if registry is None:
         registry = ParserRegistry()
@@ -52,11 +49,11 @@ def get_registry():
 parser = None
 
 
-def get_parser():
+def get_parser() -> ParserRegistry:
     global parser
     if parser is None:
         parser = get_registry().get_parser()
-    return parser
+    return parser  # type: ignore
 
 
 # Similarity thresholds
@@ -68,8 +65,6 @@ CONFIDENCE_HIGH = 0.90
 CONFIDENCE_MEDIUM = 0.80
 REORDER_DRIFT_THRESHOLD = 0.15
 CONTAINMENT_SIZE_RATIO = 1.3
-
-logger = Logger().logger
 
 
 _GENERIC_HEADINGS = {
@@ -206,7 +201,7 @@ def _greedy_match(sim_matrix: np.ndarray, threshold: float = SIMILARITY_THRESHOL
     return pairs, unmatched_a, unmatched_b
 
 
-async def _ensure_embeddings(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], indices_a: List[int], indices_b: List[int], embedding_service) -> None:
+async def _ensure_embeddings(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], indices_a: List[int], indices_b: List[int], embedding_service: BaseEmbeddingService, session_id: str) -> None:
     """Generate embeddings in parallel for clauses that don't have them yet."""
 
     targets: List[ClauseUnit] = []
@@ -220,12 +215,12 @@ async def _ensure_embeddings(clauses_a: List[ClauseUnit], clauses_b: List[Clause
     if not targets:
         return
 
-    results = await asyncio.gather(*(embedding_service.generate_embeddings(c.content) for c in targets))
+    results = await asyncio.gather(*(embedding_service.generate_embeddings(text=c.content, session_id=session_id) for c in targets))
     for clause, embedding in zip(targets, results):
         clause.embedding = embedding
 
 
-async def match_clauses(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], embedding_service) -> MatchResult:
+async def match_clauses(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], embedding_service: BaseEmbeddingService, session_id: str) -> MatchResult:
     """Match clauses between two versions using a hybrid of heading-based and embedding similarity."""
 
     n = len(clauses_a)
@@ -260,7 +255,7 @@ async def match_clauses(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]
             logger.debug(f"Heading match: '{key}' -> A[{i}] <-> B[{j}]")
 
     # Generate embeddings for all clauses
-    await _ensure_embeddings(clauses_a, clauses_b, list(range(n)), list(range(m)), embedding_service)
+    await _ensure_embeddings(clauses_a, clauses_b, list(range(n)), list(range(m)), embedding_service, session_id)
 
     # Compute content similarity for heading-matched pairs
     for i, j in heading_matched_indices:
@@ -348,7 +343,6 @@ def _detect_splits_and_merges(match_result: MatchResult, clauses_a: List[ClauseU
             used_a.add(idx_a)
             logger.info(f"Split detected: A[{idx_a}] -> B[{j}] (sim={score:.4f})")
 
-    # --- Merges: unmatched A compared against matched B ---
     if match_result.unmatched_a and matched_b_indices:
         emb_matched_b = np.array([clauses_b[j].embedding for j in matched_b_indices], dtype=np.float32)
         emb_unmatched_a = np.array([clauses_a[i].embedding for i in match_result.unmatched_a], dtype=np.float32)
@@ -564,7 +558,7 @@ def _reconcile_matched_containment(pairs: List[Tuple[int, int, float]], clauses_
     return remaining, entries
 
 
-async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_client) -> ClauseComparisonLLMResponse:
+async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_client: BaseLLMModel, session_id: str) -> ClauseComparisonLLMResponse:
     """Send one clause pair to the LLM for detailed comparison."""
 
     context = {
@@ -572,13 +566,15 @@ async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_c
         "clause_a_text": clause_a.content,
         "clause_b_text": clause_b.content,
     }
-    return await llm_client.generate(
+
+    response: ClauseComparisonLLMResponse = await llm_client.generate(
         prompt=_COMPARISON_USER,
         context=context,
         response_model=ClauseComparisonLLMResponse,
+        session_id=session_id,
         system_message=_COMPARISON_SYSTEM,
-        cache_system=True,
     )
+    return response
 
 
 def _build_change_entry(clause_a: ClauseUnit, clause_b: ClauseUnit, comparison: ClauseComparisonLLMResponse, similarity: float) -> ChangeEntry:
@@ -642,7 +638,9 @@ def _position_drift(clause_a: ClauseUnit, clause_b: ClauseUnit, len_a: int, len_
     return abs(clause_a.doc_order / (len_a - 1) - clause_b.doc_order / (len_b - 1))
 
 
-async def compare_matched_pairs(pairs: List[Tuple[int, int, float]], clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], llm_client) -> Tuple[List[ChangeEntry], int, int]:
+async def compare_matched_pairs(
+    pairs: List[Tuple[int, int, float]], clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], llm_client: BaseLLMModel, session_id: str
+) -> Tuple[List[ChangeEntry], int, int]:
     """Run LLM comparison on matched pairs with differing content."""
 
     len_a = len(clauses_a)
@@ -677,7 +675,7 @@ async def compare_matched_pairs(pairs: List[Tuple[int, int, float]], clauses_a: 
         clause_b = clauses_b[idx_b]
         async with semaphore:
             try:
-                comparison = await _compare_single_pair(clause_a, clause_b, llm_client)
+                comparison = await _compare_single_pair(clause_a, clause_b, llm_client, session_id)
                 return _build_change_entry(clause_a, clause_b, comparison, similarity)
             except Exception as e:
                 logger.error(f"LLM comparison failed for {clause_a.clause_id} vs {clause_b.clause_id}: {e}")
@@ -806,7 +804,7 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
     """Execute the full document comparison pipeline."""
 
     embedding_service = get_embedding_service()
-    llm_client = get_bedrock_model
+    llm_client = get_bedrock_model()
     session_manager = get_session_manager()
 
     parser = get_parser()
@@ -833,8 +831,8 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
     if cached_data:
         logger.info(f"Cache miss for session {session_id} agent {AGENT_NAME} — documents differ, recomputing")
 
-    doc_a: ParseResult = await parser.parse_document(document_a)
-    doc_b: ParseResult = await parser.parse_document(document_b)
+    doc_a: ParseResult = await parser.parse_document(document_a, session_data=session_data)  # type: ignore
+    doc_b: ParseResult = await parser.parse_document(document_b, session_data=session_data)  # type: ignore
 
     # Guard: same document
     if hash_a == hash_b:
@@ -872,7 +870,7 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
 
     # Stage 2: Match clauses
     logger.info(f"Matching {len(clauses_a)} clauses (A) against {len(clauses_b)} clauses (B)")
-    match_result = await match_clauses(clauses_a, clauses_b, embedding_service)
+    match_result = await match_clauses(clauses_a, clauses_b, embedding_service, session_id=session_id)
     logger.info(f"Matched: {len(match_result.matched_pairs)}, " f"Unmatched A: {len(match_result.unmatched_a)}, " f"Unmatched B: {len(match_result.unmatched_b)}")
 
     # Stage 2.5: Reconcile matched pairs where one side merges multiple clauses
@@ -886,12 +884,7 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
     containment_entries, remaining_a, remaining_b = _reconcile_containment(remaining_a, remaining_b, clauses_a, clauses_b)
 
     # Stage 4: LLM comparison for content differences
-    llm_changes, llm_calls_made, llm_calls_skipped = await compare_matched_pairs(
-        match_result.matched_pairs,
-        clauses_a,
-        clauses_b,
-        llm_client,
-    )
+    llm_changes, llm_calls_made, llm_calls_skipped = await compare_matched_pairs(match_result.matched_pairs, clauses_a, clauses_b, llm_client, session_id=session_id)
 
     # Stage 5: Build unmatched entries
     unmatched_entries = _build_unmatched_entries(remaining_a, remaining_b, clauses_a, clauses_b)
@@ -909,15 +902,15 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
 
     message = "Both documents are identical. No differences found." if summary.total_changes == 0 else None
 
-    # Store data in cache for this session and agent
-    session_data.tool_results[AGENT_NAME] = {
-        "doc_1_hash": hash_a,
-        "doc_2_hash": hash_b,
-        "success": True,
-        "message": message,
-        "summary": summary,
-        "sections": sections,
-    }
+    # # Store data in cache for this session and agent
+    # session_data.tool_results[AGENT_NAME] = {
+    #     "doc_1_hash": hash_a,
+    #     "doc_2_hash": hash_b,
+    #     "success": True,
+    #     "message": message,
+    #     "summary": summary,
+    #     "sections": sections,
+    # }
 
     return CompareResponse(
         success=True,

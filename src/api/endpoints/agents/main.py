@@ -1,6 +1,6 @@
 import io
+from typing import Any
 
-# from typing import Any
 from docx import Document
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -14,8 +14,7 @@ from src.schemas.playbook_review import (
     PlayBookReviewFinalResponse,
     RuleCheckRequest,
 )
-
-# from src.tools.comparision import run as compare_documents_service
+from src.tools.comparision import run as compare_documents_service
 from src.tools.doc_chat import query_document as query_document_service
 from src.tools.general_review import clause_review, full_document_review
 from src.tools.key_information import (
@@ -36,15 +35,15 @@ router = APIRouter(tags=["agents"])
 #     return access_token
 
 
-# @router.post("/compare-documents")
-# async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Depends(get_session_id)) -> Any:
-#     """Compare two documents and return their differences."""
+@router.post("/compare-documents")
+async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Depends(get_session_id)) -> Any:
+    """Compare two documents and return their differences."""
 
-#     document_a = Document(io.BytesIO(await file_a.read()))
-#     document_b = Document(io.BytesIO(await file_b.read()))
+    document_a = Document(io.BytesIO(await file_a.read()))
+    document_b = Document(io.BytesIO(await file_b.read()))
 
-#     comparison_result = await compare_documents_service(session_id=session_id, document_a=document_a, document_b=document_b)
-#     return comparison_result
+    comparison_result = await compare_documents_service(session_id=session_id, document_a=document_a, document_b=document_b)
+    return comparison_result
 
 
 @router.post("/general-review", response_model=GeneralReviewResponse)

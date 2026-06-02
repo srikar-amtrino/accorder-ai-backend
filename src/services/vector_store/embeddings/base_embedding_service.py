@@ -13,6 +13,6 @@ class BaseEmbeddingService(ABC):
         pass
 
     @abstractmethod
-    async def generate_embeddings(self, text: str, session_id: str, task: Optional[str]) -> List[float]:
+    async def generate_embeddings(self, text: str, session_id: str, task: Optional[str] = None) -> List[float]:
         """Generate embeddings for the given text."""
         pass
