@@ -9,8 +9,7 @@ from fastapi.responses import StreamingResponse
 from src.core.auth import generate_access_token, get_session_id, verify_token
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
 from src.schemas.doc_chat import DocChatResponse
-
-# from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
+from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
 from src.schemas.playbook_review import (
     PlayBookReviewFinalResponse,
     RuleCheckRequest,
@@ -18,8 +17,7 @@ from src.schemas.playbook_review import (
 
 # from src.tools.comparision import run as compare_documents_service
 from src.tools.doc_chat import query_document as query_document_service
-
-# from src.tools.general_review import clause_review, full_document_review
+from src.tools.general_review import clause_review, full_document_review
 from src.tools.key_information import (
     get_key_information_generate,
     get_key_information_stream,
@@ -49,27 +47,28 @@ router = APIRouter(tags=["agents"])
 #     return comparison_result
 
 
-# @router.post("/general-review", response_model=GeneralReviewResponse)
-# async def review_contract(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> GeneralReviewResponse:
-#     """Run the general review agent against an ingested document."""
-#     try:
-#         if request.selected_clause and request.selected_clause.strip():
-#             return await clause_review(
-#                 session_id=session_id,
-#                 clause_text=request.selected_clause,
-#                 user_prompt=request.prompt,
-#                 clause_title=(request.clause_title or "Selected Clause").strip() or "Selected Clause",
-#             )
+@router.post("/general-review", response_model=GeneralReviewResponse)
+async def review_contract(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> GeneralReviewResponse:
+    """Run the general review agent against an ingested document."""
 
-#         return await full_document_review(
-#             session_id=session_id,
-#             user_prompt=request.prompt,
-#         )
+    try:
+        if request.selected_clause and request.selected_clause.strip():
+            return await clause_review(
+                session_id=session_id,
+                clause_text=request.selected_clause,
+                user_prompt=request.prompt,
+                clause_title=(request.clause_title or "Selected Clause").strip() or "Selected Clause",
+            )
 
-#     except ValueError as err:
-#         raise HTTPException(status_code=400, detail=str(err))
-#     except Exception as err:
-#         raise HTTPException(status_code=500, detail=f"General review error: {str(err)}")
+        return await full_document_review(
+            session_id=session_id,
+            user_prompt=request.prompt,
+        )
+
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"General review error: {str(err)}")
 
 
 @router.post("/contract-analyzer", response_model=ContractAnalyzerResponse, status_code=status.HTTP_200_OK)

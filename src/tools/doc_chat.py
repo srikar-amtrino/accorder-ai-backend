@@ -13,7 +13,7 @@ _DOC_CHAT_SYSTEM = (_PROMPTS_DIR / "doc_chat_system.mustache").read_text(encodin
 _DOC_CHAT_USER = (_PROMPTS_DIR / "doc_chat_user.mustache").read_text(encoding="utf-8")
 
 
-async def query_document(query: str, session_id: str) -> DocChatResponse | Dict[str, Any]:
+async def query_document(query: str, session_id: str) -> DocChatResponse:
     """Query the document chunks based on the given query and session ID."""
 
     # Get service container and session manager
