@@ -56,6 +56,19 @@ class PromptSplitLLMResponse(BaseModel):
         default_factory=list,
         description=("Atomic sub-instructions extracted from the user prompt. " "Each element is one self-contained contract-review ask."),
     )
+    out_of_scope: bool = Field(
+        default=False,
+        description=(
+            "True when the request is NOT a contract-review request — e.g. it asks to "
+            "DRAFT/GENERATE a clause, COMPARE two documents, or EXTRACT clauses. "
+            "When true, subtopics should be empty and the caller redirects the user "
+            "instead of running a review."
+        ),
+    )
+    redirect_message: Optional[str] = Field(
+        default=None,
+        description="User-facing message shown when out_of_scope is true — explains what the review agent does and which feature to use instead.",
+    )
 
 
 class RelevanceCheckLLMResponse(BaseModel):
@@ -63,6 +76,14 @@ class RelevanceCheckLLMResponse(BaseModel):
 
     relevant: bool = Field(description="True if the user's query applies to the selected clause")
     reason: str = Field(description=("Short explanation for the user. When relevant=false, this is " "the alert message telling them why the clause and query don't match."))
+    out_of_scope: bool = Field(
+        default=False,
+        description=(
+            "True when the request is not a review request at all — e.g. it asks to "
+            "DRAFT/GENERATE a clause rather than review one. When true, `reason` is the "
+            "redirect message pointing the user to the right feature."
+        ),
+    )
 
 
 # --- API request / response --------------------------------------------------
@@ -87,13 +108,16 @@ class GeneralReviewResponse(BaseModel):
 
     session_id: str = Field(description="Session ID the review ran against")
     mode: Literal["clause", "document"] = Field(description="'clause' if the user selected a clause, 'document' for full review")
-    status: Literal["ok", "clause_query_mismatch"] = Field(
+    status: Literal["ok", "clause_query_mismatch", "out_of_scope"] = Field(
         default="ok",
         description=(
             "'ok' means the response was built normally (suggestions may be "
             "empty and alert_message may carry a 'not found' note). "
             "'clause_query_mismatch' means the user's query did not match the "
-            "selected clause; the frontend should show alert_message instead."
+            "selected clause; the frontend should show alert_message instead. "
+            "'out_of_scope' means the request was not a review request at all "
+            "(e.g. a drafting or comparison ask); show alert_message, which "
+            "redirects the user to the right feature."
         ),
     )
     alert_message: Optional[str] = Field(

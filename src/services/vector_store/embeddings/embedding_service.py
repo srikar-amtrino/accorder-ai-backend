@@ -1,3 +1,4 @@
+import asyncio
 import time
 from typing import Any, Dict, List, Optional
 
@@ -43,8 +44,9 @@ class HuggingFaceEmbeddingService(BaseEmbeddingService, Logger):
         try:
             start_time = time.time()
 
-            # Generate embeddings
-            embedding: List[float] = self.tokenizer.encode(text).tolist()
+            # Generate embeddings — encode() is blocking CPU work, so run it off the
+            # event loop to keep concurrent requests responsive on single-worker uvicorn.
+            embedding: List[float] = await asyncio.to_thread(lambda: self.tokenizer.encode(text).tolist())
             generation_time = time.time() - start_time
 
             # update the stats

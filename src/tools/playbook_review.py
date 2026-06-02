@@ -106,6 +106,7 @@ async def get_missing_clauses(llm_model: BaseLLMModel, full_text: str, reviewed_
                 "reviewed_rules_summary": reviewed_rules_summary,
             },
             response_model=MissingClausesLLMResponse,
+            max_tokens=3072,  # list of missing clauses + summary
         )
         logger.info(f"Missing clauses identified: {len(response.missing_clauses)}")
 
@@ -158,6 +159,7 @@ async def _process_rule(
             response_model=PlayBookReviewLLMResponse,
             system_message=SIMILARITY_SYSTEM_PROMPT,
             cache_system=True,
+            max_tokens=1536,  # per-rule review result
         )
 
     except Exception as exc:

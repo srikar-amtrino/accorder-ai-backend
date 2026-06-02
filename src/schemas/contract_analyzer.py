@@ -38,3 +38,26 @@ class ContractAnalyzerResponse(BaseModel):
     key_information: List[KeyInformationResponse] = Field(description="List of key information fields extracted from the contract")
     timeline_and_key_milestones: List[TimelineMilestone] = Field(description="List of key milestones and their timelines")
     risk_and_compliance_insights: List[RiskComplianceInsight] = Field(description="List of identified risks and compliance issues")
+
+
+# --- Per-section sub-responses (the analysis is generated as 4 parallel calls) ---
+
+
+class SummaryKeyInfoResponse(BaseModel):
+    """Section 1 of the parallel analysis: the summary + key information fields."""
+
+    summary: str = Field(description="Summary of the contract and analysis")
+    key_information: List[KeyInformationResponse] = Field(description="List of key information fields extracted from the contract")
+
+
+class MilestonesResponse(BaseModel):
+    """Section 2 of the parallel analysis: the timeline & key milestones."""
+
+    timeline_and_key_milestones: List[TimelineMilestone] = Field(description="List of key milestones and their timelines")
+
+
+class RisksResponse(BaseModel):
+    """Risk & compliance insights section — used by both the present-clause-risks and the
+    missing-clauses parallel calls; the two result lists are concatenated."""
+
+    risk_and_compliance_insights: List[RiskComplianceInsight] = Field(description="List of identified risks and compliance issues")

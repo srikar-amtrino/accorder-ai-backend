@@ -372,6 +372,7 @@ async def _classify_intent(prompt: str) -> IntentClassification:
         response_model=IntentClassification,
         mode="JSON",
         system_message="Classify the user's drafting intent. Return ONLY valid JSON.",
+        max_tokens=256,  # tiny intent classification
     )
 
 
@@ -441,6 +442,7 @@ async def _generate_clause_draft(
         mode="JSON",
         system_message=_GENERATION_SYSTEM,
         cache_system=True,
+        max_tokens=3072,  # one drafted clause
     )
 
 
@@ -478,6 +480,7 @@ async def _generate_clause_list(
         mode="JSON",
         system_message=_GENERATION_SYSTEM,
         cache_system=True,
+        max_tokens=8192,  # full multi-clause agreement (hard ceiling)
     )
 
 

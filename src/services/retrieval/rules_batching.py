@@ -29,6 +29,7 @@ async def get_missing_clauses(data: str) -> List[str]:
         prompt=prompt,
         context=context,
         response_model=MissingClausesLLMResponse,
+        max_tokens=1024,
     )
 
     # Simple parsing of bullet points from the response

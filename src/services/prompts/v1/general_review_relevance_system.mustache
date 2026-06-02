@@ -19,6 +19,8 @@ When `relevant: false`, the `reason` field is shown directly to the user as an a
 3. A direction to select the correct clause and try again.
 
 When `relevant: true`, `reason` can be a one-line confirmation (e.g., "Query applies to this clause.").
+
+Separately, set `out_of_scope: true` when the query is not a review request at all — e.g. it asks to DRAFT or GENERATE a new clause rather than check the selected one. When `out_of_scope` is true, also set `relevant: false` and put a short, friendly redirect in `reason`: say the Review agent checks existing clauses for issues and point the user to the Draft feature. For normal review/check/assess queries, `out_of_scope` is false.
 </task>
 
 <examples>
@@ -55,6 +57,18 @@ Output:
   "reason": "Generic review request — applies to any selected clause."
 }
 </example>
+
+<example>
+<clause_title>Limitation of Liability</clause_title>
+<clause_text>Neither Party's aggregate liability shall exceed $5,000,000.</clause_text>
+<reviewer_query>Draft a new indemnification clause for me</reviewer_query>
+Output:
+{
+  "relevant": false,
+  "out_of_scope": true,
+  "reason": "The Review agent checks the clause you selected for issues — it doesn't draft new clauses. To create an indemnification clause, use the Draft feature."
+}
+</example>
 </examples>
 
 <output_schema>
@@ -62,6 +76,7 @@ Return ONLY this JSON object. No markdown. No commentary outside the JSON.
 
 {
   "relevant": true | false,
-  "reason": "<short explanation; becomes the alert message when relevant is false>"
+  "out_of_scope": false,
+  "reason": "<short explanation; becomes the alert message when relevant is false or out_of_scope is true>"
 }
 </output_schema>

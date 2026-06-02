@@ -58,6 +58,11 @@ def get_parser():
 # Similarity thresholds
 SIMILARITY_THRESHOLD = 0.72
 SPLIT_MERGE_THRESHOLD = 0.75
+# A unique shared heading normally pairs two clauses, but if their bodies are clearly
+# unrelated (two different clauses that happen to share a heading like "Notices"), release
+# the pair rather than reporting a misleading "rewritten" change. Conservative so genuine
+# rewrites (which keep shared legal vocabulary) stay matched.
+HEADING_MATCH_MIN_SIMILARITY = 0.40
 MAX_LLM_CALLS = 50
 MAX_LLM_CONCURRENCY = 5
 CONFIDENCE_HIGH = 0.90
@@ -118,11 +123,48 @@ def _resolve_clause_heading(content: str, metadata_heading: Optional[str]) -> Op
     return metadata_heading
 
 
+def _clean_clause_name(name: Optional[str]) -> Optional[str]:
+    """Normalize a clause heading: collapse whitespace, drop a trailing period.
+
+    Returns None for empty strings or signature-line junk (``By:``, ``Name:`` …) so a
+    missing heading falls back to the position-based label rather than showing noise.
+    """
+    if not name:
+        return None
+    cleaned = re.sub(r"\s+", " ", name).strip().rstrip(".").strip()
+    if not cleaned:
+        return None
+    if re.fullmatch(r"(?:by|name|title|date|signature)\s*:?", cleaned, flags=re.IGNORECASE):
+        return None
+    return cleaned
+
+
+def _looks_like_heading_only(content: str) -> bool:
+    """True when a unit is just a clause title with no body (e.g. ``Audit Rights.``).
+
+    These are chunking artifacts (a heading split onto its own paragraph) and should be
+    merged into the following clause body so a heading and its text stay one unit —
+    otherwise the heading and body each surface as separate added/removed changes.
+    """
+    c = content.strip()
+    words = c.rstrip(".").split()
+    if not words or len(words) > 6:
+        return False
+    if "." in c[:-1]:  # an internal period means it is a sentence, not a bare heading
+        return False
+    connectors = {"and", "or", "of", "to", "the", "for", "on", "in", "with", "a", "an", "&"}
+    significant = [w for w in words if w.lower() not in connectors]
+    # Heading style: every significant word is capitalised (Title Case / ALL CAPS).
+    return bool(significant) and all(w[:1].isupper() for w in significant)
+
+
 def extract_clauses(document: ParseResult) -> List[ClauseUnit]:
-    """Extract clauses from a document's chunks, using metadata and fallback heuristics for headings."""
+    """Extract clauses from a document's chunks, merging heading-only chunks into the
+    following clause body and deriving a clean per-clause heading."""
 
     clauses: List[ClauseUnit] = []
     order = 0
+    pending_heading: Optional[str] = None
 
     for chunk in document.chunks:
         if chunk is None:
@@ -132,7 +174,17 @@ def extract_clauses(document: ParseResult) -> List[ClauseUnit]:
         if not content:
             continue
 
-        heading = _extract_heading_fallback(content) or chunk.metadata.get("section_heading")
+        # A heading split onto its own line: carry it forward to the next body unit.
+        if _looks_like_heading_only(content):
+            pending_heading = content if not pending_heading else f"{pending_heading} {content}"
+            continue
+
+        if pending_heading:
+            heading = _clean_clause_name(pending_heading)
+            content = f"{pending_heading} {content}"
+            pending_heading = None
+        else:
+            heading = _clean_clause_name(_resolve_clause_heading(content, chunk.metadata.get("section_heading")))
 
         clauses.append(
             ClauseUnit(
@@ -145,6 +197,11 @@ def extract_clauses(document: ParseResult) -> List[ClauseUnit]:
             )
         )
         order += 1
+
+    # A trailing heading with no following body (rare): fold it into the previous clause
+    # so we never emit a unit with an empty embedding (which would break the similarity matrix).
+    if pending_heading and clauses:
+        clauses[-1].content = f"{clauses[-1].content} {pending_heading}"
 
     return clauses
 
@@ -258,9 +315,20 @@ async def match_clauses(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]
     # Generate embeddings for all clauses
     await _ensure_embeddings(clauses_a, clauses_b, list(range(n)), list(range(m)), embedding_service)
 
-    # Compute content similarity for heading-matched pairs
+    # Compute content similarity for heading-matched pairs. A unique shared heading is a
+    # strong signal but not absolute — two genuinely different clauses can share a heading.
+    # If the bodies are clearly unrelated, release the pair so it is matched by content
+    # (or surfaced as add/remove) instead of being reported as a misleading "rewritten" clause.
     for i, j in heading_matched_indices:
         sim = _cosine_similarity(clauses_a[i].embedding, clauses_b[j].embedding)
+        if sim < HEADING_MATCH_MIN_SIMILARITY:
+            used_a.discard(i)
+            used_b.discard(j)
+            logger.info(
+                f"Heading match '{clauses_a[i].heading}' released — content similarity "
+                f"{sim:.3f} below floor {HEADING_MATCH_MIN_SIMILARITY}."
+            )
+            continue
         heading_pairs.append((i, j, sim))
         logger.info(f"Heading match: '{clauses_a[i].heading}' — similarity: {sim:.4f}")
 
@@ -574,6 +642,7 @@ async def _compare_single_pair(clause_a: ClauseUnit, clause_b: ClauseUnit, llm_c
         response_model=ClauseComparisonLLMResponse,
         system_message=_COMPARISON_SYSTEM,
         cache_system=True,
+        max_tokens=1536,  # one clause-pair comparison
     )
 
 

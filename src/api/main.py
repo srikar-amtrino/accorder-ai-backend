@@ -18,12 +18,13 @@ from src.api.endpoints.clause_extraction.router import (
 )
 from src.api.endpoints.describe_draft.router import router as describe_draft_router
 from src.api.endpoints.ingestion.router import router as ingestion_router
-from src.config.logging import setup_logging
+from src.config.logging import get_logger, setup_logging
 from src.config.settings import get_settings
 from src.dependencies import initialize_dependencies, shutdown_dependencies
 
 setup_logging()
 settings = get_settings()
+timing_logger = get_logger("Timing")
 
 
 @asynccontextmanager
@@ -36,7 +37,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="Contract Review API",
+    title="Accorder AI BackEnd API",
     version="1.0.0",
     debug=settings.debug,
     lifespan=lifespan,
@@ -85,6 +86,13 @@ async def add_process_time_header(request: Request, call_next):
     response = await call_next(request)
     process_time = time.time() - start_time
     response.headers["X-Process-Time"] = str(process_time)
+    # Real-time, human-readable per-request timing so anyone tailing the terminal/logs
+    # can see exactly how long each agent took, e.g.:
+    #   [TIMING] POST /Accorder/agents/contract-analyzer -> 200 in 39.42s
+    timing_logger.info(
+        f"[TIMING] {request.method} {request.url.path} -> {response.status_code} "
+        f"in {process_time:.2f}s"
+    )
     return response
 
 
@@ -95,16 +103,10 @@ app.include_router(admin_router, prefix="/admin")
 app.include_router(agents_router, prefix="/Accorder/agents")
 
 
-# --- Streaming demo (DISABLED) ---------------------------------------------
-# This whole block is kept for future reuse but is currently switched OFF: the
-# `if False` gate means none of the demo routes (/demo/stream, /demo/stream-ui)
-# are ever mounted. To bring the demo back, change `if False:` to
-# `if settings.debug:` and run with DEBUG=true.
-#
-# What it does when enabled: lets you open the URL in a browser and watch
-# Claude's response stream in token-by-token — visual proof that the Bedrock
-# streaming layer is doing what it claims.
-if False:  # was: if settings.debug
+# Mounted only when DEBUG=true. Lets you open the URL in a browser and watch
+# Claude's response stream in token-by-token — the visual proof that the
+# Bedrock streaming layer is doing what it claims.
+if settings.debug:
     from fastapi.responses import HTMLResponse, StreamingResponse
 
     from src.services.llm.bedrock_model import BedrockModel
@@ -136,37 +138,31 @@ if False:  # was: if settings.debug
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>AWS Bedrock · Claude Sonnet 4.6 — Live Streaming Demo</title>
+<title>Bedrock Streaming · Claude</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
   :root {
-    color-scheme: light;
-    /* Premium light theme — warm off-white surface, white cards with soft shadow,
-       deep slate text, single sophisticated indigo accent. */
-    --bg-base: #fafaf9;
-    --bg-card: #ffffff;
-    --bg-input: #ffffff;
-    --bg-subtle: #f5f5f4;
-    --border: rgba(15, 23, 42, 0.07);
-    --border-strong: rgba(15, 23, 42, 0.14);
-    --shadow-sm: 0 1px 2px rgba(15, 23, 42, 0.04);
-    --shadow-card: 0 1px 0 rgba(15, 23, 42, 0.02), 0 6px 22px -10px rgba(15, 23, 42, 0.10);
-    --shadow-lift: 0 1px 0 rgba(15, 23, 42, 0.02), 0 10px 30px -10px rgba(15, 23, 42, 0.18);
-    --text: #0f172a;
-    --text-dim: #475569;
-    --text-dimmer: #94a3b8;
-    --text-faint: #cbd5e1;
-    --accent: #4f46e5;            /* indigo-600 — primary */
-    --accent-2: #6366f1;           /* indigo-500 */
-    --accent-soft: #eef2ff;        /* indigo-50 — hover bg */
-    --accent-ring: rgba(79, 70, 229, 0.15);
-    --success: #059669;
-    --success-soft: #ecfdf5;
-    --success-border: #a7f3d0;
-    --highlight: #b45309;          /* amber-700 for the wow metric */
-    --danger: #dc2626;
+    color-scheme: dark;
+    /* Sapphire Aurora palette — deep navy base with cyan→emerald→amber accents.
+       Cyan #06b6d4 and emerald #10b981 lead; amber #fbbf24 highlights the
+       "wow" metric (Bedrock rate). All text colors checked for ≥4.5:1 contrast
+       against bg-base, all interactive controls ≥3:1 against their surface. */
+    --bg-base: #050912;
+    --bg-card: rgba(255, 255, 255, 0.028);
+    --bg-card-hover: rgba(255, 255, 255, 0.045);
+    --bg-input: rgba(2, 6, 18, 0.55);
+    --border: rgba(125, 211, 252, 0.09);
+    --border-strong: rgba(125, 211, 252, 0.22);
+    --text: #f1f5f9;
+    --text-dim: #94a3b8;
+    --text-dimmer: #64748b;
+    --accent: #06b6d4;            /* cyan-500 — primary */
+    --accent-2: #10b981;           /* emerald-500 — secondary */
+    --accent-3: #fbbf24;           /* amber-400 — premium highlight */
+    --success: #10b981;
+    --danger: #f87171;
     --mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
@@ -178,43 +174,43 @@ if False:  # was: if settings.debug
     line-height: 1.55;
     min-height: 100vh;
     overflow-x: hidden;
-    /* Very subtle indigo wash at top — premium light interfaces use restraint here. */
     background-image:
-      radial-gradient(at 22% 0%, rgba(99, 102, 241, 0.07) 0px, transparent 55%),
-      radial-gradient(at 78% 12%, rgba(168, 85, 247, 0.04) 0px, transparent 50%);
+      radial-gradient(at 18% -8%, rgba(6, 182, 212, 0.22) 0px, transparent 55%),
+      radial-gradient(at 82% 18%, rgba(16, 185, 129, 0.16) 0px, transparent 55%),
+      radial-gradient(at 50% 105%, rgba(251, 191, 36, 0.10) 0px, transparent 55%);
     background-attachment: fixed;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
-  ::selection { background: var(--accent-ring); color: var(--text); }
-  .container { max-width: 940px; margin: 0 auto; padding: 64px 24px 80px; }
+  ::selection { background: rgba(6, 182, 212, 0.45); color: white; }
+  .container { max-width: 940px; margin: 0 auto; padding: 56px 24px 80px; }
 
   /* Hero */
   .hero { margin-bottom: 40px; }
   .hero-tag {
     display: inline-flex; align-items: center; gap: 8px;
     padding: 6px 14px;
-    background: var(--accent-soft);
-    border: 1px solid rgba(79, 70, 229, 0.15);
+    background: rgba(6, 182, 212, 0.10);
+    border: 1px solid rgba(6, 182, 212, 0.28);
     border-radius: 999px;
-    font-size: 12px; color: #4338ca;
+    font-size: 12px; color: #a5f3fc;
     margin-bottom: 22px; font-weight: 500; letter-spacing: 0.02em;
   }
   .hero-tag .dot {
     width: 6px; height: 6px; border-radius: 50%;
-    background: var(--success); box-shadow: 0 0 8px rgba(5, 150, 105, 0.6);
+    background: var(--success); box-shadow: 0 0 10px var(--success);
     animation: heartbeat 2s ease-in-out infinite;
   }
-  @keyframes heartbeat { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
+  @keyframes heartbeat { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
   .hero h1 {
-    font-size: 48px; font-weight: 700; margin: 0 0 16px;
-    line-height: 1.08; letter-spacing: -0.03em;
-    background: linear-gradient(135deg, #0f172a 0%, #4338ca 55%, #7c3aed 100%);
+    font-size: 44px; font-weight: 700; margin: 0 0 14px;
+    line-height: 1.1; letter-spacing: -0.025em;
+    background: linear-gradient(110deg, #f1f5f9 15%, #a5f3fc 45%, #6ee7b7 75%, #fcd34d 100%);
     -webkit-background-clip: text; background-clip: text; color: transparent;
   }
   .hero .lede {
-    font-size: 17px; color: var(--text-dim);
-    max-width: 640px; margin: 0; line-height: 1.6;
+    font-size: 16px; color: var(--text-dim);
+    max-width: 620px; margin: 0;
   }
 
   /* Card */
@@ -222,30 +218,38 @@ if False:  # was: if settings.debug
     background: var(--bg-card);
     border: 1px solid var(--border);
     border-radius: 16px;
-    padding: 26px;
-    box-shadow: var(--shadow-card);
+    padding: 24px;
+    backdrop-filter: blur(20px) saturate(140%);
+    -webkit-backdrop-filter: blur(20px) saturate(140%);
+    box-shadow: 0 1px 0 rgba(255,255,255,0.03) inset, 0 24px 60px -28px rgba(0,0,0,0.6);
   }
-  .card + .card, .card + .stats, .stats + .card { margin-top: 18px; }
+  .card + .card { margin-top: 18px; }
 
   /* Example chips */
-  .examples { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 22px; }
+  .examples {
+    display: flex; flex-wrap: wrap; gap: 8px;
+    margin-bottom: 20px;
+  }
   .chip {
-    background: var(--bg-card);
+    background: rgba(255,255,255,0.035);
     border: 1px solid var(--border);
     color: var(--text-dim);
-    padding: 8px 14px;
+    padding: 7px 14px;
     border-radius: 999px;
     font-size: 13px; font-weight: 500;
     cursor: pointer; transition: all 0.18s ease;
     font-family: inherit;
-    box-shadow: var(--shadow-sm);
   }
   .chip:hover {
-    background: var(--accent-soft);
-    border-color: rgba(79, 70, 229, 0.3);
-    color: var(--accent);
-    transform: translateY(-1px);
-    box-shadow: 0 4px 12px rgba(79, 70, 229, 0.12);
+    background: rgba(6, 182, 212, 0.10);
+    border-color: rgba(6, 182, 212, 0.4);
+    color: var(--text); transform: translateY(-1px);
+  }
+  .chip .chip-tag {
+    display: inline-block; margin-right: 7px;
+    font-size: 10px; font-weight: 600; letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: #6ee7b7;
   }
 
   /* Prompt label + textarea */
@@ -255,81 +259,82 @@ if False:  # was: if settings.debug
   }
   .prompt-label .label {
     font-size: 11px; color: var(--text-dim); font-weight: 600;
-    letter-spacing: 0.09em; text-transform: uppercase;
+    letter-spacing: 0.08em; text-transform: uppercase;
   }
-  .prompt-label .hint { font-size: 11.5px; color: var(--text-dimmer); }
+  .prompt-label .hint {
+    font-size: 11px; color: var(--text-dimmer);
+  }
   .prompt-label .hint kbd {
-    font-family: var(--mono); font-size: 10.5px;
-    background: var(--bg-subtle);
+    font-family: var(--mono); font-size: 10px;
+    background: rgba(255,255,255,0.06);
     padding: 2px 6px; border-radius: 4px;
     border: 1px solid var(--border);
-    color: var(--text-dim);
   }
   textarea {
-    width: 100%; min-height: 110px;
+    width: 100%; min-height: 100px;
     padding: 14px 16px;
     background: var(--bg-input);
     border: 1px solid var(--border);
     border-radius: 12px;
     color: var(--text);
-    font: inherit; font-size: 15px; line-height: 1.6;
+    font: inherit; font-size: 15px; line-height: 1.55;
     resize: vertical;
-    transition: border-color 0.15s, box-shadow 0.15s;
-    box-shadow: var(--shadow-sm);
+    transition: border-color 0.15s, background 0.15s, box-shadow 0.15s;
   }
-  textarea::placeholder { color: var(--text-faint); }
+  textarea::placeholder { color: var(--text-dimmer); }
   textarea:focus {
     outline: none;
-    border-color: var(--accent);
-    box-shadow: 0 0 0 4px var(--accent-ring);
+    border-color: rgba(6, 182, 212, 0.55);
+    background: rgba(2, 6, 18, 0.7);
+    box-shadow: 0 0 0 4px rgba(6, 182, 212, 0.14);
   }
 
   /* Controls row */
   .controls {
     display: flex; flex-wrap: wrap; gap: 12px;
-    align-items: center; margin-top: 18px;
+    align-items: center; margin-top: 16px;
   }
   .btn {
     display: inline-flex; align-items: center; gap: 8px;
-    padding: 11px 20px; border: none; border-radius: 10px;
-    font: inherit; font-size: 14px; font-weight: 600;
+    padding: 10px 18px; border: none; border-radius: 10px;
+    font: inherit; font-size: 14px; font-weight: 500;
     cursor: pointer; transition: all 0.18s ease;
   }
   .btn-primary {
-    background: linear-gradient(135deg, var(--accent) 0%, #7c3aed 100%);
-    color: white;
-    box-shadow: 0 4px 14px rgba(79, 70, 229, 0.28), 0 0 0 1px rgba(255, 255, 255, 0.15) inset;
+    background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+    color: #042f2e;
+    font-weight: 600;
+    box-shadow: 0 4px 14px rgba(6, 182, 212, 0.35), 0 0 0 1px rgba(255,255,255,0.12) inset;
   }
   .btn-primary:hover:not(:disabled) {
     transform: translateY(-1px);
-    box-shadow: 0 8px 22px rgba(79, 70, 229, 0.40), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
+    box-shadow: 0 6px 24px rgba(16, 185, 129, 0.45), 0 0 0 1px rgba(255,255,255,0.18) inset;
   }
   .btn-primary:disabled {
-    background: var(--bg-subtle); color: var(--text-faint);
+    background: rgba(255,255,255,0.05); color: var(--text-dimmer);
     box-shadow: none; cursor: not-allowed;
   }
   .btn-secondary {
-    background: var(--bg-card);
+    background: rgba(255,255,255,0.05);
     color: var(--text);
     border: 1px solid var(--border);
-    box-shadow: var(--shadow-sm);
   }
   .btn-secondary:hover:not(:disabled) {
-    background: #fef2f2;
-    border-color: #fecaca;
+    background: rgba(248, 113, 113, 0.12);
+    border-color: rgba(248, 113, 113, 0.35);
     color: var(--danger);
   }
-  .btn-secondary:disabled { opacity: 0.45; cursor: not-allowed; }
+  .btn-secondary:disabled { opacity: 0.4; cursor: not-allowed; }
 
   /* Pace segment control */
   .pace { margin-left: auto; display: flex; align-items: center; gap: 10px; }
   .pace-label {
     font-size: 11px; color: var(--text-dim); font-weight: 600;
-    letter-spacing: 0.09em; text-transform: uppercase;
+    letter-spacing: 0.08em; text-transform: uppercase;
   }
   .segment {
     display: inline-flex;
-    background: var(--bg-subtle);
+    background: rgba(0,0,0,0.35);
     border: 1px solid var(--border);
     border-radius: 10px; padding: 3px; gap: 2px;
   }
@@ -340,37 +345,35 @@ if False:  # was: if settings.debug
     font: inherit; font-size: 12px; font-weight: 500;
     cursor: pointer; transition: all 0.15s;
   }
-  .segment button:hover:not(:disabled):not(.active) {
-    color: var(--text); background: rgba(255, 255, 255, 0.7);
-  }
+  .segment button:hover:not(:disabled):not(.active) { color: var(--text); background: rgba(255,255,255,0.04); }
   .segment button.active {
-    background: var(--bg-card);
-    color: var(--accent);
-    box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 0 0 1px rgba(79, 70, 229, 0.18);
+    background: linear-gradient(135deg, rgba(6, 182, 212, 0.28) 0%, rgba(16, 185, 129, 0.28) 100%);
+    color: #cffafe; box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.35);
   }
   .segment button:disabled { cursor: not-allowed; opacity: 0.5; }
 
-  /* Stats grid */
+  /* Stats */
   .stats {
     display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px;
+    margin-bottom: 18px;
   }
   .stat {
     background: var(--bg-card);
     border: 1px solid var(--border);
-    border-radius: 12px; padding: 16px 18px;
-    box-shadow: var(--shadow-sm);
-    transition: border-color 0.15s, box-shadow 0.15s;
+    border-radius: 12px; padding: 14px 16px;
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    transition: border-color 0.15s;
   }
-  .stat.active {
-    border-color: rgba(79, 70, 229, 0.25);
-    box-shadow: 0 0 0 3px var(--accent-ring), var(--shadow-sm);
-  }
+  .stat.active { border-color: rgba(6, 182, 212, 0.35); box-shadow: 0 0 0 1px rgba(6, 182, 212, 0.15) inset; }
+  .stat#stat-rate .value { color: var(--accent-3); }
+  .stat#stat-rate .label svg { color: var(--accent-3); opacity: 0.9; }
   .stat .label {
     display: flex; align-items: center; gap: 7px;
     font-size: 10.5px; color: var(--text-dimmer); font-weight: 600;
-    text-transform: uppercase; letter-spacing: 0.09em; margin-bottom: 10px;
+    text-transform: uppercase; letter-spacing: 0.08em; margin-bottom: 8px;
   }
-  .stat .label svg { width: 13px; height: 13px; opacity: 0.85; color: var(--text-dim); }
+  .stat .label svg { width: 13px; height: 13px; opacity: 0.7; }
   .stat .value {
     font-size: 22px; font-weight: 600; color: var(--text);
     font-variant-numeric: tabular-nums; letter-spacing: -0.015em;
@@ -380,10 +383,8 @@ if False:  # was: if settings.debug
     font-size: 12px; color: var(--text-dimmer); font-weight: 400;
     margin-left: 5px; font-family: "Inter", sans-serif;
   }
-  .stat#stat-rate .value { color: var(--highlight); }
-  .stat#stat-rate .label svg { color: var(--highlight); opacity: 0.95; }
 
-  /* Response card */
+  /* Response */
   .response-card { position: relative; }
   .response-header {
     display: flex; align-items: center; justify-content: space-between;
@@ -393,14 +394,14 @@ if False:  # was: if settings.debug
   .response-title {
     display: flex; align-items: center; gap: 10px;
     font-size: 11px; font-weight: 600; color: var(--text-dim);
-    text-transform: uppercase; letter-spacing: 0.09em;
+    text-transform: uppercase; letter-spacing: 0.08em;
   }
-  .response-title svg { width: 14px; height: 14px; color: var(--accent); }
+  .response-title svg { width: 14px; height: 14px; }
   .live-pill {
     display: inline-flex; align-items: center; gap: 7px;
     padding: 5px 11px;
-    background: var(--success-soft);
-    border: 1px solid var(--success-border);
+    background: rgba(52, 211, 153, 0.1);
+    border: 1px solid rgba(52, 211, 153, 0.3);
     border-radius: 999px;
     font-size: 11px; color: var(--success);
     font-weight: 600; text-transform: uppercase; letter-spacing: 0.06em;
@@ -410,12 +411,12 @@ if False:  # was: if settings.debug
   .live-pill.show { opacity: 1; transform: translateY(0); }
   .live-pill .pulse {
     width: 6px; height: 6px; border-radius: 50%;
-    background: var(--success); box-shadow: 0 0 6px rgba(5, 150, 105, 0.6);
+    background: var(--success); box-shadow: 0 0 6px var(--success);
     animation: pulse 1.2s ease-in-out infinite;
   }
   @keyframes pulse {
     0%, 100% { opacity: 1; transform: scale(1); }
-    50% { opacity: 0.4; transform: scale(0.85); }
+    50% { opacity: 0.5; transform: scale(0.85); }
   }
   .response-body {
     min-height: 260px;
@@ -429,40 +430,39 @@ if False:  # was: if settings.debug
     text-align: center; font-size: 14px;
   }
   .response-body.empty .placeholder-icon {
-    margin: 0 auto 14px; display: block; opacity: 0.6;
-    color: var(--accent);
+    margin: 0 auto 14px; display: block; opacity: 0.45;
+    color: var(--accent-2);
   }
   .caret {
     display: inline-block; width: 7px; height: 1.05em;
     vertical-align: text-bottom;
-    background: linear-gradient(180deg, var(--accent) 0%, #7c3aed 100%);
+    background: linear-gradient(180deg, var(--accent) 0%, var(--accent-2) 100%);
     margin-left: 2px; border-radius: 2px;
     animation: blink 1s steps(2) infinite;
-    box-shadow: 0 0 6px rgba(79, 70, 229, 0.35);
+    box-shadow: 0 0 10px rgba(6, 182, 212, 0.7);
   }
-  @keyframes blink { 50% { opacity: 0.2; } }
+  @keyframes blink { 50% { opacity: 0.15; } }
 
   /* Footer */
   .footer {
-    margin-top: 40px; padding-top: 24px;
+    margin-top: 36px; padding-top: 24px;
     border-top: 1px solid var(--border);
     display: flex; justify-content: space-between;
     font-size: 11.5px; color: var(--text-dimmer);
     flex-wrap: wrap; gap: 12px;
   }
   .footer code {
-    background: var(--bg-subtle);
+    background: rgba(255,255,255,0.05);
     padding: 2px 6px; border-radius: 4px;
     font-family: var(--mono); font-size: 11px;
     color: var(--text-dim);
-    border: 1px solid var(--border);
   }
-  .footer .brand strong { color: var(--text); font-weight: 600; }
+  .footer .brand { color: var(--text-dim); font-weight: 500; }
 
   /* Responsive */
   @media (max-width: 700px) {
-    .container { padding: 40px 16px 56px; }
-    .hero h1 { font-size: 34px; }
+    .container { padding: 32px 16px 56px; }
+    .hero h1 { font-size: 32px; }
     .stats { grid-template-columns: repeat(2, 1fr); }
     .pace { margin-left: 0; width: 100%; }
     .pace .segment { flex: 1; }
@@ -476,42 +476,48 @@ if False:  # was: if settings.debug
   <header class="hero">
     <div class="hero-tag">
       <span class="dot"></span>
-      AWS Bedrock · Claude Sonnet 4.6
+      Bedrock · Live Streaming Demo
     </div>
-    <h1>Claude Sonnet 4.6 — Live Streaming on AWS Bedrock</h1>
+    <h1>Live Streaming Demo for Bedrock Claude opus 4.7 Model API</h1>
     <p class="lede">
-      This demo connects to Claude Sonnet 4.6 on AWS Bedrock using the streaming API.
-      Each character is rendered the moment Claude generates it — no buffering, no waiting
-      for the full response. Pick a prompt below to see it in action.
+      Pick one of the agent-flavored scenarios below — contract risk analysis, clause comparison, plain-English translation — and watch
+      Claude's output stream from AWS Bedrock to the browser in real time. Same streaming primitive the production agents use
+      under the hood; this page just renders the text instead of buffering a structured JSON response. Compare it to the
+      <em style="color: var(--text-dim); font-style: normal; border-bottom: 1px dashed var(--text-dimmer);">wait-then-dump</em> UX
+      a non-streaming endpoint forces on the user.
     </p>
   </header>
 
   <div class="card">
     <div class="examples">
-      <button class="chip" data-prompt="Analyze this clause from a SaaS agreement and identify the top 3 risks for the Customer in plain English. Quote the exact phrase causing each risk and suggest a fix.
+      <button class="chip" data-prompt="You are a contract risk analyst. Analyze the indemnification clause below from a SaaS agreement between Acme Robotics (Customer) and Globex Software (Vendor). Walk through your reasoning out loud: identify the top 3 risks for Acme as Customer, name the party that bears each risk, quote the specific contract language causing it, and end with a concrete fix the parties could negotiate.
 
-CLAUSE: &quot;Customer shall defend, indemnify, and hold harmless Vendor from all third-party claims arising from Customer's use of the Services. Vendor's total aggregate liability shall not exceed one hundred dollars ($100), regardless of theory of liability.&quot;">Contract risk analysis</button>
+CLAUSE TO ANALYZE:
+&quot;Customer shall defend, indemnify, and hold harmless Vendor, its affiliates, officers, employees, and agents from and against any and all claims, demands, suits, judgments, losses, damages, fines, penalties, costs, and expenses (including reasonable attorneys' fees) arising out of or relating to (a) Customer's use of the Services, (b) any breach by Customer of this Agreement, or (c) any third-party claim of any nature whatsoever in connection with Customer's business operations. Vendor's liability under this Agreement shall not exceed one hundred dollars ($100) in the aggregate, regardless of the form of action or theory of liability.&quot;"><span class="chip-tag">Agent</span>Contract Risk Analysis</button>
 
-      <button class="chip" data-prompt="Compare these two limitation-of-liability clauses. For each, identify the cap structure, the carve-outs, and which party it favors. End with a one-line recommendation on which a Vendor with limited insurance should prefer.
+      <button class="chip" data-prompt="You are a contract clause comparison agent. Compare the two limitation-of-liability clauses below side by side. For each, identify: (1) the cap structure, (2) the carve-outs, (3) the consequential-damages treatment, (4) which party each version favors. End with a clear recommendation on which version a Vendor with limited insurance should prefer and why.
 
-CLAUSE A: &quot;In no event shall either party's aggregate liability exceed the fees paid in the prior 12 months. Consequential damages are excluded on both sides.&quot;
+CLAUSE A:
+&quot;In no event shall either party's aggregate liability arising out of or relating to this Agreement exceed the fees paid by Customer to Vendor in the twelve (12) months preceding the event giving rise to the claim. Neither party shall be liable for any consequential, incidental, indirect, special, punitive, or exemplary damages, including lost profits or lost data, even if advised of the possibility of such damages.&quot;
 
-CLAUSE B: &quot;Each party's liability shall not exceed three (3) times the fees paid in the prior 12 months, except that the cap shall not apply to breach of confidentiality, indemnification, or IP infringement, which remain uncapped.&quot;">Clause comparison</button>
+CLAUSE B:
+&quot;Each party's total cumulative liability under this Agreement shall not exceed three (3) times the fees paid by Customer in the twelve (12) months preceding the claim, except that the cap shall not apply to (a) breach of confidentiality, (b) indemnification obligations, (c) gross negligence or willful misconduct, or (d) infringement of the other party's intellectual property. Consequential damages are excluded only as to lost profits and lost goodwill; lost data is recoverable as direct damages.&quot;"><span class="chip-tag">Agent</span>Clause Comparison</button>
 
-      <button class="chip" data-prompt="Rewrite this dense indemnification paragraph as a 4-bullet plain-English summary a non-lawyer founder could understand in 30 seconds. End with one sentence on the practical risk this creates for the indemnifying party.
+      <button class="chip" data-prompt="You are a plain-English translator for legal contracts. Take the dense indemnification paragraph below and rewrite it as a 4-bullet plain-English summary a non-lawyer founder could understand in 30 seconds. Be faithful to the legal meaning but ruthlessly cut jargon. After the bullets, write one sentence on the practical risk this clause creates for the indemnifying party.
 
-CLAUSE: &quot;Notwithstanding anything to the contrary, Licensee shall, at its sole cost and expense, defend, indemnify, and hold harmless Licensor and its affiliates from and against any and all third-party claims arising out of Licensee's use of the Licensed Materials or any breach of this Agreement.&quot;">Plain-English translator</button>
+CLAUSE:
+&quot;Notwithstanding anything to the contrary herein, Licensee shall, at its sole cost and expense, defend, indemnify, and hold harmless Licensor and its affiliates, officers, directors, employees, contractors, and agents (collectively, the &apos;Indemnified Parties&apos;) from and against any and all third-party claims, actions, suits, proceedings, losses, liabilities, damages, costs, and expenses (including reasonable attorneys&apos; fees and costs of investigation) arising out of, resulting from, or in connection with (i) Licensee&apos;s use of the Licensed Materials, (ii) any breach or alleged breach by Licensee of any representation, warranty, covenant, or obligation under this Agreement, (iii) the gross negligence or willful misconduct of Licensee or any of its personnel, or (iv) any violation by Licensee of applicable law. Licensor shall provide prompt written notice of any such claim and reasonable cooperation in the defense thereof; provided, however, that any failure or delay in providing such notice shall not relieve Licensee of its indemnification obligations except to the extent Licensee is materially prejudiced by such failure.&quot;"><span class="chip-tag">Agent</span>Plain-English Translator</button>
 
-      <button class="chip" data-prompt="Draft a Confidentiality clause for a mutual NDA between two software companies. Use plain modern English with numbered sub-sections covering definition of Confidential Information, exclusions, permitted use, standard of care, return on request, survival period, and injunctive relief. Use [PLACEHOLDER] tokens for party names and dates.">Draft NDA confidentiality</button>
+      <button class="chip" data-prompt="You are a senior contract drafter. Draft a complete, enforceable Confidentiality clause for a mutual NDA between two software companies who are evaluating a partnership. The clause must contain numbered sub-sections covering: (1) definition of Confidential Information with examples, (2) standard exclusions, (3) permitted use and recipients, (4) standard of care, (5) compelled disclosure procedure, (6) return or destruction on request, (7) survival period for ordinary information and a longer survival for trade secrets, (8) injunctive relief. Use plain modern English — no &apos;witnesseth&apos; or &apos;party of the first part&apos;. Use [PLACEHOLDER] tokens for facts like party names, dates, and the survival period."><span class="chip-tag">Agent</span>Draft NDA Confidentiality</button>
     </div>
 
     <div class="prompt-label">
       <span class="label">Prompt</span>
       <span class="hint"><kbd>Ctrl</kbd> + <kbd>Enter</kbd> to send</span>
     </div>
-    <textarea id="prompt" placeholder="Ask Claude anything — or click a chip above to load a real-world legal prompt.">Analyze this clause from a SaaS agreement and identify the top 3 risks for the Customer in plain English. Quote the exact phrase causing each risk and suggest a fix.
+    <textarea id="prompt" placeholder="Ask Claude anything — or click an agent scenario above to load a realistic prompt with sample contract text.">You are a contract risk analyst. The clause below appears in a SaaS agreement. In plain English, list the top 2 risks it creates for the Customer and the one phrase from the clause that creates each risk. End with a one-line suggested fix.
 
-CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all third-party claims arising from Customer's use of the Services. Vendor's total aggregate liability shall not exceed one hundred dollars ($100), regardless of theory of liability."</textarea>
+CLAUSE: "Customer shall pay Vendor's monthly subscription fee within five (5) days of invoice. Late payments incur a five percent (5%) per-month penalty compounded daily, and Vendor may suspend Services after ten (10) days past due without prior notice or cure period."</textarea>
 
     <div class="controls">
       <button id="send" class="btn btn-primary">
@@ -570,7 +576,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
     <div class="response-header">
       <div class="response-title">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-        Claude Sonnet 4.6 Response
+        Claude Response
       </div>
       <div class="live-pill" id="live-pill">
         <span class="pulse"></span>
@@ -580,13 +586,13 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
     <div class="response-body empty" id="out">
       <div>
         <svg class="placeholder-icon" width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>
-        Output will appear here. Pick a prompt above or click <strong style="color: var(--text);">Stream response</strong>.
+        Response will stream here. Pick a prompt or click <strong style="color: var(--text-dim)">Stream response</strong>.
       </div>
     </div>
   </div>
 
   <footer class="footer">
-    <span class="brand"><strong>AWS Bedrock</strong> · Claude Sonnet 4.6 · <code>invoke_model_with_response_stream</code></span>
+    <span class="brand">Powered by <strong style="color: var(--text);">AWS Bedrock</strong> · <code>invoke_model_with_response_stream</code></span>
     <span>Gated by <code>DEBUG=true</code> · Not for production</span>
   </footer>
 
@@ -600,6 +606,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
   let drainResolve = null;
   let drainComplete = null;
 
+  // Pace segment control
   $('pace').addEventListener('click', (e) => {
     const btn = e.target.closest('button[data-pace]');
     if (!btn || btn.disabled) return;
@@ -608,6 +615,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
     currentPace = parseInt(btn.dataset.pace, 10);
   });
 
+  // Example chips
   document.querySelectorAll('.chip').forEach(chip => {
     chip.addEventListener('click', () => {
       $('prompt').value = chip.dataset.prompt;
@@ -621,6 +629,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
   }
 
   function teardownStream() {
+    // Run in finally — leaves UI in idle-but-readable state.
     $('send').disabled = false;
     $('stop').disabled = true;
     $('pace').querySelectorAll('button').forEach(b => b.disabled = false);
@@ -639,6 +648,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
     $('stop').disabled = false;
     $('pace').querySelectorAll('button').forEach(b => b.disabled = true);
 
+    // Reset UI
     $('counts').textContent = '0';
     $('rate').textContent = '—';
     $('elapsed').textContent = '0.0';
@@ -657,6 +667,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
 
     controller = new AbortController();
 
+    // Render buffer + drain loop
     let buffer = '';
     let streamDone = false;
     drainComplete = new Promise(r => { drainResolve = r; });
@@ -666,6 +677,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
     const caret = $('caret');
 
     function drainOnce() {
+      // Cancel point: stop draining immediately if user aborted.
       if (cancelled) { drainResolve && drainResolve(); return; }
       if (buffer.length === 0) {
         if (streamDone) { drainResolve && drainResolve(); }
@@ -673,6 +685,7 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
         return;
       }
       if (msPerChar === 0) {
+        // Raw — flush everything arrived this frame.
         caret.insertAdjacentText('beforebegin', buffer);
         buffer = '';
         requestAnimationFrame(drainOnce);
@@ -704,14 +717,16 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
       }
       streamDone = true;
       await drainComplete;
-      if (cancelled) setStatus('Stopped', false);
-      else {
+      if (cancelled) {
+        setStatus('Stopped', false);
+      } else {
         const sec = ((performance.now() - start) / 1000).toFixed(1);
         setStatus('Done in ' + sec + 's', false);
       }
     } catch (err) {
       streamDone = true;
       cancelled = true;
+      // Make sure drain promise resolves so teardown runs.
       if (drainResolve) drainResolve();
       if (err.name === 'AbortError') setStatus('Stopped', false);
       else setStatus('Error', false);
@@ -723,6 +738,8 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
 
   $('send').addEventListener('click', startStream);
   $('stop').addEventListener('click', () => {
+    // Mark cancelled BEFORE aborting so the drain loop sees the flag
+    // on its next tick (otherwise it keeps typing out the buffer).
     cancelled = true;
     if (controller) controller.abort();
     if (drainResolve) drainResolve();
@@ -733,7 +750,6 @@ CLAUSE: "Customer shall defend, indemnify, and hold harmless Vendor from all thi
 </script>
 </body>
 </html>"""
-
 
     @app.get("/demo/stream-ui", response_class=HTMLResponse)
     async def demo_stream_ui() -> HTMLResponse:

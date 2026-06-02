@@ -142,7 +142,14 @@ def _get_session(session_id: str) -> SessionData:
 # --- LLM call plumbing -------------------------------------------------------
 
 
-async def _split_prompt_into_subtopics(user_prompt: str) -> List[str]:
+_OUT_OF_SCOPE_FALLBACK = (
+    "This request isn't something the Review agent handles — it reviews existing "
+    "clauses for issues. To draft a new clause use the Draft feature; to compare two "
+    "versions use the Compare feature."
+)
+
+
+async def _split_prompt_into_subtopics(user_prompt: str) -> Tuple[List[str], Optional[str]]:
     """Break a multi-topic user prompt into atomic sub-instructions.
 
     Multi-topic prompts (e.g. "make governing law California AND reject
@@ -171,16 +178,22 @@ async def _split_prompt_into_subtopics(user_prompt: str) -> List[str]:
             response_model=PromptSplitLLMResponse,
             mode="JSON",
             system_message=_SPLITTER_SYSTEM,
+            max_tokens=512,  # splitter returns a tiny subtopic list
         )
     except Exception as exc:
         logger.exception("Prompt splitter failed; falling back to full prompt: %s", exc)
-        return [user_prompt]
+        return [user_prompt], None
+
+    if parsed.out_of_scope:
+        redirect = (parsed.redirect_message or "").strip() or _OUT_OF_SCOPE_FALLBACK
+        logger.info("Review request classified out-of-scope; redirecting user instead of reviewing.")
+        return [], redirect
 
     cleaned = [s.strip() for s in parsed.subtopics if s and s.strip()]
     if not cleaned:
         logger.warning("Prompt splitter returned no subtopics; falling back to full prompt.")
-        return [user_prompt]
-    return cleaned
+        return [user_prompt], None
+    return cleaned, None
 
 
 async def _run_relevance_check(
@@ -201,6 +214,7 @@ async def _run_relevance_check(
         response_model=RelevanceCheckLLMResponse,
         mode="JSON",
         system_message=_RELEVANCE_SYSTEM,
+        max_tokens=512,  # relevance gate: a bool + short reason
     )
 
 
@@ -229,6 +243,7 @@ async def _run_clause_review(
         mode="JSON",
         system_message=_CLAUSE_REVIEW_SYSTEM,
         cache_system=True,
+        max_tokens=2048,  # per-clause suggestion list
     )
 
     valid: List[Suggestion] = []
@@ -367,6 +382,15 @@ async def clause_review(
         # log loudly and fall through to the review.
         logger.exception("Relevance gate failed; proceeding with review: %s", exc)
         relevance = RelevanceCheckLLMResponse(relevant=True, reason="gate unavailable")
+
+    if getattr(relevance, "out_of_scope", False):
+        return GeneralReviewResponse(
+            session_id=session_id,
+            mode="clause",
+            status="out_of_scope",
+            alert_message=relevance.reason,
+            suggestions=[],
+        )
 
     if not relevance.relevant:
         return GeneralReviewResponse(
@@ -542,7 +566,15 @@ async def full_document_review(
     # Split the user prompt into atomic sub-instructions. Single-topic
     # prompts will come back as a one-element list, so this step is
     # harmless for simple queries and load-bearing for compound ones.
-    subtopics = await _split_prompt_into_subtopics(user_prompt)
+    subtopics, out_of_scope_message = await _split_prompt_into_subtopics(user_prompt)
+    if out_of_scope_message:
+        return GeneralReviewResponse(
+            session_id=session_id,
+            mode="document",
+            status="out_of_scope",
+            alert_message=out_of_scope_message,
+            suggestions=[],
+        )
     logger.info("Prompt split into %d sub-topic(s): %s", len(subtopics), subtopics)
 
     # Shared concurrency cap across all sub-topics and all clauses, so

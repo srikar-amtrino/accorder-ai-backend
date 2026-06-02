@@ -49,6 +49,7 @@ class RetrievalService(Logger):
             context=context,
             response_model=QueryRewriterResponse,
             system_message=_QUERY_REWRITER_SYSTEM,
+            max_tokens=512,  # short list of rewritten queries
         )
         return [q.query for q in response.queries]
 

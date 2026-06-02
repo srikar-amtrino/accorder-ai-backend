@@ -112,6 +112,22 @@ def _clean_text(text: str) -> str:
     return stripped if _CLAUSE_PREFIX_RE.match(stripped) else stripped.lstrip(".")
 
 
+def _normalize_runs(paragraph: Any) -> None:
+    """Collapse internal whitespace inside each run WITHOUT stripping run-boundary spaces.
+
+    Word splits a paragraph into runs at every formatting change, so a styled word
+    like a bold "Epit" is its own run and the surrounding spaces sit at run
+    boundaries. ``python-docx`` builds ``paragraph.text`` by concatenating run texts
+    with no separator, so stripping each run individually deletes those boundary
+    spaces and fuses neighbouring words ("and Epit may" -> "andEpitmay"). We only
+    collapse internal whitespace here; leading/trailing whitespace is handled at the
+    paragraph level by the caller (``p.text.strip()`` / ``_clean_text``).
+    """
+    for run in paragraph.runs:
+        if run.text:
+            run.text = _WHITESPACE_RE.sub(" ", run.text)
+
+
 def _is_structural_heading(text: str, max_words: int = 8) -> bool:
     words = text.split()
     return bool(words) and len(words) <= max_words and bool(_SECTION_LABEL_RE.match(text.strip()))
@@ -305,9 +321,7 @@ class DocxParser(BaseParser, Logger):
             paras: List[Dict[str, Any]] = []
             para_wc = 0
             for idx, p in enumerate(document.paragraphs):
-                for run in p.runs:
-                    if run.text:
-                        run.text = _WHITESPACE_RE.sub(" ", run.text).strip()
+                _normalize_runs(p)
                 raw = p.text.strip()
                 if not raw:
                     continue
@@ -577,9 +591,7 @@ class DocxParser(BaseParser, Logger):
     async def clean_document(self, document: Document) -> None:
         try:
             for p in document.paragraphs:
-                for run in p.runs:
-                    if run.text:
-                        run.text = _WHITESPACE_RE.sub(" ", run.text).strip()
+                _normalize_runs(p)
         except Exception as e:
             raise DocxCleaningException(str(e)) from e
 

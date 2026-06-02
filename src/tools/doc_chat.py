@@ -48,5 +48,6 @@ async def query_document(query: str, session_id: str) -> DocChatResponse:
         context=data,
         response_model=DocChatResponse,
         system_message=_DOC_CHAT_SYSTEM,
+        max_tokens=2048,  # answer list grounded in retrieved context
     )
     return llm_result
