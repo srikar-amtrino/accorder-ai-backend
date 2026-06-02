@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
 from src.config.logging import get_logger
-from src.core.container import get_bedrock_model, get_session_manager
+from src.core.container import get_bedrock_model
 from src.schemas.playbook_review import (
     MissingClausesLLMResponse,
     PlayBookReviewFinalResponse,
@@ -24,10 +24,6 @@ logger = get_logger(__name__)
 
 AGENT_NAME = "playbook_review_agent"
 
-# Split into a cacheable static system block + a small dynamic user block.
-# The system block is ~4,500 tokens — comfortably above Sonnet 4.6's 1,024-token
-# cache minimum — and is reused across every rule call in a document, so
-# prompt caching turns into a large per-document cost win.
 SIMILARITY_SYSTEM_PROMPT = Path(r"src/services/prompts/v1/ai_review_system.mustache").read_text(encoding="utf-8")
 SIMILARITY_USER_PROMPT = Path(r"src/services/prompts/v1/ai_review_user.mustache").read_text(encoding="utf-8")
 
@@ -43,13 +39,13 @@ def _normalize(text: str) -> str:
     return re.sub(r"[^a-z0-9\s]", "", text.lower()).strip()
 
 
-def extract_clauses_from_paragraphs(textinformation: List[TextInfo], rule_titles: List[str]) -> Dict[str, List[TextInfo]]:
-    """Extracts clauses from the document paragraphs based on rule titles as boundaries."""
+def extract_clauses_from_paragraphs(textinformation: List[TextInfo], rule_titles: List[str], session_id: str) -> Dict[str, List[TextInfo]]:
+    """Extract clause paragraphs from the document for each unique rule title."""
 
-    # normalized_title → original_title
+    # normalised title -> original title
     normalized_titles: Dict[str, str] = {_normalize(t): t for t in rule_titles}
 
-    # Initialize empty lists for every rule so callers always get a key
+    # initialise empty lists for every unique title
     clause_map: Dict[str, List[TextInfo]] = {title: [] for title in rule_titles}
     current_clause: Optional[str] = None
 
@@ -58,29 +54,22 @@ def extract_clauses_from_paragraphs(textinformation: List[TextInfo], rule_titles
         matched_title: Optional[str] = None
 
         for norm_title, original_title in normalized_titles.items():
-            # Exact match — standalone header paragraph (Format B)
-            if para_norm == norm_title:
+            if para_norm == norm_title or para_norm.startswith(norm_title):
                 matched_title = original_title
                 break
 
-            # Para starts with title — merged header+content (Format A)
-            if para_norm.startswith(norm_title):
-                matched_title = original_title
-                break
-
-        if matched_title:
-            # This paragraph opens a new clause; include it (it may carry content)
+        if matched_title is not None:
+            # This paragraph opens a new (or the same) clause.
             current_clause = matched_title
             clause_map[current_clause].append(para)
         elif current_clause is not None:
-            # Body paragraph — belongs to the currently active clause
+            # Body paragraph — belongs to the active clause.
             clause_map[current_clause].append(para)
-        # else: paragraph appears before any recognized clause header — skip
+        # else: before any recognised heading — skip.
 
-    # Warn on any rule whose clause was never found in the document
     for title, paras in clause_map.items():
         if not paras:
-            logger.warning("Clause extraction: no paragraphs found for rule '%s'. " "Rule will be evaluated against the full document as fallback.", title)
+            logger.warning("no paragraphs found for rule rule will be skipped.", rule_title=title, session_id=session_id)
 
     return clause_map
 
@@ -95,7 +84,7 @@ def _build_reviewed_rules_summary(reviewed: Dict[Tuple[str, str], PlayBookReview
     return "\n".join(lines) if lines else "None"
 
 
-async def get_missing_clauses(llm_model: BaseLLMModel, full_text: str, reviewed_rules_summary: str) -> MissingClausesLLMResponse:
+async def get_missing_clauses(llm_model: BaseLLMModel, full_text: str, reviewed_rules_summary: str, session_id: str) -> MissingClausesLLMResponse:
     """Gets missing clauses from the LLM based on the full document text and a summary of reviewed rules."""
 
     try:
@@ -106,31 +95,44 @@ async def get_missing_clauses(llm_model: BaseLLMModel, full_text: str, reviewed_
                 "reviewed_rules_summary": reviewed_rules_summary,
             },
             response_model=MissingClausesLLMResponse,
+            session_id=session_id,
         )
-        logger.info(f"Missing clauses identified: {len(response.missing_clauses)}")
-
+        logger.info("Missing clauses identified", count=len(response.missing_clauses), session_id=session_id)
         return response
 
     except Exception as exc:
-        logger.exception("Missing clauses evaluation failed.")
-        return MissingClausesLLMResponse(missing_clauses=[], total_missing=0, summary=f"LLM error: {exc}")
+        logger.exception("Missing clauses evaluation failed.", session_id=session_id)
+        return MissingClausesLLMResponse(
+            missing_clauses=[],
+            total_missing=0,
+            summary=f"LLM error: {exc}",
+        )
 
 
-async def _process_rule(
-    rule: RuleInfo,
-    clause_map: Dict[str, List[TextInfo]],
-    full_document: List[TextInfo],
-    llm_model: BaseLLMModel,
-) -> Tuple[Tuple[str, str], PlayBookReviewResponse]:
-    """
-    Evaluates a single rule against its extracted clause paragraphs.
-    """
+async def _process_rule(rule: RuleInfo, clause_map: Dict[str, List[TextInfo]], llm_model: BaseLLMModel, session_id: str) -> Tuple[Tuple[str, str], PlayBookReviewResponse]:
+    """Evaluates a single rule against its extracted clause paragraphs."""
+
+    current_rule_type = getattr(rule, "rule_type", None) or getattr(rule, "type", None) or "primary"
 
     matched_paras: List[TextInfo] = clause_map.get(rule.title, [])
 
     if not matched_paras:
-        logger.warning(f"No extracted paragraphs for rule {rule.title}. " "Falling back to full document.")
-        matched_paras = full_document
+        logger.warning("No clause paragraphs found for rule returning empty result.", rule=rule.title, current_rule_type=current_rule_type, session_id=session_id)
+        llm_response = PlayBookReviewLLMResponse(
+            para_identifiers=[],
+            matched_clause_name="",
+            status="Not Found",
+            reason="",
+            suggestion="",
+            suggested_fix="",
+        )
+        return (rule.title, current_rule_type), PlayBookReviewResponse(
+            rule_type=current_rule_type,
+            rule_title=rule.title,
+            rule_instruction=rule.instruction,
+            rule_description=rule.description,
+            content=llm_response,
+        )
 
     paragraph_context = "\n\n".join(f"PARA_ID: {p.paraindetifier}\nTEXT: {html.unescape(p.text).strip()}" for p in matched_paras)
 
@@ -143,10 +145,8 @@ async def _process_rule(
         similarity_scores=[],
     )
 
-    current_rule_type = getattr(rule, "rule_type", None) or getattr(rule, "type", None) or "primary"
-
     try:
-        llm_response: PlayBookReviewLLMResponse = await llm_model.generate(
+        generated_response: PlayBookReviewLLMResponse = await llm_model.generate(
             prompt=SIMILARITY_USER_PROMPT,
             context={
                 "rule_title": result.title,
@@ -156,25 +156,23 @@ async def _process_rule(
                 "rule_type": current_rule_type,
             },
             response_model=PlayBookReviewLLMResponse,
+            session_id=session_id,
             system_message=SIMILARITY_SYSTEM_PROMPT,
-            cache_system=True,
         )
+        llm_response = generated_response
 
-    except Exception as exc:
-        logger.exception(
-            "LLM rule evaluation failed for rule '%s'.",
-            rule.title,
-        )
-
+    except Exception:
+        logger.exception("LLM rule evaluation failed for rule", rule.title, session_id=session_id)
         llm_response = PlayBookReviewLLMResponse(
             para_identifiers=[],
-            status="Error",
-            reason=str(exc),
+            matched_clause_name="",
+            status="Not Found",
+            reason="",
             suggestion="",
             suggested_fix="",
         )
 
-    review_response = PlayBookReviewResponse(
+    return (rule.title, current_rule_type), PlayBookReviewResponse(
         rule_type=current_rule_type,
         rule_title=rule.title,
         rule_instruction=rule.instruction,
@@ -182,237 +180,51 @@ async def _process_rule(
         content=llm_response,
     )
 
-    return (
-        (rule.title, current_rule_type),
-        review_response,
-    )
 
-
-async def review_document(
-    session_id: str,
-    request: RuleCheckRequest,
-    force_update_rules: Optional[List[str]] = None,
-) -> PlayBookReviewFinalResponse:
-    """
-    Main entry point for reviewing a document against a set of rules.
-
-    All rules are evaluated independently regardless of:
-    - primary
-    - fallback1
-    - fallback2
-    - fallbackN
-
-    Rule types are metadata only and do not affect execution flow.
-    """
+async def review_document(session_id: str, request: RuleCheckRequest, force_update_rules: Optional[List[str]] = None) -> PlayBookReviewFinalResponse:
+    """Main entry point for playbook review. Extracts clauses, evaluates rules, and identifies missing clauses."""
 
     force_update_rules = force_update_rules or []
 
     llm_model = get_bedrock_model()
 
-    session_manager = get_session_manager()
-    session_data = session_manager.get_session(session_id)
-
-    if not session_data:
-        return PlayBookReviewFinalResponse(
-            rules_review=[],
-            missing_clauses=None,
-        )
-
-    # Cache disabled
     rules_to_update: List[RuleInfo] = request.rulesinformation
 
-    # Extract clauses once
-    # Deduplicate titles because multiple rule variants may share titles
-    rule_titles = list({rule.title for rule in rules_to_update})
+    # Deduplicate titles for extraction — preserving order, ignoring rule_type.
+    # All variants sharing a title will read from the same clause_map entry.
+    unique_titles: List[str] = list(dict.fromkeys(rule.title for rule in rules_to_update))
 
     clause_map = extract_clauses_from_paragraphs(
         request.textinformation,
-        rule_titles,
+        unique_titles,
+        session_id=session_id,
     )
 
-    logger.info("Clause extraction complete. " f"{sum(1 for paras in clause_map.values() if paras)}/" f"{len(rule_titles)} rules have matched paragraphs.")
+    matched_count = sum(1 for paras in clause_map.values() if paras)
+    logger.info("Clause extraction complete.", matched_count=matched_count, total_titles=len(unique_titles), session_id=session_id)
 
-    # Evaluate ALL rules independently and concurrently
-    updates: List[
-        Tuple[
-            Tuple[str, str],
-            PlayBookReviewResponse,
-        ]
-    ] = await asyncio.gather(
+    # Evaluate all rules (including fallback variants) concurrently.
+    updates: List[Tuple[Tuple[str, str], PlayBookReviewResponse]] = await asyncio.gather(
         *[
             _process_rule(
                 rule=rule,
                 clause_map=clause_map,
-                full_document=request.textinformation,
                 llm_model=llm_model,
+                session_id=session_id,
             )
             for rule in rules_to_update
         ]
     )
 
-    # Preserve ALL rule evaluations
-    # including primary/fallback1/fallback2/etc.
     all_reviews: List[PlayBookReviewResponse] = [result for _, result in updates]
 
-    logger.info(
-        "Completed evaluation of %s rules.",
-        len(all_reviews),
-    )
+    logger.info("Completed evaluation of %d rules.", len(all_reviews))
 
-    # After all per-rule reviews finish, run the missing-clauses evaluation.
-    # It takes the full document plus a summary of which rules were checked and
-    # what was found, then identifies clauses that are standard for this
-    # contract type but NOT addressed by any of the user's rules. This runs
-    # sequentially after the per-rule fan-out because it consumes the summary.
     full_text = "\n\n".join(f"PARA_ID: {p.paraindetifier}\nTEXT: {p.text}" for p in request.textinformation)
     reviewed_rules_summary = _build_reviewed_rules_summary(dict(updates))
-    missing_clauses = await get_missing_clauses(llm_model, full_text, reviewed_rules_summary)
+    missing_clauses = await get_missing_clauses(llm_model, full_text, reviewed_rules_summary, session_id)
 
     return PlayBookReviewFinalResponse(
         rules_review=all_reviews,
         missing_clauses=missing_clauses,
     )
-
-
-# async def _process_rule(rule: RuleInfo, clause_map: Dict[str, List[TextInfo]], full_document: List[TextInfo], llm_model: AzureOpenAIModel) -> Tuple[Tuple[str, str], PlayBookReviewResponse]:
-#     """Evaluates a single rule against its extracted clause paragraphs."""
-
-#     matched_paras: List[TextInfo] = clause_map.get(rule.title, [])
-
-#     if not matched_paras:
-#         logger.warning(f"No extracted paragraphs for rule {rule.title}. Falling back to full document.")
-#         matched_paras = full_document
-
-#     paragraph_context = "\n\n".join(f"PARA_ID: {p.paraindetifier}\nTEXT: {p.text.strip()}" for p in matched_paras)
-
-#     result = RuleResult(
-#         title=rule.title,
-#         instruction=rule.instruction,
-#         description=rule.description,
-#         paragraphidentifier=",".join(p.paraindetifier for p in matched_paras),
-#         paragraphcontext=paragraph_context,
-#         similarity_scores=[],
-#     )
-
-#     try:
-#         llm_response: PlayBookReviewLLMResponse = await llm_model.generate(
-#             prompt=SIMILARITY_PROMPT,
-#             context={
-#                 "rule_title": result.title,
-#                 "rule_instruction": result.instruction,
-#                 "rule_description": result.description,
-#                 "paragraphs": result.paragraphcontext,
-#             },
-#             response_model=PlayBookReviewLLMResponse,
-#         )
-
-#     except Exception as exc:
-#         logger.exception("LLM rule evaluation failed for rule '%s'.", rule.title)
-#         llm_response = PlayBookReviewLLMResponse(
-#             para_identifiers=[],
-#             status="Error",
-#             reason=str(exc),
-#             suggestion="",
-#             suggested_fix="",
-#         )
-
-#     return (rule.title, rule.type or "primary"), PlayBookReviewResponse(
-#         rule_type=rule.type or "primary",
-#         rule_title=rule.title,
-#         rule_instruction=rule.instruction,
-#         rule_description=rule.description,
-#         content=llm_response,
-#     )
-
-
-# async def review_document(session_id: str, request: RuleCheckRequest, force_update_rules: Optional[List[str]] = None) -> PlayBookReviewFinalResponse:
-#     """Main entry point for reviewing a document against a set of rules. Supports caching and selective re-evaluation of rules based on changes in rule text or document content."""
-
-#     force_update_rules = force_update_rules or []
-
-#     container = get_service_container()
-#     llm_model = container.llm_model  # Embeddings no longer needed
-
-#     session_data = container.session_manager.get_session(session_id)
-#     if not session_data:
-#         return PlayBookReviewFinalResponse(
-#             rules_review=[],
-#             missing_clauses=None,
-#         )
-
-#     # agent_cache = session_data.tool_results.get(AGENT_NAME, {})
-#     # # Key by (title, rule_type) to preserve multiple rule variants (primary, fallback, fallback2, etc.)
-#     # cached_reviews: Dict[Tuple[str, str], PlayBookReviewResponse] = {(r.rule_title, r.rule_type): r for r in agent_cache.get("rules_review", [])}
-
-#     # # Determine which rules are stale and need re-evaluation
-#     # rules_to_update: List[RuleInfo] = []
-#     # for rule in request.rulesinformation:
-#     #     cache_key = (rule.title, rule.type or "primary")
-#     #     cached = cached_reviews.get(cache_key)
-#     #     if not cached or rule.title in force_update_rules or cached.rule_description != rule.description or cached.rule_instruction != rule.instruction:
-#     #         rules_to_update.append(rule)
-
-#     # # Nothing changed — serve from cache
-#     # if not rules_to_update:
-#     #     logger.info("All rules up to date in cache. Returning cached results.")
-#     #     return PlayBookReviewFinalResponse(
-#     #         rules_review=list(cached_reviews.values()),
-#     #         missing_clauses=agent_cache.get("missing_clauses"),
-#     #     )
-
-#     # Process all rules (cache disabled)
-#     rules_to_update: List[RuleInfo] = request.rulesinformation
-#     cached_reviews: Dict[Tuple[str, str], PlayBookReviewResponse] = {}
-
-#     # Extract clauses once for all stale rules
-#     rule_titles = [rule.title for rule in rules_to_update]
-#     clause_map = extract_clauses_from_paragraphs(request.textinformation, rule_titles)
-
-#     logger.info(f"Clause extraction complete. {sum(1 for paras in clause_map.values() if paras)}/{len(rule_titles)} rules have matched paragraphs.")
-
-#     # Process stale rules concurrently
-#     updates: List[Tuple[Tuple[str, str], PlayBookReviewResponse]] = await asyncio.gather(
-#         *[
-#             _process_rule(
-#                 rule,
-#                 clause_map,
-#                 request.textinformation,  # fallback
-#                 llm_model,
-#             )
-#             for rule in rules_to_update
-#         ]
-#     )
-
-#     cached_reviews.update(dict(updates))
-
-#     # # Recompute missing clauses if document or rules changed
-#     # full_text = "\n\n".join(f"PARA_ID: {p.paraindetifier}\nTEXT: {p.text}" for p in request.textinformation)
-#     #
-#     # doc_hash = _hash(full_text)
-#     # rules_hash = _hash("".join(r.title + r.description for r in request.rulesinformation))
-#     #
-#     # cached_doc_hash = agent_cache.get("doc_hash")
-#     # cached_rules_hash = agent_cache.get("rules_hash")
-#     #
-#     # if doc_hash != cached_doc_hash or rules_hash != cached_rules_hash:
-#     #     logger.info("Document or rules changed. Re-evaluating missing clauses.")
-#     #     reviewed_summary = _build_reviewed_rules_summary(cached_reviews)
-#     #     missing_clauses = await get_missing_clauses(llm_model, full_text, reviewed_summary)
-#     # else:
-#     #     missing_clauses = agent_cache.get("missing_clauses")
-
-#     # # Persist updated results to session cache
-#     # session_data.tool_results[AGENT_NAME] = {
-#     #     "rules_review": list(cached_reviews.values()),
-#     #     "missing_clauses": missing_clauses,
-#     #     "doc_hash": doc_hash,
-#     #     "rules_hash": rules_hash,
-#     # }
-
-#     # Cache disabled - not persisting results
-#     missing_clauses = None
-
-#     return PlayBookReviewFinalResponse(
-#         rules_review=list(cached_reviews.values()),
-#         missing_clauses=missing_clauses,
-#     )

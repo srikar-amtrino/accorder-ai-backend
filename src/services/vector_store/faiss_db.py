@@ -4,7 +4,7 @@ from typing import Any, Dict, List
 import faiss
 import numpy as np
 
-from src.config.logging import Logger
+from src.config.logging import get_logger
 from src.exceptions.faiss_exceptions import (
     FAISSDimensionMismatchException,
     FAISSEmptyEmbeddingException,
@@ -14,8 +14,10 @@ from src.exceptions.faiss_exceptions import (
 )
 from src.services.vector_store.base_store import BaseVectorStore
 
+logger = get_logger(__name__)
 
-class FAISSVectorStore(BaseVectorStore, Logger):
+
+class FAISSVectorStore(BaseVectorStore):
     """FAISS In-Memory vector store for single vectors."""
 
     def __init__(self, embedding_dimension: int) -> None:
@@ -39,7 +41,7 @@ class FAISSVectorStore(BaseVectorStore, Logger):
         faiss.normalize_L2(vector)
         return vector
 
-    async def index_embedding(self, embedding: List[float]) -> None:
+    async def index_embedding(self, embedding: List[float], session_id: str) -> None:
         """Add a single embedding vector to the FAISS index."""
         if embedding is None or len(embedding) == 0:
             raise FAISSEmptyEmbeddingException("Cannot index an empty embedding vector.")
@@ -51,17 +53,17 @@ class FAISSVectorStore(BaseVectorStore, Logger):
             vector = self._validate_vectors(vector)
             self.index.add(vector)
             elapsed_time = time.time() - start_time
-            self.logger.info(f"Indexed embedding of shape {vector.shape} into FAISS in {elapsed_time:.4f}s.")
+            logger.info("Indexed embedding into FAISS.", vector_shape=vector.shape, time_taken=elapsed_time, session_id=session_id)
 
             # Update stats
             self.stats["vectors_added"] += vector.shape[0]
             self.stats["total_add_time"] += elapsed_time
 
-            self.logger.info(f"Added {vector.shape[0]} vector in {elapsed_time:.4f}s")
+            logger.info("Added vector to FAISS.", time_taken=elapsed_time, session_id=session_id)
         except Exception as e:
             raise FAISSUnableToIndexException("Unable to index embeddings into database.") from e
 
-    async def search_index(self, query_embedding: List[float], top_k: int = 5) -> Dict[str, Any]:
+    async def search_index(self, query_embedding: List[float], session_id: str, top_k: int = 5) -> Dict[str, Any]:
         """Perform cosine similarity and return the top-k indices."""
 
         if query_embedding is None or len(query_embedding) == 0:
@@ -76,7 +78,7 @@ class FAISSVectorStore(BaseVectorStore, Logger):
             scores, indices = self.index.search(query, top_k)
             elapsed_time = time.time() - start_time
 
-            self.logger.info(f"Search completed in {elapsed_time:.4f}s with top_k={top_k}.")
+            logger.info("Search completed.", time_taken=elapsed_time, top_k=top_k, session_id=session_id)
 
             return {
                 "scores": scores[0].tolist(),

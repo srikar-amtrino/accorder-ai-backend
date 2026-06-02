@@ -12,7 +12,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import numpy as np
 from docx.document import Document
 
-from src.config.logging import Logger
+from src.config.logging import get_logger
 from src.config.settings import get_settings
 from src.exceptions.parser_exceptions import (
     DocxCleaningException,
@@ -81,6 +81,7 @@ _HEADING_BLACKLIST: frozenset[str] = frozenset(
 _EMBED_BATCH_SIZE = 64
 _MAX_CONCURRENT_BATCHES = 8
 
+logger = get_logger(__name__)
 
 # ── pure helpers ──────────────────────────────────────────────────────────────
 
@@ -99,6 +100,7 @@ def _make_uuids(n: int) -> List[str]:
 @functools.lru_cache(maxsize=4096)
 def _clean_text(text: str) -> str:
     """Pure function — safe to cache. Saves ~200ms on repeat-heavy docs."""
+
     if not text:
         return ""
     translated = text.translate(_SPECIAL_CHARS_TABLE)
@@ -136,6 +138,8 @@ def _find_clause_heading_matches(text: str) -> List[Dict[str, Any]]:
 
 
 def _split_at_clause_boundaries_sync(paragraphs: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Pure CPU function to split paragraphs at detected clause boundaries.  Returns a new list of paragraphs with new clause-heading paragraphs interleaved.  Does not modify the input paragraphs; caller is responsible for assembling the final text and re-embedding if needed."""
+
     result: List[Dict[str, Any]] = []
     for para in paragraphs:
         if para["is_heading"]:
@@ -251,35 +255,34 @@ def _mean_pool_by_spans(embeddings: np.ndarray, spans: List[Tuple[int, int]]) ->
     return (sums / lengths[:, np.newaxis]).astype(np.float32)
 
 
-async def _bulk_index(vector_store: Any, vectors: np.ndarray) -> None:
+async def _bulk_index(vector_store: Any, vectors: np.ndarray, session_id: str) -> None:
     if not len(vectors):
         return
     if hasattr(vector_store, "index_embeddings_bulk"):
         await vector_store.index_embeddings_bulk(vectors)
     else:
-        await asyncio.gather(*[vector_store.index_embedding(v) for v in vectors])
+        await asyncio.gather(*[vector_store.index_embedding(v, session_id=session_id) for v in vectors])
 
 
 # ── Parser ────────────────────────────────────────────────────────────────────
 
 
-class DocxParser(BaseParser, Logger):
+class DocxParser(BaseParser):
     _HEADING_MAX_WORDS = 8
     _ORPHAN_MIN_WORDS = 5
 
     def __init__(self) -> None:
         super().__init__()
         self.settings = get_settings()
-        from src.core.container import get_service_container
+        from src.core.container import get_embedding_service
 
-        sc = get_service_container()
-        self.embedding_service: BaseEmbeddingService = sc.embedding_service
+        self.embedding_service: BaseEmbeddingService = get_embedding_service()
         self.vector_store = get_faiss_vector_store(self.embedding_service.get_embedding_dimensions())
         self._embed_sem = asyncio.Semaphore(_MAX_CONCURRENT_BATCHES)
 
     # ── embedding ─────────────────────────────────────────────────────────────
 
-    async def _embed_batch(self, texts: List[str], task: str = "text-matching") -> np.ndarray:
+    async def _embed_batch(self, texts: List[str], session_id: str, task: str = "text-matching") -> np.ndarray:
         if not texts:
             return np.empty((0, self.embedding_service.get_embedding_dimensions()), dtype=np.float32)
 
@@ -292,7 +295,7 @@ class DocxParser(BaseParser, Logger):
         # Semaphore caps peak concurrency without serialising the requests.
         async def _one(t: str) -> Any:
             async with self._embed_sem:
-                return await self.embedding_service.generate_embeddings(text=t, task=task)
+                return await self.embedding_service.generate_embeddings(text=t, task=task, session_id=session_id)
 
         results = await asyncio.gather(*[_one(t) for t in texts])
         return np.asarray(results, dtype=np.float32)
@@ -344,16 +347,9 @@ class DocxParser(BaseParser, Logger):
 
     # ── chunking (receives pre-computed embeddings; never calls embed itself) ─
 
-    def _chunk_paragraphs(
-        self,
-        paragraphs: List[Dict[str, Any]],
-        para_embeddings: np.ndarray,
-    ) -> Tuple[List[str], List[Optional[str]], List[int], List[Tuple[int, int]]]:
-        """
-        Deterministic chunking on already-split paragraphs with pre-computed
-        embeddings.  Returns (texts, headings, wcs, spans).
-        Pure CPU — no I/O, no await needed; called inline after the gather.
-        """
+    def _chunk_paragraphs(self, paragraphs: List[Dict[str, Any]], para_embeddings: np.ndarray) -> Tuple[List[str], List[Optional[str]], List[int], List[Tuple[int, int]]]:
+        """Chunk paragraphs into semantically coherent pieces, ideally aligned with clause boundaries and structural headings.  Returns lists of chunk texts, chunk headings (if any), chunk word counts, and chunk spans (start/end paragraph indices).  Does not modify the input paragraphs; caller is responsible for assembling the final text and re-embedding if needed."""
+
         wcs = [p.get("wc") or len(p["content"].split()) for p in paragraphs]
 
         if len(para_embeddings) > 1:
@@ -411,17 +407,13 @@ class DocxParser(BaseParser, Logger):
 
     # ── public API ────────────────────────────────────────────────────────────
 
-    async def parse_data(
-        self,
-        data: List["TextInfo"],
-        session_data: Optional[Any] = None,
-    ) -> ParseResult:
+    async def parse_data(self, data: List["TextInfo"], session_data: SessionData) -> ParseResult:
         start = time.perf_counter()
         paragraphs = [d.text for d in data if d.text]
         if not paragraphs:
             raise ValueError("No paragraphs found in the data.")
-        vectors = await self._embed_batch(paragraphs)
-        await _bulk_index(self.vector_store, vectors)
+        vectors = await self._embed_batch(paragraphs, session_id=session_data.session_id)
+        await _bulk_index(self.vector_store, vectors, session_id=session_data.session_id)
         now = datetime.utcnow().isoformat()
         model = self.embedding_service.model_name
         ids = _make_uuids(len(paragraphs))
@@ -446,7 +438,7 @@ class DocxParser(BaseParser, Logger):
             processing_time=time.perf_counter() - start,
         )
 
-    async def parse_document(self, document: Document, session_data: Optional["SessionData"] = None) -> ParseResult:
+    async def parse_document(self, document: Document, session_data: SessionData) -> ParseResult:
 
         start = time.perf_counter()
         try:
@@ -477,14 +469,6 @@ class DocxParser(BaseParser, Logger):
                     )
             metadata["word_count"] += sum(len(cell.split()) for table in tables for row in table["content"] for cell in row if cell)
 
-            # ── Step 3: embed ORIGINAL paragraphs + tables in ONE call,
-            #            while clause-boundary split runs in a thread.
-            #
-            #    KEY INVARIANT: embed receives `para_texts` (N texts from the
-            #    original list), NOT the post-split list (~2.7N texts).
-            #    The split output is used only for boundary detection and text
-            #    assembly; vectors come from mean-pooling the N original
-            #    embeddings by span — same semantic result, far fewer embed calls.
             para_texts = [p["content"] for p in paragraphs]
             tbl_texts = [r["text"] for r in table_rows]
             all_texts = para_texts + tbl_texts
@@ -492,7 +476,7 @@ class DocxParser(BaseParser, Logger):
 
             loop = asyncio.get_running_loop()
             all_vectors, split_paragraphs = await asyncio.gather(
-                self._embed_batch(all_texts),  # I/O
+                self._embed_batch(all_texts, session_id=session_data.session_id),  # I/O
                 loop.run_in_executor(None, _split_at_clause_boundaries_sync, paragraphs),  # CPU
             )
 
@@ -511,7 +495,7 @@ class DocxParser(BaseParser, Logger):
 
             # ── Step 6: single bulk_index call for everything ──
             combined = np.vstack([chunk_vectors, tbl_vectors]) if len(tbl_vectors) else chunk_vectors
-            await _bulk_index(vector_store, combined)
+            await _bulk_index(vector_store, combined, session_id=session_data.session_id)
 
             # ── Step 7: build Chunk objects (batch UUIDs, one timestamp) ──
             total = len(chunk_texts) + len(table_rows)
@@ -563,7 +547,7 @@ class DocxParser(BaseParser, Logger):
             )
 
         except Exception as e:
-            self.logger.error(str(e))
+            logger.error("Error occurred while parsing document", error=str(e), session_id=session_data.session_id)
             return ParseResult(
                 success=False,
                 chunks=[],

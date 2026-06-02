@@ -1,6 +1,6 @@
 import io
-from typing import Any
 
+# from typing import Any
 from docx import Document
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
@@ -9,18 +9,21 @@ from fastapi.responses import StreamingResponse
 from src.core.auth import generate_access_token, get_session_id, verify_token
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
 from src.schemas.doc_chat import DocChatResponse
-from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
+
+# from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
 from src.schemas.playbook_review import (
     PlayBookReviewFinalResponse,
     RuleCheckRequest,
 )
-from src.tools.comparision import run as compare_documents_service
+
+# from src.tools.comparision import run as compare_documents_service
 from src.tools.doc_chat import query_document as query_document_service
-from src.tools.general_review import clause_review, full_document_review
+
+# from src.tools.general_review import clause_review, full_document_review
 from src.tools.key_information import (
-    get_key_information_generate as contract_analyzer_service,
+    get_key_information_generate,
+    get_key_information_stream,
 )
-from src.tools.key_information import get_key_information_stream
 from src.tools.playbook_review import review_document as playbook_review_service
 
 router = APIRouter(tags=["agents"])
@@ -44,14 +47,6 @@ router = APIRouter(tags=["agents"])
 
 #     comparison_result = await compare_documents_service(session_id=session_id, document_a=document_a, document_b=document_b)
 #     return comparison_result
-
-
-# @router.post("/playbook-review", response_model=PlayBookReviewFinalResponse)
-# async def playbook_review_endpoint(request: RuleCheckRequest, session_id: str = Depends(get_session_id)) -> PlayBookReviewFinalResponse:
-#     """Run playbook validation checks."""
-
-#     review_result = await playbook_review_service(session_id=session_id, request=request)
-#     return review_result
 
 
 # @router.post("/general-review", response_model=GeneralReviewResponse)
@@ -84,12 +79,12 @@ async def contract_analyzer_endpoint(file: UploadFile, session_id: str = Depends
     document = Document(io.BytesIO(await file.read()))
     document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
 
-    analysis_result: ContractAnalyzerResponse = await contract_analyzer_service(content=document_data)
+    analysis_result: ContractAnalyzerResponse = await get_key_information_generate(content=document_data, session_id=session_id)
     return analysis_result
 
 
 @router.post("/contract-analyzer/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
-async def contract_analyzer_stream_endpoint(file: UploadFile) -> StreamingResponse:
+async def contract_analyzer_stream_endpoint(file: UploadFile, session_id: str = Depends(get_session_id)) -> StreamingResponse:
     """Analyze a contract document and stream the extracted key information as it arrives."""
 
     document = Document(io.BytesIO(await file.read()))
@@ -98,12 +93,20 @@ async def contract_analyzer_stream_endpoint(file: UploadFile) -> StreamingRespon
     # Ensure CORS headers are present on the streaming response
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
 
-    return StreamingResponse(get_key_information_stream(content=document_data), media_type="text/event-stream", headers=headers)
+    return StreamingResponse(get_key_information_stream(content=document_data, session_id=session_id), media_type="text/event-stream", headers=headers)
 
 
-# @router.post("/query-document", response_model=DocChatResponse)
-# async def query_document_endpoint(query: str, session_id: str = Depends(get_session_id)) -> DocChatResponse:
-#     """Query the document chunks based on the given query and session ID."""
+@router.post("/playbook-review", response_model=PlayBookReviewFinalResponse)
+async def playbook_review_endpoint(request: RuleCheckRequest, session_id: str = Depends(get_session_id)) -> PlayBookReviewFinalResponse:
+    """Run playbook validation checks."""
 
-#     llm_result = await query_document_service(query=query, session_id=session_id)
-#     return llm_result
+    review_result = await playbook_review_service(session_id=session_id, request=request)
+    return review_result
+
+
+@router.post("/query-document", response_model=DocChatResponse)
+async def query_document_endpoint(query: str, session_id: str = Depends(get_session_id)) -> DocChatResponse:
+    """Query the document chunks based on the given query and session ID."""
+
+    llm_result = await query_document_service(query=query, session_id=session_id)
+    return llm_result

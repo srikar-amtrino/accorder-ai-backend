@@ -10,10 +10,13 @@ class Settings(BaseSettings):
     """Application configuration settings."""
 
     # API settings
+    api_name: str = Field(default="Accorder AI Backend", description="Name of the API service")
+    api_version: str = Field(default="1.0.0", description="Version of the API service")
     api_host: str = Field(default="0.0.0.0", description="Interface the FastAPI server binds to. '0.0.0.0' listens on all interfaces (needed for EC2/external access); 'localhost' for local-only.")
     api_port: int = Field(default=8000, description="API port number")
     debug: bool = Field(default=False, description="Enable or disable debug mode")
     env: str = Field(default="development", description="Application environment (e.g., 'development', 'production')")
+    log_level: str = Field(default="INFO", description="Logging level (e.g., 'DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')")
 
     # CORS settings — comma-separated origins, or "*" to allow all (dev only).
     # Word task-pane add-ins load from the manifest's SourceLocation host, so list that origin here.

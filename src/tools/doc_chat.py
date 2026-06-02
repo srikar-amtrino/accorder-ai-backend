@@ -8,37 +8,24 @@ from src.core.container import (
 )
 from src.schemas.doc_chat import DocChatResponse
 
-# Prompt split into static system (rules, examples, schema) and dynamic user
-# (retrieved context chunks + question).
-#
-# Caching (Sonnet 4.6, 1,024-token minimum): the ~2,080-token system block
-# clears the minimum, but query_document runs once per question — no in-request
-# reuse — so cache_system is left off. Worth enabling only if sustained traffic
-# makes the same block recur within the ~5-min cache TTL.
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
 _DOC_CHAT_SYSTEM = (_PROMPTS_DIR / "doc_chat_system.mustache").read_text(encoding="utf-8")
 _DOC_CHAT_USER = (_PROMPTS_DIR / "doc_chat_user.mustache").read_text(encoding="utf-8")
 
 
-async def query_document(query: str, session_id: str) -> DocChatResponse:
+async def query_document(query: str, session_id: str) -> DocChatResponse | Dict[str, Any]:
     """Query the document chunks based on the given query and session ID."""
 
     # Get service container and session manager
     llm_model = get_bedrock_model()
-    session_manager = get_session_manager()
     retrieval_service = get_retrieval_service()
-
-    # Get session data
-    session_data = session_manager.get_session(session_id)
-    if not session_data:
-        return {"error": "Session not found. Please ingest documents first.", "session_id": session_id}
 
     # Retrieve relevant chunks based on query and session context
     result = await retrieval_service.retrieve_data(
         query=query,
         top_k=5,
         dynamic_k=True,
-        session_data=session_data,
+        session_id=session_id,
     )
 
     data: Dict[str, Any] = {
@@ -51,5 +38,6 @@ async def query_document(query: str, session_id: str) -> DocChatResponse:
         context=data,
         response_model=DocChatResponse,
         system_message=_DOC_CHAT_SYSTEM,
+        session_id=session_id,
     )
     return llm_result

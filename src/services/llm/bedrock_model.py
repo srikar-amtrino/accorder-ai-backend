@@ -1,4 +1,5 @@
 import json
+import time
 from typing import Any, Dict, Optional, Type, cast
 
 import boto3
@@ -6,15 +7,17 @@ import pystache
 from botocore.config import Config
 from pydantic import BaseModel
 
-from src.config.logging import Logger
+from src.config.logging import get_logger
 from src.config.settings import get_settings
 from src.exceptions.llm_exceptions import (
     LLMModelError,
 )
 from src.services.llm.base_model import BaseLLMModel
 
+logger = get_logger(__name__)
 
-class BedrockModel(BaseLLMModel, Logger):
+
+class BedrockModel(BaseLLMModel):
     """The base llm wrapper for bedrock models."""
 
     def __init__(self) -> None:
@@ -41,6 +44,7 @@ class BedrockModel(BaseLLMModel, Logger):
                     retries={"max_attempts": 1},
                 ),
             )
+            logger.info("initialized bedrock client with explicit credentials for development environment", model=self.model_id, env=self.settings.env)
         else:
             self.client = boto3.client(
                 "bedrock-runtime",
@@ -51,13 +55,14 @@ class BedrockModel(BaseLLMModel, Logger):
                     retries={"max_attempts": 1},
                 ),
             )
+            logger.info("initialized bedrock client with default credentials for production environment", model=self.model_id, env=self.settings.env)
 
     def render_prompt_template(self, prompt: str, context: Dict[str, Any]) -> Any:
         """Mustache prompt template render."""
 
         return pystache.render(template=prompt, context=context)
 
-    async def generate_stream(self, prompt: str, context: Dict[str, Any], system_message: Optional[str] = None) -> Any:
+    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, system_message: Optional[str] = None) -> Any:
         """Yields raw text chunks as they arrive from Bedrock."""
 
         prompt = self.render_prompt_template(prompt=prompt, context=context)
@@ -69,10 +74,13 @@ class BedrockModel(BaseLLMModel, Logger):
             "system": system_message or "You are a helpful assistant.",
         }
 
+        start_time = time.time()
         streaming_response = self.client.invoke_model_with_response_stream(
             modelId=self.model_id,
             body=json.dumps(native_request),
         )
+        end_time = time.time()
+        logger.info("invoked bedrock model with streaming response", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
 
         for event in streaming_response["body"]:
             chunk = json.loads(event["chunk"]["bytes"])
@@ -99,7 +107,7 @@ class BedrockModel(BaseLLMModel, Logger):
 
         return value
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], system_message: Optional[str] = None) -> BaseModel:
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None) -> BaseModel:
         """Sends a generation request to Bedrock and returns the full response once complete."""
 
         prompt = self.render_prompt_template(prompt=prompt, context=context)
@@ -120,10 +128,14 @@ class BedrockModel(BaseLLMModel, Logger):
             "tool_choice": {"type": "tool", "name": response_model.__name__},
         }
 
+        start_time = time.time()
         response = self.client.invoke_model(
             modelId=self.model_id,
             body=json.dumps(native_request),
         )
+        end_time = time.time()
+
+        logger.info("invoked bedrock model with generate", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
 
         model_response = json.loads(response["body"].read())
         tool_use_block = next(block for block in model_response["content"] if block["type"] == "tool_use")

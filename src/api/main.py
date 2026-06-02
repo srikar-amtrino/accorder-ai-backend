@@ -14,7 +14,7 @@ from src.api.endpoints.agents.main import router as agents_router
 #     router as clause_extraction_router,
 # )
 # from src.api.endpoints.describe_draft.router import router as describe_draft_router
-# from src.api.endpoints.ingestion.router import router as ingestion_router
+from src.api.endpoints.ingestion.router import router as ingestion_router
 from src.config.logging import setup_logging
 from src.config.settings import get_settings
 from src.core.container import container
@@ -60,7 +60,7 @@ async def add_process_time_header(request: Request, call_next: typing.Callable) 
     return response
 
 
-# app.include_router(ingestion_router, prefix="/api/v1")
+app.include_router(ingestion_router, prefix="/ingestion")
 # app.include_router(clause_extraction_router, prefix="/api/v1/clause-extraction")
 # app.include_router(describe_draft_router, prefix="/api/v1/describe-draft")
 # app.include_router(admin_router, prefix="/admin")

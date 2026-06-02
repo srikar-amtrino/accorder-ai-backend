@@ -1,12 +1,14 @@
 from typing import Dict, Optional
 
-from src.config.logging import Logger
+from src.config.logging import get_logger
 from src.exceptions.parser_exceptions import ParserAlreadyRegistered
 from src.services.registry.base_parser import BaseParser
 from src.services.registry.semantic_parser import DocxParser
 
+logger = get_logger(__name__)
 
-class ParserRegistry(Logger):
+
+class ParserRegistry:
     """Registry Service for Parsers."""
 
     def __init__(self) -> None:
@@ -19,7 +21,7 @@ class ParserRegistry(Logger):
         """Register default parsers in the registry."""
 
         self.parsers["DOCX"] = DocxParser()
-        self.logger.info("Registered default parsers into the registry: DOCX")
+        logger.info("Registered default parsers into the registry: DOCX")
 
     def register_parser(self, name: str, parser_class: BaseParser) -> None:
         """Register a parser class in the registry."""
@@ -27,7 +29,7 @@ class ParserRegistry(Logger):
         if name in self.parsers:
             raise ParserAlreadyRegistered(f"Parser '{name}' is already registered.")
         self.parsers[name] = parser_class
-        self.logger.info(f"Registered a new parser '{name}' into the registry.")
+        logger.info("Registered a new parser into the registry.", parser_name=name)
 
     # Need to implement this method
     def get_parser(self) -> Optional[BaseParser]:

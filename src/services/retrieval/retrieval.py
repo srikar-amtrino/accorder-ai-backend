@@ -1,53 +1,54 @@
 from pathlib import Path
 from typing import Any, Dict, List, Optional
 
-from src.config.logging import Logger
+from src.config.logging import get_logger
 from src.config.settings import get_settings
 from src.schemas.doc_chat import QueryRewriterResponse
-from src.services.llm.base_model import BaseLLMModel
-from src.services.session_manager import SessionData
-from src.services.vector_store.embeddings.base_embedding_service import (
-    BaseEmbeddingService,
-)
 from src.services.vector_store.manager import (
     get_chunks,
     get_chunks_from_session,
     get_faiss_vector_store,
 )
 
-# Prompt split into static system (rules, examples, schema) and dynamic user
-# (just the original query). Loaded once at module import — well below the
-# Opus 4.7 cache minimum, so no cache_control.
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts" / "v1"
 _QUERY_REWRITER_SYSTEM = (_PROMPTS_DIR / "query_rewriter_system.mustache").read_text(encoding="utf-8")
 _QUERY_REWRITER_USER = (_PROMPTS_DIR / "query_rewriter_user.mustache").read_text(encoding="utf-8")
 
 
-class RetrievalService(Logger):
+logger = get_logger(__name__)
+
+
+class RetrievalService:
     """Retrieval Service for retrieving the data."""
 
     def __init__(self) -> None:
         super().__init__()
 
-        from src.core.container import get_bedrock_model, get_embedding_service
+        from src.core.container import (
+            get_bedrock_model,
+            get_embedding_service,
+            get_session_manager,
+        )
 
         self.settings = get_settings()
 
         self.embedding_service = get_embedding_service()
         self.llm = get_bedrock_model()
+        self.session_manager = get_session_manager()
         self.vector_store = get_faiss_vector_store(self.embedding_service.get_embedding_dimensions())
 
-    async def rewrite_query(self, query: str) -> List[str]:
+    async def rewrite_query(self, query: str, session_id: str) -> List[str]:
         """Rewrite the given query."""
 
         context: Dict[str, Any] = {
             "query": query,
         }
-        self.logger.info(f"Rewriting query: {query}")
+        logger.info("Rewriting query", original_query=query, session_id=session_id)
         response: QueryRewriterResponse = await self.llm.generate(
             prompt=_QUERY_REWRITER_USER,
             context=context,
             response_model=QueryRewriterResponse,
+            session_id=session_id,
             system_message=_QUERY_REWRITER_SYSTEM,
         )
         return [q.query for q in response.queries]
@@ -56,39 +57,45 @@ class RetrievalService(Logger):
         """Retrieve the whole document chunks."""
         return {}
 
-    async def retrieve_data(self, query: str, top_k: int = 5, dynamic_k: bool = False, threshold: Optional[float] = 0.0, session_data: Optional[SessionData] = None) -> Dict[str, Any]:
+    async def retrieve_data(self, query: str, session_id: str, top_k: int = 5, dynamic_k: bool = False, threshold: Optional[float] = 0.0) -> Dict[str, Any]:
         """Retrieve and return relevant document chunks based on query."""
 
         if not query or not query.strip():
             raise ValueError("Query cannot be empty.")
 
         try:
-            queries = await self.rewrite_query(query=query)
+            queries = await self.rewrite_query(query=query, session_id=session_id)
             # queries = [query]
-            self.logger.info(f"Generated {len(queries)} rewritten queries for the original query: '{query}'")
 
             all_hits: Dict[int, Dict[str, Any]] = {}
 
-            # If dynamic_k is enabled, we fetch more initial candidates to filter down
-            # If standard top_k is small, we want enough candidates to find the drop-off
             initial_k = max(10, top_k * 2) if dynamic_k else top_k
 
             for query_rewriten in queries:
                 new_query = query + " | " + query_rewriten
                 # Generate query embedding
-                self.logger.info(f"Generating embedding for the query: '{new_query}'")
-                query_embedding = await self.embedding_service.generate_embeddings(text=new_query, task="retrieval.query")
+                logger.info("Generating embedding for the query", new_query=new_query, session_id=session_id)
+                query_embedding = await self.embedding_service.generate_embeddings(text=new_query, task="retrieval.query", session_id=session_id)
+
+                # Get session data
+                session_data = self.session_manager.get_session(session_id)
+                if not session_data:
+                    return {"error": "Session not found. Please ingest documents first.", "session_id": session_id}
 
                 # Search vector store for top-k similar embeddings
                 if session_data:
                     # Per-session search
-                    search_result = await session_data.vector_store.search_index(query_embedding, initial_k)
-                    self.logger.info(f"Searching for similar chunks in session {session_data.session_id} for query: '{new_query}'")
+                    search_result = await session_data.vector_store.search_index(query_embedding, session_id=session_id, top_k=initial_k)
+                    print(search_result)
+                    if not search_result:
+                        logger.info("No search results found in session vector store", session_id=session_id)
+                        return {"error": "Session not found. Please ingest documents first.", "session_id": session_id}
+                    logger.info("Searching for similar chunks in session", session_id=session_id, query=new_query)
                     chunk_getter = lambda idx: get_chunks_from_session(session_data, [idx])  # noqa: E731
                 else:
                     # Global search (legacy)
-                    search_result = await self.vector_store.search_index(query_embedding, initial_k)
-                    self.logger.info(f"Searching for similar chunks in global vector store for query: '{new_query}'")
+                    search_result = await self.vector_store.search_index(query_embedding=query_embedding, session_id=session_id, top_k=initial_k)
+                    logger.info("Searching for similar chunks in global vector store", query=new_query, session_id=session_id)
                     chunk_getter = lambda idx: get_chunks([idx])  # noqa: E731
 
                 indices = search_result.get("indices", [])
@@ -97,7 +104,7 @@ class RetrievalService(Logger):
                 # Fetch chunks from the manager by their indices
                 for idx, score in zip(indices, scores):
                     if threshold is not None and score < threshold:
-                        self.logger.debug(f"Skipping result with score {score} (below threshold {threshold})")
+                        logger.debug("Skipping result with score below threshold", score=score, threshold=threshold, session_id=session_id)
                         continue
 
                     if idx not in all_hits or score > all_hits[idx]["similarity_score"]:
@@ -131,20 +138,13 @@ class RetrievalService(Logger):
                 if base_chunks and remaining_chunks:
                     last_score = base_chunks[-1]["similarity_score"]
 
-                    # Threshold: Score must be within X% of the last included chunk
-                    # or drop-off shouldn't be too steep.
-                    # Simple heuristic: If the next chunk is at least 95% as relevant as the last one, keep it.
-                    # We can also check against the very first chunk to ensure overall relevance.
-
-                    for chunk in remaining_chunks:
-                        current_score = chunk["similarity_score"]
+                    for chunk in remaining_chunks:  # type: ignore
+                        current_score = chunk["similarity_score"]  # type: ignore
 
                         # Relative Drop Check
                         if current_score >= last_score * 0.98:  # 2% drop tolerance
-                            final_chunks.append(chunk)
-                            last_score = current_score  # Update reference? Or keep strict reference?
-                            # Updating reference allows a gentle slope. Keeping strict reference enforces a hard shelf.
-                            # Let's update to allow gentle slope but maybe set a max limit?
+                            final_chunks.append(chunk)  # type: ignore
+                            last_score = current_score
                         else:
                             # Drop is too steep, stop here
                             break
@@ -155,7 +155,7 @@ class RetrievalService(Logger):
             else:
                 final_chunks = ranked_chunks[:top_k]
 
-            self.logger.info(f"Retrieved {len(final_chunks)} chunks for query (requested top_k={top_k}, dynamic={dynamic_k})")
+            logger.info("Retrieved chunks for query", num_chunks=len(final_chunks), query=query, session_id=session_id)
 
             return {
                 "query": query,
@@ -171,5 +171,5 @@ class RetrievalService(Logger):
             }
 
         except Exception as e:
-            self.logger.error(f"Error retrieving data: {str(e)}")
+            logger.error("Error retrieving data", error=str(e), query=query, session_id=session_id)
             raise ValueError("Unable to retrieve the data.") from e

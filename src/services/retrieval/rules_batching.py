@@ -5,7 +5,7 @@ from typing import Any, Dict, List
 import numpy as np
 
 from src.config.logging import get_logger
-from src.core.container import get_service_container
+from src.core.container import get_bedrock_model, get_embedding_service, get_faiss_store
 from src.schemas.playbook_review import (
     MissingClausesLLMResponse,
     ParaSimilarity,
@@ -17,11 +17,10 @@ from src.schemas.playbook_review import (
 logger = get_logger(__name__)
 
 
-async def get_missing_clauses(data: str) -> List[str]:
+async def get_missing_clauses(data: str, session_id: str) -> List[str]:
     """Get the missing clauses for the given contract text."""
 
-    service_container = get_service_container()
-    llm_model = service_container.llm_model
+    llm_model = get_bedrock_model()
 
     prompt = Path(r"src/services/prompts/v1/missing_clauses.mustache").read_text(encoding="utf-8")
     context = {"data": data}
@@ -29,6 +28,7 @@ async def get_missing_clauses(data: str) -> List[str]:
         prompt=prompt,
         context=context,
         response_model=MissingClausesLLMResponse,
+        session_id=session_id,
     )
 
     # Simple parsing of bullet points from the response
@@ -39,36 +39,35 @@ async def get_missing_clauses(data: str) -> List[str]:
     return missing_clauses
 
 
-async def get_matching_pairs_faiss(request: RuleCheckRequest) -> List[RuleResult]:
+async def get_matching_pairs_faiss(request: RuleCheckRequest, session_id: str) -> List[RuleResult]:
     """Get the matching pairs for the given rules with FAISS."""
 
-    service_container = get_service_container()
-    faiss_db = service_container.faiss_store
-    embedding_model = service_container.embedding_service
+    faiss_db = get_faiss_store()
+    embedding_model = get_embedding_service()
 
     # Index all paragraph embeddings into FAISS
     for item in request.textinformation:
-        embedd_vector = await embedding_model.generate_embeddings(item.text)
+        embedd_vector = await embedding_model.generate_embeddings(item.text, session_id=session_id)
         logger.info(f"Indexing paragraph {item.paraindetifier} into FAISS.")
-        await faiss_db.index_embedding(embedd_vector)
+        await faiss_db.index_embedding(embedd_vector, session_id=session_id)
 
     results: List[RuleResult] = []
 
     for rule in request.rulesinformation:
         rule_text = f"title: {rule.title}. " f"description: {rule.description}. "  #  f"tags: {', '.join(rule.tags)}
         logger.info(f"Generating embedding for rule '{rule.title}'.")
-        rule_embedds = await embedding_model.generate_embeddings(rule_text)
+        rule_embedds = await embedding_model.generate_embeddings(rule_text, session_id=session_id)
         logger.info(f"Searching for similar paragraphs in FAISS for rule '{rule.title}'.")
-        faiss_result: Dict[str, Any] = await faiss_db.search_index(rule_embedds, top_k=3)
+        faiss_result: Dict[str, Any] = await faiss_db.search_index(rule_embedds, session_id=session_id, top_k=3)
 
         indices = faiss_result.get("indices", [])
         scores = faiss_result.get("scores", [])
 
         # Filter out invalid FAISS indices (-1 means no result found)
-        matched_pairs: List[ParaSimilarity] = [(idx, score) for idx, score in zip(indices, scores) if idx != -1 and idx < len(request.textinformation)]
+        matched_pairs: List[ParaSimilarity] = [(idx, score) for idx, score in zip(indices, scores) if idx != -1 and idx < len(request.textinformation)]  # type: ignore
 
         if not matched_pairs:
-            logger.info(f"No relevant paragraphs found in FAISS for rule '{rule.title}'.")
+            logger.info("No relevant paragraphs found in FAISS for rule", rule_title=rule.title, session_id=session_id)
             results.append(
                 RuleResult(
                     title=rule.title,
@@ -81,7 +80,7 @@ async def get_matching_pairs_faiss(request: RuleCheckRequest) -> List[RuleResult
             )
             continue
 
-        logger.info(f"Found {len(matched_pairs)} similar paragraphs in FAISS for rule '{rule.title}'.")
+        logger.info("Found similar paragraphs in FAISS for rule.", rule_title=rule.title, similar_paras=len(matched_pairs), session_id=session_id)
 
         matched_paras = [request.textinformation[idx] for idx, _ in matched_pairs]
         similarity_scores = [float(score) for _, score in matched_pairs]
@@ -103,60 +102,60 @@ async def get_matching_pairs_faiss(request: RuleCheckRequest) -> List[RuleResult
     return results
 
 
-def find_similarity(rule_embedd: np.ndarray, para_embedds: np.ndarray, para_items: List[TextInfo], top_k: int = 3, threshold: float = 0.30) -> List[ParaSimilarity]:
+def find_similarity(rule_embedd: np.ndarray, para_embedds: np.ndarray, para_items: List[TextInfo], session_id: str, top_k: int = 3, threshold: float = 0.30) -> List[ParaSimilarity]:
     """get the similar paragraphs for the given rules."""
 
-    logger.info("Normalizing embeddings for similarity computation.")
+    logger.info("Normalizing embeddings for similarity computation.", session_id=session_id)
     # Normalize safely
     rules_norm = rule_embedd / (np.linalg.norm(rule_embedd) + 1e-10)
     para_norms = para_embedds / (np.linalg.norm(para_embedds, axis=1, keepdims=True) + 1e-10)
 
-    logger.info("Computing cosine similarity between rule and paragraph embeddings.")
+    logger.info("Computing cosine similarity between rule and paragraph embeddings.", session_id=session_id)
     # compute cosine similarity
     scores = para_norms @ rules_norm
 
-    logger.info("Sorting similarity scores and filtering based on threshold.")
+    logger.info("Sorting similarity scores and filtering based on threshold.", session_id=session_id)
     # Sort indices descending
     top_indices = np.argsort(scores)[::-1][:top_k]
 
     results: List[ParaSimilarity] = []
     for idx in top_indices:
         if scores[idx] >= threshold:
-            results.append({"paragraph": para_items[idx], "similarity": float(scores[idx])})
+            results.append({"paragraph": para_items[idx], "similarity": float(scores[idx])})  # type: ignore
 
-    logger.info(f"Found {len(results)} paragraphs with similarity above the threshold of {threshold}.")
+    logger.info(f"Found {len(results)} paragraphs with similarity above the threshold of {threshold}.", session_id=session_id)
 
     return results
 
 
-async def get_matching_paras(request: RuleCheckRequest) -> List[RuleResult]:
+async def get_matching_paras(request: RuleCheckRequest, session_id: str) -> List[RuleResult]:
     """Get the matching paras for the given rules."""
 
-    service_container = get_service_container()
-    embedding_model = service_container.embedding_service
+    embedding_model = get_embedding_service()
 
-    rule_texts = [f"title: {rule.title}. " f"description: {rule.description}." f"tags: {', '.join(rule.tags)}" for rule in request.rulesinformation]
-    # rule_texts = [f"title: {rule.title}. " f"description: {rule.description}." for rule in request.rulesinformation]
+    # rule_texts = [f"title: {rule.title}. " f"description: {rule.description}." f"tags: {', '.join(rule.tags)}" for rule in request.rulesinformation]
+    rule_texts = [f"title: {rule.title}. " f"description: {rule.description}." for rule in request.rulesinformation]
 
-    logger.info("Generating embeddings for rules and paragraphs.")
-    rule_embeddings = np.array(await asyncio.gather(*[embedding_model.generate_embeddings(text) for text in rule_texts]))
-    para_embeddings = np.array(await asyncio.gather(*[embedding_model.generate_embeddings(item.text) for item in request.textinformation]))
+    logger.info("Generating embeddings for rules and paragraphs.", session_id=session_id)
+    rule_embeddings = np.array(await asyncio.gather(*[embedding_model.generate_embeddings(text, session_id) for text in rule_texts]))
+    para_embeddings = np.array(await asyncio.gather(*[embedding_model.generate_embeddings(item.text, session_id) for item in request.textinformation]))
 
     results: List[RuleResult] = []
 
     for rule, rule_emb in zip(request.rulesinformation, rule_embeddings):
 
-        logger.info(f"Finding similar paragraphs for rule '{rule.title}'.")
+        logger.info(f"Finding similar paragraphs for rule '{rule.title}'.", session_id=session_id)
         matched: List[ParaSimilarity] = find_similarity(
             rule_embedd=rule_emb,
             para_embedds=para_embeddings,
             para_items=request.textinformation,
+            session_id=session_id,
             top_k=3,
             threshold=0.30,
         )
 
         if not matched:
-            logger.info(f"No relevant paragraphs found for rule '{rule.title}'.")
+            logger.info("No relevant paragraphs found for rule", rule=rule.title, session_id=session_id)
             results.append(
                 RuleResult(
                     title=rule.title,

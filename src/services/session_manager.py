@@ -3,7 +3,7 @@ from dataclasses import dataclass, field
 from threading import RLock
 from typing import Any, Dict, List, Optional
 
-from src.config.logging import Logger
+# from src.config.logging import Logger
 from src.schemas.registry import Chunk
 from src.services.vector_store.faiss_db import FAISSVectorStore
 
@@ -31,26 +31,10 @@ class SessionData:
         self.last_access = time.time()
 
 
-class SessionManager(Logger):
-    """
-    Production-ready in-memory session manager.
+class SessionManager:
+    """Manages user sessions, including their associated vector stores, documents, and metadata."""
 
-    Responsibilities:
-    - Maintain per-session vector stores
-    - Store chunks/documents
-    - Thread-safe access
-    - Explicit lifecycle management
-
-    NOTE:
-    This is still in-memory only.
-    For multi-instance deployments use Redis/Postgres.
-    """
-
-    def __init__(
-        self,
-        embedding_dimension: int = 1536,
-        max_sessions: int = 1000,
-    ) -> None:
+    def __init__(self, embedding_dimension: int = 384, max_sessions: int = 1000) -> None:
         super().__init__()
 
         self.embedding_dimension = embedding_dimension
@@ -81,7 +65,7 @@ class SessionManager(Logger):
 
             self._sessions[session_id] = session
 
-            self.logger.info(f"Created session: {session_id}")
+            # self.logger.info(f"Created session: {session_id}")
 
             return session
 
@@ -97,7 +81,7 @@ class SessionManager(Logger):
 
             return self.create_session(session_id)
 
-    def get_session(self, session_id: str) -> Optional[SessionData]:
+    def get_session(self, session_id: str) -> SessionData | None:
         """Retrieve session."""
 
         with self._lock:
@@ -121,7 +105,7 @@ class SessionManager(Logger):
             if not session:
                 return False
 
-            self.logger.info(f"Deleted session: {session_id}")
+            # self.logger.info(f"Deleted session: {session_id}")
 
             return True
 
@@ -133,7 +117,7 @@ class SessionManager(Logger):
 
             self._sessions.clear()
 
-            self.logger.warning(f"Cleared all sessions ({count})")
+            # self.logger.warning(f"Cleared all sessions ({count})")
 
     def list_sessions(self) -> List[Dict[str, Any]]:
         """List all active sessions."""
@@ -150,10 +134,7 @@ class SessionManager(Logger):
                 for session in self._sessions.values()
             ]
 
-    def get_session_info(
-        self,
-        session_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    def get_session_info(self, session_id: str) -> Optional[Dict[str, Any]]:
         """Detailed session information."""
 
         with self._lock:
@@ -175,11 +156,7 @@ class SessionManager(Logger):
                 ),
             }
 
-    def get_document_info(
-        self,
-        session_id: str,
-        document_id: str,
-    ) -> Optional[Dict[str, Any]]:
+    def get_document_info(self, session_id: str, document_id: str) -> Optional[Dict[str, Any]]:
         """Get stored document details."""
 
         with self._lock:

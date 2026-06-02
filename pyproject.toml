@@ -35,6 +35,7 @@ pystache = "*"
 boto3 = "*"
 python-jose = "*"
 torch = { version = "*", source = "pytorch-cpu" }
+structlog = "*"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
