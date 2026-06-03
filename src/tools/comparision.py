@@ -252,7 +252,7 @@ async def match_clauses(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]
             heading_matched_indices.append((i, j))
             used_a.add(i)
             used_b.add(j)
-            logger.debug(f"Heading match: '{key}' -> A[{i}] <-> B[{j}]")
+            logger.info("Heading match:", heading=clauses_a[i].heading, index_a=i, index_b=j, total_a=n, total_b=m, session_id=session_id)
 
     # Generate embeddings for all clauses
     await _ensure_embeddings(clauses_a, clauses_b, list(range(n)), list(range(m)), embedding_service, session_id)
@@ -261,7 +261,7 @@ async def match_clauses(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]
     for i, j in heading_matched_indices:
         sim = _cosine_similarity(clauses_a[i].embedding, clauses_b[j].embedding)
         heading_pairs.append((i, j, sim))
-        logger.info(f"Heading match: '{clauses_a[i].heading}' — similarity: {sim:.4f}")
+        logger.info("Content similarity:", heading=clauses_a[i].heading, index_a=i, index_b=j, similarity=sim, session_id=session_id)
 
     # Step 2: embedding similarity for remaining clauses
     remaining_a = [i for i in range(n) if i not in used_a]
@@ -295,7 +295,7 @@ async def match_clauses(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]
 # --- Stage 2.5: Split/Merge Detection ---
 
 
-def _detect_splits_and_merges(match_result: MatchResult, clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]) -> Tuple[List[ChangeEntry], List[int], List[int]]:
+def _detect_splits_and_merges(match_result: MatchResult, clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], session_id: str) -> Tuple[List[ChangeEntry], List[int], List[int]]:
     """Identify cases where unmatched clauses on one side are highly similar to matched clauses on the other side, indicating a possible split or merge."""
 
     entries: List[ChangeEntry] = []
@@ -341,7 +341,7 @@ def _detect_splits_and_merges(match_result: MatchResult, clauses_a: List[ClauseU
             )
             explained_b.add(j)
             used_a.add(idx_a)
-            logger.info(f"Split detected: A[{idx_a}] -> B[{j}] (sim={score:.4f})")
+            logger.info("Split detected", idx_a=idx_a, j=j, score=score, session_id=session_id)
 
     if match_result.unmatched_a and matched_b_indices:
         emb_matched_b = np.array([clauses_b[j].embedding for j in matched_b_indices], dtype=np.float32)
@@ -377,7 +377,7 @@ def _detect_splits_and_merges(match_result: MatchResult, clauses_a: List[ClauseU
             )
             explained_a.add(i)
             used_b.add(idx_b)
-            logger.info(f"Merge detected: A[{i}] -> B[{idx_b}] (sim={score:.4f})")
+            logger.info("Merge detected", idx_a=i, idx_b=idx_b, score=score, session_id=session_id)
 
     remaining_a = [i for i in match_result.unmatched_a if i not in explained_a]
     remaining_b = [j for j in match_result.unmatched_b if j not in explained_b]
@@ -391,7 +391,7 @@ def _normalize_for_containment(text: str) -> str:
     return " ".join(text.split()).lower()
 
 
-def _reconcile_containment(unmatched_a: List[int], unmatched_b: List[int], clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]) -> Tuple[List[ChangeEntry], List[int], List[int]]:
+def _reconcile_containment(unmatched_a: List[int], unmatched_b: List[int], clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], session_id: str) -> Tuple[List[ChangeEntry], List[int], List[int]]:
     """Detect cases where an unmatched clause on one side is mostly contained within an unmatched clause on the other side, indicating a possible addition or removal of content rather than a true new/deleted clause."""
 
     entries: List[ChangeEntry] = []
@@ -406,6 +406,7 @@ def _reconcile_containment(unmatched_a: List[int], unmatched_b: List[int], claus
 
         for j in unmatched_b:
             if j in explained_b:
+                logger.info("Skipping explained clause", idx_a=i, idx_b=j, session_id=session_id)
                 continue
             norm_b = _normalize_for_containment(clauses_b[j].content)
 
@@ -428,7 +429,7 @@ def _reconcile_containment(unmatched_a: List[int], unmatched_b: List[int], claus
                 )
                 explained_a.add(i)
                 explained_b.add(j)
-                logger.info(f"Containment: A[{i}] found inside B[{j}] — reporting as addition")
+                logger.info("Containment reporting as addition", idx_a=i, idx_b=j, session_id=session_id)
                 break
 
     # Reverse: B text contained in A (content was trimmed)
@@ -463,7 +464,7 @@ def _reconcile_containment(unmatched_a: List[int], unmatched_b: List[int], claus
                 )
                 explained_a.add(i)
                 explained_b.add(j)
-                logger.info(f"Containment: B[{j}] found inside A[{i}] — reporting as removal")
+                logger.info("Containment reporting as removal", idx_a=i, idx_b=j, session_id=session_id)
                 break
 
     remaining_a = [i for i in unmatched_a if i not in explained_a]
@@ -490,7 +491,9 @@ def _derive_delta_heading(longer: ClauseUnit, shorter: ClauseUnit, shared_text: 
     return longer.heading or shorter.heading
 
 
-def _reconcile_matched_containment(pairs: List[Tuple[int, int, float]], clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]) -> Tuple[List[Tuple[int, int, float]], List[ChangeEntry]]:
+def _reconcile_matched_containment(
+    pairs: List[Tuple[int, int, float]], clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit], session_id: str
+) -> Tuple[List[Tuple[int, int, float]], List[ChangeEntry]]:
     """For matched pairs with moderate similarity, check if one clause's text is mostly contained within the other, which may indicate an addition or removal of content rather than a true modification. Emit a corresponding ChangeEntry and remove from LLM comparison."""
 
     remaining: List[Tuple[int, int, float]] = []
@@ -524,7 +527,7 @@ def _reconcile_matched_containment(pairs: List[Tuple[int, int, float]], clauses_
                     is_substantive=True,
                 )
             )
-            logger.info(f"Matched-pair containment: A[{idx_a}] inside B[{idx_b}] — " f"emitting addition; shared_identical={shared_is_identical}")
+            logger.info("Matched-pair containment: A inside B", idx_a=idx_a, idx_b=idx_b, session_id=session_id)
             if not shared_is_identical:
                 # Shared portion has cosmetic/word-level differences too — LLM still runs.
                 remaining.append((idx_a, idx_b, score))
@@ -548,7 +551,7 @@ def _reconcile_matched_containment(pairs: List[Tuple[int, int, float]], clauses_
                     is_substantive=True,
                 )
             )
-            logger.info(f"Matched-pair containment: B[{idx_b}] inside A[{idx_a}] — " f"emitting removal; shared_identical={shared_is_identical}")
+            logger.info("Matched-pair containment B inside A", idx_a=idx_a, idx_b=idx_b, session_id=session_id)
             if not shared_is_identical:
                 remaining.append((idx_a, idx_b, score))
             continue
@@ -678,7 +681,7 @@ async def compare_matched_pairs(
                 comparison = await _compare_single_pair(clause_a, clause_b, llm_client, session_id)
                 return _build_change_entry(clause_a, clause_b, comparison, similarity)
             except Exception as e:
-                logger.error(f"LLM comparison failed for {clause_a.clause_id} vs {clause_b.clause_id}: {e}")
+                logger.error("LLM comparison failed", idx_a=idx_a, idx_b=idx_b, error=str(e), session_id=session_id)
                 return _make_skipped_entry(clause_a, clause_b, f"Comparison failed: {e}")
 
     llm_results: List[ChangeEntry] = []
@@ -821,7 +824,7 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
     if session_data is not None:
         cached_data = session_data.tool_results.get(AGENT_NAME)
     if cached_data and cached_data.get("doc_1_hash") == hash_a and cached_data.get("doc_2_hash") == hash_b:
-        logger.info(f"Cache hit for session {session_id} agent {AGENT_NAME} — returning cached response")
+        logger.info("Cache hit for session", session_id=session_id, agent=AGENT_NAME)
         return CompareResponse(
             success=cached_data.get("success", True),
             message=cached_data.get("message"),
@@ -829,7 +832,7 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
             sections=cached_data.get("sections", []),
         )
     if cached_data:
-        logger.info(f"Cache miss for session {session_id} agent {AGENT_NAME} — documents differ, recomputing")
+        logger.info("Cache miss for session", session_id=session_id, agent=AGENT_NAME)
 
     doc_a: ParseResult = await parser.parse_document(document_a, session_data=session_data)  # type: ignore
     doc_b: ParseResult = await parser.parse_document(document_b, session_data=session_data)  # type: ignore
@@ -844,7 +847,7 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
         )
 
     # Stage 1: Extract clauses
-    logger.info("Extracting clauses for the doccuments...")
+    logger.info("Extracting clauses for the doccuments...", session_id=session_id)
     clauses_a = extract_clauses(doc_a)
     clauses_b = extract_clauses(doc_b)
 
@@ -869,19 +872,19 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
         )
 
     # Stage 2: Match clauses
-    logger.info(f"Matching {len(clauses_a)} clauses (A) against {len(clauses_b)} clauses (B)")
+    logger.info("Matching clauses", session_id=session_id)
     match_result = await match_clauses(clauses_a, clauses_b, embedding_service, session_id=session_id)
-    logger.info(f"Matched: {len(match_result.matched_pairs)}, " f"Unmatched A: {len(match_result.unmatched_a)}, " f"Unmatched B: {len(match_result.unmatched_b)}")
+    logger.info("Match results", matched=len(match_result.matched_pairs), unmatched_a=len(match_result.unmatched_a), unmatched_b=len(match_result.unmatched_b), session_id=session_id)
 
     # Stage 2.5: Reconcile matched pairs where one side merges multiple clauses
-    surviving_pairs, matched_containment_entries = _reconcile_matched_containment(match_result.matched_pairs, clauses_a, clauses_b)
+    surviving_pairs, matched_containment_entries = _reconcile_matched_containment(match_result.matched_pairs, clauses_a, clauses_b, session_id=session_id)
     match_result.matched_pairs = surviving_pairs
 
     # Stage 3: Split/merge detection
-    split_merge_entries, remaining_a, remaining_b = _detect_splits_and_merges(match_result, clauses_a, clauses_b)
+    split_merge_entries, remaining_a, remaining_b = _detect_splits_and_merges(match_result, clauses_a, clauses_b, session_id=session_id)
 
     # Stage 3.5: Containment reconciliation
-    containment_entries, remaining_a, remaining_b = _reconcile_containment(remaining_a, remaining_b, clauses_a, clauses_b)
+    containment_entries, remaining_a, remaining_b = _reconcile_containment(remaining_a, remaining_b, clauses_a, clauses_b, session_id=session_id)
 
     # Stage 4: LLM comparison for content differences
     llm_changes, llm_calls_made, llm_calls_skipped = await compare_matched_pairs(match_result.matched_pairs, clauses_a, clauses_b, llm_client, session_id=session_id)
@@ -895,22 +898,18 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
     summary = _compute_summary(all_changes, llm_calls_made, llm_calls_skipped)
 
     logger.info(
-        f"Compare complete: {summary.total_changes} changes "
-        f"({summary.added}A/{summary.removed}R/{summary.modified}M/{summary.reordered}O), "
-        f"LLM calls: {llm_calls_made} made, {llm_calls_skipped} skipped"
+        "Compare complete",
+        total_changes=summary.total_changes,
+        added=summary.added,
+        removed=summary.removed,
+        modified=summary.modified,
+        reordered=summary.reordered,
+        llm_calls_made=llm_calls_made,
+        llm_calls_skipped=llm_calls_skipped,
+        session_id=session_id,
     )
 
     message = "Both documents are identical. No differences found." if summary.total_changes == 0 else None
-
-    # # Store data in cache for this session and agent
-    # session_data.tool_results[AGENT_NAME] = {
-    #     "doc_1_hash": hash_a,
-    #     "doc_2_hash": hash_b,
-    #     "success": True,
-    #     "message": message,
-    #     "summary": summary,
-    #     "sections": sections,
-    # }
 
     return CompareResponse(
         success=True,

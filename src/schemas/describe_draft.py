@@ -18,10 +18,7 @@ class DescribeDraftRequest(BaseModel):
     """
 
     prompt: str = Field(
-        description=(
-            "Free-text drafting request, e.g. 'I need a liquidated damages clause' "
-            "or 'Draft a Non-Disclosure Agreement for multiple parties'."
-        ),
+        description=("Free-text drafting request, e.g. 'I need a liquidated damages clause' " "or 'Draft a Non-Disclosure Agreement for multiple parties'."),
         max_length=2000,
     )
     use_document_context: bool = Field(
@@ -54,15 +51,8 @@ class ClauseListEntry(BaseModel):
     """
 
     title: str = Field(description="Clause name (e.g. 'Confidentiality Obligations')")
-    summary: str = Field(
-        description="One-sentence description of what this clause covers"
-    )
-    drafted_clause: str = Field(
-        description=(
-            "Full drafted clause text ready to drop into the agreement. "
-            "Contains `[PLACEHOLDER]` tokens when no document context is used."
-        )
-    )
+    summary: str = Field(description="One-sentence description of what this clause covers")
+    drafted_clause: str = Field(description=("Full drafted clause text ready to drop into the agreement. " "Contains `[PLACEHOLDER]` tokens when no document context is used."))
     placeholders: List[str] = Field(
         default_factory=list,
         description=(
@@ -105,10 +95,7 @@ class ClauseListLLMResponse(BaseModel):
     )
     clauses: List[ClauseListEntry] = Field(
         min_length=8,
-        description=(
-            "Complete list of clauses for the requested agreement type. "
-            "Minimum 8; prompt requests 12+ for most agreements."
-        ),
+        description=("Complete list of clauses for the requested agreement type. " "Minimum 8; prompt requests 12+ for most agreements."),
     )
 
 
@@ -163,10 +150,7 @@ class DescribeDraftResponse(BaseModel):
     )
     grounded_in_document: bool = Field(
         default=False,
-        description=(
-            "True when document context was used and the draft was grounded in the "
-            "full content of the uploaded document."
-        ),
+        description=("True when document context was used and the draft was grounded in the " "full content of the uploaded document."),
     )
     error_type: Optional[DescribeDraftErrorType] = None
     error_message: Optional[str] = None

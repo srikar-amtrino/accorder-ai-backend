@@ -82,6 +82,15 @@ class BedrockModel(BaseLLMModel):
         end_time = time.time()
         logger.info("invoked bedrock model with streaming response", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
 
+        usage = streaming_response.get("usage", {})
+        logger.info(
+            "bedrock model generation complete",
+            model_id=self.model_id,
+            session_id=session_id,
+            tokens_input=usage.get("input_tokens"),
+            output_tokens=usage.get("output_tokens"),
+        )
+
         for event in streaming_response["body"]:
             chunk = json.loads(event["chunk"]["bytes"])
             if chunk["type"] == "content_block_delta":
@@ -138,6 +147,14 @@ class BedrockModel(BaseLLMModel):
         logger.info("invoked bedrock model with generate", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
 
         model_response = json.loads(response["body"].read())
+        usage = model_response.get("usage", {})
+        logger.info(
+            "bedrock model generation complete",
+            model_id=self.model_id,
+            session_id=session_id,
+            tokens_input=usage.get("input_tokens"),
+            output_tokens=usage.get("output_tokens"),
+        )
         tool_use_block = next(block for block in model_response["content"] if block["type"] == "tool_use")
         normalized_input = self._normalize_tool_response(tool_use_block["input"])
 
