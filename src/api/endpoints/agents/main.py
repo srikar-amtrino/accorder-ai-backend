@@ -21,7 +21,10 @@ from src.tools.key_information import (
     get_key_information_generate,
     get_key_information_stream,
 )
-from src.tools.playbook_review import review_document as playbook_review_service
+from src.tools.playbook_review import (
+    playbook_review_service,
+    playbook_review_stream_service,
+)
 
 router = APIRouter(tags=["agents"])
 
@@ -100,6 +103,14 @@ async def playbook_review_endpoint(request: RuleCheckRequest, session_id: str = 
 
     review_result = await playbook_review_service(session_id=session_id, request=request)
     return review_result
+
+
+@router.post("/playbook-review/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+async def playbook_review_stream_endpoint(request: RuleCheckRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    """Run playbook validation checks."""
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(playbook_review_stream_service(session_id=session_id, request=request), media_type="text/event-stream", headers=headers)
 
 
 @router.post("/query-document", response_model=DocChatResponse)

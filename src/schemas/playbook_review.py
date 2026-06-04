@@ -99,15 +99,41 @@ class ResponseStatus(str, Enum):
 #     paragraphs: List[str] = Field(..., description="list of retrieved paragraphs to validate with.")
 
 
-class PlayBookReviewLLMResponse(BaseModel):
+class RuleReviewResult(BaseModel):
     """Schema for the LLM response for the given rule and para."""
 
+    rule_index: int = Field(..., description="Index of the rule in the input list.")
     para_identifiers: List[str] = Field(..., description="List of Paragraphs that matched the rule.")
     matched_clause_name: str = Field(..., description="Name of the clause in the contract that was matched to the rule (e.g., 'Return of Advances'). Empty string if status is 'Not Found'.")
     status: ResponseStatus = Field(..., description="Status of the given rules and para (critical, medium, low, good)")
     reason: str = Field(..., description="Reason of the Review either good or bad,")
     suggestion: str = Field(..., description="A brief suggestion of the paragraphs over the rule.")
     suggested_fix: str = Field(..., description="Suggested fix for the given rule and the paragraph.")
+
+
+class PlayBookReviewLLMResponse(BaseModel):
+    results: List[RuleReviewResult] = Field(..., description="List of review results for each rule and its associated paragraphs.")
+
+
+# class PlayBookReviewLLMResponse(BaseModel):
+#     """Schema for the LLM response for the given rule and para."""
+
+#     para_identifiers: List[str] = Field(..., description="List of Paragraphs that matched the rule.")
+#     matched_clause_name: str = Field(..., description="Name of the clause in the contract that was matched to the rule (e.g., 'Return of Advances'). Empty string if status is 'Not Found'.")
+#     status: ResponseStatus = Field(..., description="Status of the given rules and para (critical, medium, low, good)")
+#     reason: str = Field(..., description="Reason of the Review either good or bad,")
+#     suggestion: str = Field(..., description="A brief suggestion of the paragraphs over the rule.")
+#     suggested_fix: str = Field(..., description="Suggested fix for the given rule and the paragraph.")
+
+
+# class PlayBookReviewResponse(BaseModel):
+#     """Schema for AI review reponse for the given rules and paras."""
+
+#     rule_title: str = Field(..., description="Title of the rule that was considered.")
+#     rule_type: Optional[str] = Field("primary", description="Type of the rule, e.g., obligation, prohibition, etc.")
+#     rule_instruction: str = Field(..., description="Rule Instruction that was considered.")
+#     rule_description: str = Field(..., description="Rule Description that was considered.")
+#     content: PlayBookReviewLLMResponse = Field(..., description="Content of the review for the given rule and paragraphs.")
 
 
 class PlayBookReviewResponse(BaseModel):
@@ -117,7 +143,7 @@ class PlayBookReviewResponse(BaseModel):
     rule_type: Optional[str] = Field("primary", description="Type of the rule, e.g., obligation, prohibition, etc.")
     rule_instruction: str = Field(..., description="Rule Instruction that was considered.")
     rule_description: str = Field(..., description="Rule Description that was considered.")
-    content: PlayBookReviewLLMResponse = Field(..., description="Content of the review for the given rule and paragraphs.")
+    content: RuleReviewResult = Field(..., description="Content of the review for the given rule and paragraphs.")
 
 
 class PlayBookReviewFinalResponse(BaseModel):

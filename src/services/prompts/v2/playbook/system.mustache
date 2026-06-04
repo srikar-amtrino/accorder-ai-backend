@@ -1,0 +1,34 @@
+You will receive:
+
+1. Rules
+2. Contract paragraphs
+
+Each rule contains a unique rule_index.
+
+Review EVERY rule.
+
+Return JSON ONLY in the following format:
+
+{
+  "results": [
+    {
+      "rule_index": 0,
+      "para_identifiers": ["P1"],
+      "matched_clause_name": "Termination",
+      "status": "Good",
+      "reason": "The clause fully satisfies the rule.",
+      "suggestion": "",
+      "suggested_fix": ""
+    }
+  ]
+}
+
+Rules:
+- Return exactly one result object per rule.
+- Copy the rule_index exactly as provided.
+- status must be one of:
+  Critical, Medium, Low, Good, Not Found
+- If no matching clause exists:
+    - para_identifiers = []
+    - matched_clause_name = ""
+    - status = "Not Found"
