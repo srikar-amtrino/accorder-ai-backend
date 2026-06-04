@@ -8,14 +8,14 @@ from fastapi.responses import StreamingResponse
 # from src.api.session_utils import get_session_id
 from src.core.auth import generate_access_token, get_session_id, verify_token
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
-from src.schemas.doc_chat import DocChatResponse
+from src.schemas.doc_chat import DocChatResponse, DocuChatRequest
 from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
 from src.schemas.playbook_review import (
     PlayBookReviewFinalResponse,
     RuleCheckRequest,
 )
 from src.tools.comparision import run as compare_documents_service
-from src.tools.doc_chat import query_document as query_document_service
+from src.tools.doc_chat import document_chat_service, document_chat_stream_service
 from src.tools.general_review import clause_review, full_document_review
 from src.tools.key_information import (
     get_key_information_generate,
@@ -114,8 +114,16 @@ async def playbook_review_stream_endpoint(request: RuleCheckRequest, session_id:
 
 
 @router.post("/query-document", response_model=DocChatResponse)
-async def query_document_endpoint(query: str, session_id: str = Depends(get_session_id)) -> DocChatResponse:
+async def query_document_endpoint(request: DocuChatRequest, session_id: str = Depends(get_session_id)) -> DocChatResponse:
     """Query the document chunks based on the given query and session ID."""
 
-    llm_result = await query_document_service(query=query, session_id=session_id)
+    llm_result = await document_chat_service(session_id=session_id, payload=request)
     return llm_result
+
+
+@router.post("/query-document/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+async def query_document_stream_endpoint(request: DocuChatRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    """Run playbook validation checks."""
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(document_chat_stream_service(session_id=session_id, payload=request), media_type="text/event-stream", headers=headers)

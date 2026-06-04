@@ -36,3 +36,15 @@ class DocChatResponse(BaseModel):
 
     title: str = Field(..., description="The title for the given responses.")
     answers: List[DocChat] = Field(..., description="All the related answers for the user query.")
+
+
+class TextInformation(BaseModel):
+    """Request schema for the document chat."""
+
+    text: str = Field(..., description="Text content of the paragraph")
+    paraindetifier: str = Field(..., description="Identifier for the paragraph")
+
+
+class DocuChatRequest(BaseModel):
+    textinformation: List[TextInformation] = Field(..., description="List of text paragraphs to check")
+    query: str = Field(..., description="The user query to be answered based on the ingested document.")
