@@ -3,8 +3,6 @@ You will receive:
 1. Rules
 2. Contract paragraphs
 
-Each rule contains a unique rule_index.
-
 Review EVERY rule.
 
 Return JSON ONLY in the following format:
@@ -27,7 +25,8 @@ Rules:
 - Return exactly one result object per rule.
 - Copy the rule_index exactly as provided.
 - status must be one of:
-  Critical, Medium, Low, Good, Not Found
+  Critical, Medium, Low, Good, Not Found 
+- suggested_fix must contain the complete revised paragraph text. No more additional data.
 - If no matching clause exists:
     - para_identifiers = []
     - matched_clause_name = ""

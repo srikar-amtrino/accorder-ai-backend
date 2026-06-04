@@ -8,6 +8,7 @@ from fastapi.responses import StreamingResponse
 # from src.api.session_utils import get_session_id
 from src.core.auth import generate_access_token, get_session_id, verify_token
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
+from src.schemas.describe_draft import DescribeDraftRequest, DescribeDraftResponse
 from src.schemas.doc_chat import DocChatResponse, DocuChatRequest
 from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
 from src.schemas.playbook_review import (
@@ -15,6 +16,7 @@ from src.schemas.playbook_review import (
     RuleCheckRequest,
 )
 from src.tools.comparision import run as compare_documents_service
+from src.tools.describe_draft import generate_describe_draft
 from src.tools.doc_chat import document_chat_service, document_chat_stream_service
 from src.tools.general_review import clause_review, full_document_review
 from src.tools.key_information import (
@@ -36,6 +38,16 @@ router = APIRouter(tags=["agents"])
 #     access_token = generate_access_token()
 
 #     return access_token
+
+
+@router.post("/describe-draft", response_model=DescribeDraftResponse)
+async def generate_draft(request: DescribeDraftRequest, session_id: str = Depends(get_session_id)) -> DescribeDraftResponse:
+    """Draft an document from user query."""
+    return await generate_describe_draft(
+        prompt=request.prompt,
+        session_id=session_id,
+        use_document_context=request.use_document_context,
+    )
 
 
 @router.post("/compare-documents")
@@ -91,9 +103,7 @@ async def contract_analyzer_stream_endpoint(file: UploadFile, session_id: str = 
     document = Document(io.BytesIO(await file.read()))
     document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
 
-    # Ensure CORS headers are present on the streaming response
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
-
     return StreamingResponse(get_key_information_stream(content=document_data, session_id=session_id), media_type="text/event-stream", headers=headers)
 
 
