@@ -1,10 +1,13 @@
 import io
+import json
 from typing import Any
 
 from docx import Document
 from fastapi import APIRouter, Depends, Header, HTTPException, UploadFile
+from fastapi.responses import StreamingResponse
 
 # from src.api.session_utils import get_session_id
+from src.config.logging import get_logger
 from src.core.auth import generate_access_token, get_session_id, verify_token
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
 from src.schemas.doc_chat import DocChatResponse
@@ -19,9 +22,13 @@ from src.tools.general_review import clause_review, full_document_review
 from src.tools.key_information import (
     get_key_information_document as contract_analyzer_service,
 )
+from src.tools.key_information import (
+    stream_key_information as contract_analyzer_stream_service,
+)
 from src.tools.playbook_review import review_document as playbook_review_service
 
 router = APIRouter(tags=["agents"])
+logger = get_logger("agents")
 
 
 @router.get("/generate-access-token")
@@ -84,6 +91,59 @@ async def contract_analyzer_endpoint(file: UploadFile, session_id: str = Depends
 
     analysis_result: ContractAnalyzerResponse = await contract_analyzer_service(content=document_data, session_id=session_id)  # type: ignore
     return analysis_result
+
+
+async def _sse_event_stream(event_source: Any) -> Any:
+    """Format ``(event_name, data)`` tuples from the analyzer generator as SSE wire frames.
+
+    Always emits a terminal ``error`` frame if the source raises, so the client never
+    hangs on a dropped stream.
+    """
+
+    try:
+        async for event_name, data in event_source:
+            yield f"event: {event_name}\ndata: {json.dumps(data)}\n\n"
+    except Exception as exc:
+        logger.error(f"Contract analyzer stream failed: {exc}")
+        yield f"event: error\ndata: {json.dumps({'message': 'Streaming failed. Please retry.'})}\n\n"
+
+
+async def _with_document_event(document_text: str, source: Any) -> Any:
+    """Demo-only: prepend a ``document`` event carrying the parsed contract text so the
+    demo page can render the source document beside the streaming analysis. The production
+    Word plugin already has the document open in Word, so it omits ``include_document``."""
+
+    yield ("document", {"text": document_text})
+    async for event in source:
+        yield event
+
+
+@router.post("/contract-analyzer/stream")
+async def contract_analyzer_stream_endpoint(
+    file: UploadFile,
+    session_id: str = Depends(get_session_id),
+    include_document: bool = False,
+) -> Any:
+    """Stream the contract analysis section-by-section (SSE) as each parallel section resolves.
+
+    Emits ``start`` (the section names) -> one ``section`` event per section as it lands
+    (fastest first, each a fully schema-validated payload) -> ``done``. The merged result is
+    cached on the session, so the existing non-stream POST /contract-analyzer keeps working
+    and returns instantly on a warm session.
+    """
+
+    document = Document(io.BytesIO(await file.read()))
+    document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
+
+    source = contract_analyzer_stream_service(content=document_data, session_id=session_id)
+    if include_document:
+        source = _with_document_event(document_data, source)
+
+    return StreamingResponse(
+        _sse_event_stream(source),
+        media_type="text/event-stream",
+        headers={"X-Accel-Buffering": "no", "Cache-Control": "no-cache", "Connection": "keep-alive"},
+    )
 
 
 @router.post("/query-document", response_model=DocChatResponse)

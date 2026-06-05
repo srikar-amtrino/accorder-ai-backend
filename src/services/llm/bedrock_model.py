@@ -147,7 +147,7 @@ class BedrockModel(BaseLLMModel, Logger):
                     text_chunks.append(delta.get("text", ""))
         return "".join(text_chunks), usage
 
-    async def stream(self, prompt: str, context: Dict[str, Any], system_message: Optional[str] = None) -> Any:
+    async def stream(self, prompt: str, context: Dict[str, Any], system_message: Optional[str] = None, max_tokens: int = 4096) -> Any:
         """Stream text deltas from Claude as they arrive."""
 
         prompt = self.render_prompt_template(prompt=prompt, context=context)
@@ -156,7 +156,7 @@ class BedrockModel(BaseLLMModel, Logger):
         try:
             body = {
                 "anthropic_version": "bedrock-2023-05-31",
-                "max_tokens": 4096,
+                "max_tokens": max_tokens,
                 "messages": [{"role": "user", "content": prompt}],
                 "system": system_message or "Extract the information and return valid JSON.",
             }

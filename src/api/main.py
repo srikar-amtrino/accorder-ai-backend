@@ -757,6 +757,493 @@ CLAUSE: "Customer shall pay Vendor's monthly subscription fee within five (5) da
 
         return HTMLResponse(content=_DEMO_STREAM_UI_HTML)
 
+    # Realistic Word add-in mockup: the Contract Analyzer running as a docked task pane,
+    # delivering its analysis over the real POST /contract-analyzer/stream SSE endpoint
+    # (now a single call surfaced as one 'analysis' event). This is the "how it looks to
+    # the customer inside Word" view, not a generic token demo.
+    _DEMO_CONTRACT_ANALYZER_HTML = """<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Accorder AI · Contract Analyzer (Word add-in)</title>
+<style>
+  :root {
+    --word-blue: #2b579a;
+    --word-blue-d: #1e3f6f;
+    --brand: #4f46e5;
+    --brand-2: #7c3aed;
+    --ink: #1f2329;
+    --ink-dim: #5b6470;
+    --ink-faint: #8a94a3;
+    --line: #e3e7ec;
+    --line-soft: #eef1f5;
+    --canvas: #d8dde4;
+    --surface: #ffffff;
+    --pane: #fbfbfd;
+    --crit: #dc2626; --high: #ea580c; --med: #d97706; --low: #059669;
+    --ok: #16a34a;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif;
+    color: var(--ink); background: var(--canvas);
+    -webkit-font-smoothing: antialiased; overflow: hidden;
+  }
+  .word { display: flex; flex-direction: column; height: 100vh; }
+
+  /* Title bar */
+  .titlebar {
+    height: 34px; flex: none; display: flex; align-items: center;
+    background: var(--word-blue); color: #fff; font-size: 12.5px; padding: 0 10px; gap: 10px;
+  }
+  .tb-word-icon {
+    width: 18px; height: 18px; border-radius: 3px; background: #fff; color: var(--word-blue);
+    display: grid; place-items: center; font-weight: 800; font-size: 12px; font-family: Georgia, serif;
+  }
+  .tb-title { font-weight: 600; opacity: .97; }
+  .tb-title .saved { opacity: .7; font-weight: 400; margin-left: 8px; }
+  .tb-spacer { flex: 1; }
+  .tb-acct { width: 22px; height: 22px; border-radius: 50%; background: linear-gradient(135deg,#67e8f9,#a78bfa); display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #1e293b; }
+  .tb-win { display: flex; gap: 0; margin-left: 6px; }
+  .tb-win span { width: 30px; height: 34px; display: grid; place-items: center; font-size: 12px; opacity: .85; }
+  .tb-win span:last-child:hover { background: #e81123; }
+
+  /* Ribbon */
+  .ribbon { flex: none; background: #f3f4f7; border-bottom: 1px solid var(--line); }
+  .tabs { display: flex; gap: 2px; padding: 0 8px; height: 36px; align-items: stretch; font-size: 13px; }
+  .tabs span { display: flex; align-items: center; padding: 0 12px; color: var(--ink-dim); cursor: default; border-bottom: 2px solid transparent; }
+  .tabs .tab-active { color: var(--word-blue); font-weight: 600; border-bottom: 2px solid var(--word-blue); background: #fff; border-radius: 4px 4px 0 0; }
+  .ribbon-actions { display: flex; align-items: center; gap: 6px; padding: 8px 12px; background: #fff; border-top: 1px solid var(--line-soft); }
+  .rbtn { display: inline-flex; flex-direction: column; align-items: center; gap: 3px; padding: 4px 12px; border: 1px solid transparent; border-radius: 6px; background: none; cursor: pointer; font: inherit; font-size: 11px; color: var(--ink-dim); }
+  .rbtn:hover { background: #eef0f6; border-color: var(--line); }
+  .rbtn.primary { color: var(--brand); }
+  .rbtn .ic { width: 22px; height: 22px; display: grid; place-items: center; }
+  .rbtn .ic svg { width: 20px; height: 20px; }
+  .rdiv { width: 1px; align-self: stretch; background: var(--line); margin: 4px 6px; }
+
+  /* Stage: document canvas + task pane */
+  .stage { flex: 1; display: flex; min-height: 0; }
+  .canvas { flex: 1; overflow: auto; padding: 26px 0; display: flex; justify-content: center; }
+  .page {
+    background: var(--surface); width: 712px; max-width: calc(100% - 36px); min-height: 920px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.16), 0 10px 40px -16px rgba(0,0,0,.28);
+    padding: 76px 84px; font-size: 13.5px; line-height: 1.85; color: #2a2f37;
+  }
+  .page h1.doc-h { font-size: 17px; text-align: center; letter-spacing: .04em; text-transform: uppercase; margin: 0 0 22px; color: #1b1f25; }
+  .page .doc-h2 { font-weight: 700; margin: 18px 0 4px; color: #1b1f25; }
+  .page p { margin: 0 0 11px; }
+  .page .ph { color: var(--ink-faint); }
+  .page-empty { display: grid; place-items: center; min-height: 760px; color: var(--ink-faint); text-align: center; }
+  .page-empty svg { width: 54px; height: 54px; opacity: .5; margin-bottom: 14px; }
+  .hl { background: #fff3bf; border-radius: 2px; box-shadow: 0 0 0 1px #ffe49b; transition: background .3s; }
+
+  /* Task pane */
+  .pane { flex: none; width: 390px; background: var(--pane); border-left: 1px solid var(--line); display: flex; flex-direction: column; min-height: 0; }
+  .pane-head { padding: 14px 16px; background: linear-gradient(135deg, var(--brand), var(--brand-2)); color: #fff; }
+  .ph-row { display: flex; align-items: center; gap: 10px; }
+  .ph-logo { width: 30px; height: 30px; border-radius: 8px; background: rgba(255,255,255,.18); display: grid; place-items: center; font-weight: 800; font-size: 16px; box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+  .ph-title { font-size: 15px; font-weight: 700; line-height: 1.1; }
+  .ph-title small { display: block; font-size: 11px; font-weight: 500; opacity: .85; margin-top: 2px; }
+  .ph-badge { margin-left: auto; font-size: 10px; background: rgba(255,255,255,.16); padding: 3px 9px; border-radius: 999px; font-weight: 600; letter-spacing: .03em; }
+
+  .pane-controls { padding: 12px 16px; border-bottom: 1px solid var(--line); background: #fff; }
+  .file-row { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; }
+  .file-btn { flex: none; border: 1px solid var(--line); background: #f6f7f9; border-radius: 7px; padding: 8px 12px; font: inherit; font-size: 12.5px; color: var(--ink); cursor: pointer; }
+  .file-btn:hover { background: #eef0f6; }
+  .file-name { font-size: 12px; color: var(--ink-dim); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .run-btn { width: 100%; border: none; border-radius: 8px; padding: 11px; font: inherit; font-size: 14px; font-weight: 600; color: #fff; cursor: pointer; background: linear-gradient(135deg, var(--brand), var(--brand-2)); box-shadow: 0 3px 10px rgba(79,70,229,.32); transition: .15s; }
+  .run-btn:hover:not(:disabled) { transform: translateY(-1px); box-shadow: 0 6px 16px rgba(79,70,229,.4); }
+  .run-btn:disabled { background: #c7cad6; box-shadow: none; cursor: not-allowed; }
+  .link-btn { width: 100%; margin-top: 8px; background: none; border: none; color: var(--ink-dim); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline dotted; }
+  .link-btn:hover:not(:disabled) { color: var(--brand); }
+  .link-btn:disabled { opacity: .5; cursor: not-allowed; }
+
+  .progress { padding: 12px 16px; border-bottom: 1px solid var(--line); background: #fff; }
+  .progress-top { display: flex; justify-content: space-between; align-items: center; font-size: 12.5px; margin-bottom: 8px; }
+  .progress-top .st { font-weight: 600; color: var(--ink); display: flex; align-items: center; gap: 7px; }
+  .progress-top .el { font-family: ui-monospace, Consolas, monospace; color: var(--ink-dim); font-size: 12px; }
+  .spin { width: 12px; height: 12px; border: 2px solid #d7dae3; border-top-color: var(--brand); border-radius: 50%; animation: spin .7s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .live-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 0 rgba(22,163,74,.5); animation: ping 1.3s ease-out infinite; }
+  @keyframes ping { 0% { box-shadow: 0 0 0 0 rgba(22,163,74,.45); } 70%,100% { box-shadow: 0 0 0 7px rgba(22,163,74,0); } }
+  .pbar { height: 6px; background: #eceef3; border-radius: 999px; overflow: hidden; }
+  .pfill { height: 100%; width: 0%; border-radius: 999px; background: linear-gradient(90deg, var(--brand), var(--brand-2)); transition: width .45s cubic-bezier(.4,0,.2,1); }
+  .pmeta { display: flex; justify-content: space-between; font-size: 11px; color: var(--ink-faint); margin-top: 6px; }
+
+  .sections { flex: 1; overflow: auto; padding: 12px; display: flex; flex-direction: column; gap: 11px; }
+  .sec { border: 1px solid var(--line); border-radius: 11px; background: #fff; overflow: hidden; box-shadow: 0 1px 2px rgba(16,24,40,.03); }
+  .sec-head { display: flex; align-items: center; gap: 9px; padding: 11px 13px; }
+  .sec-ic { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; flex: none; }
+  .sec-ic svg { width: 15px; height: 15px; }
+  .ic-sum { background: #eef2ff; color: var(--brand); }
+  .ic-key { background: #ecfeff; color: #0891b2; }
+  .ic-mile { background: #f0fdf4; color: #16a34a; }
+  .ic-risk { background: #fef2f2; color: #dc2626; }
+  .sec-title { font-size: 13.5px; font-weight: 600; flex: 1; }
+  .sec-title .cnt { color: var(--ink-faint); font-weight: 500; margin-left: 6px; font-size: 12px; }
+  .pill { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; padding: 3px 9px; border-radius: 999px; }
+  .pill.wait { background: #f1f3f7; color: var(--ink-faint); }
+  .pill.live { background: #eef2ff; color: var(--brand); }
+  .pill.ok { background: #ecfdf3; color: var(--ok); }
+  .pill.err { background: #fef2f2; color: var(--crit); }
+  .sec-body { padding: 0 13px 13px; font-size: 13px; color: var(--ink); animation: rise .35s ease; }
+  @keyframes rise { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: none; } }
+  .skel { height: 11px; border-radius: 5px; margin: 9px 0; background: linear-gradient(90deg,#eef1f5 25%,#e2e6ec 37%,#eef1f5 63%); background-size: 400% 100%; animation: sh 1.3s ease infinite; }
+  .skel.s90{width:90%}.skel.s70{width:70%}.skel.s50{width:50%}.skel.s80{width:80%}
+  @keyframes sh { 0%{background-position:100% 0} 100%{background-position:-100% 0} }
+  .summary-txt { line-height: 1.65; white-space: pre-wrap; }
+  .kv { display: flex; gap: 10px; padding: 7px 0; border-bottom: 1px solid var(--line-soft); }
+  .kv:last-child { border-bottom: none; }
+  .kv .k { color: var(--ink-dim); flex: none; width: 132px; font-size: 12px; }
+  .kv .v { color: var(--ink); font-weight: 500; font-size: 12.5px; }
+  .mile { padding: 9px 0; border-bottom: 1px solid var(--line-soft); }
+  .mile:last-child { border-bottom: none; }
+  .mile .mt { font-weight: 600; font-size: 12.5px; }
+  .mile .md { display: inline-block; font-family: ui-monospace, Consolas, monospace; font-size: 11px; color: #0e7490; background: #ecfeff; padding: 1px 7px; border-radius: 5px; margin: 4px 0; }
+  .mile .mb { color: var(--ink-dim); font-size: 12px; }
+  .risk { border: 1px solid var(--line); border-left-width: 3px; border-radius: 8px; padding: 10px 11px; margin-bottom: 9px; }
+  .risk:last-child { margin-bottom: 0; }
+  .risk.Critical { border-left-color: var(--crit); } .risk.High { border-left-color: var(--high); }
+  .risk.Medium { border-left-color: var(--med); } .risk.Low { border-left-color: var(--low); }
+  .risk-top { display: flex; align-items: center; gap: 7px; margin-bottom: 5px; }
+  .risk-title { font-weight: 600; font-size: 12.8px; flex: 1; }
+  .sev { font-size: 9.5px; font-weight: 800; text-transform: uppercase; letter-spacing: .04em; padding: 2px 7px; border-radius: 999px; flex: none; }
+  .sev.Critical { background: #fef2f2; color: var(--crit); } .sev.High { background: #fff7ed; color: var(--high); }
+  .sev.Medium { background: #fffbeb; color: var(--med); } .sev.Low { background: #ecfdf5; color: var(--low); }
+  .risk-meta { font-size: 11px; color: var(--ink-faint); margin-bottom: 7px; }
+  .risk-meta .chip { background: #f1f3f7; padding: 1px 7px; border-radius: 5px; margin-right: 5px; }
+  .risk-row { font-size: 12px; color: var(--ink-dim); margin-top: 4px; line-height: 1.5; }
+  .risk-row b { color: var(--ink); font-weight: 600; }
+  .empty-note { color: var(--ink-faint); font-size: 12.5px; padding: 4px 0; }
+
+  .pane-foot { flex: none; padding: 9px 16px; border-top: 1px solid var(--line); background: #fff; display: flex; align-items: center; justify-content: space-between; font-size: 11px; color: var(--ink-faint); }
+  .pane-foot .pulse { display: inline-flex; align-items: center; gap: 6px; }
+  input[type=file] { display: none; }
+</style>
+</head>
+<body>
+<div class="word">
+  <div class="titlebar">
+    <span class="tb-word-icon">W</span>
+    <span class="tb-title">Contract.docx<span class="saved">— Saved to this PC</span></span>
+    <span class="tb-spacer"></span>
+    <span class="tb-acct">SR</span>
+    <span class="tb-win"><span>&#8211;</span><span>&#9633;</span><span>&#10005;</span></span>
+  </div>
+
+  <div class="ribbon">
+    <div class="tabs">
+      <span>File</span><span>Home</span><span>Insert</span><span>Draw</span><span>Layout</span><span>References</span><span>Review</span><span>View</span><span class="tab-active">Accorder AI</span>
+    </div>
+    <div class="ribbon-actions">
+      <button class="rbtn primary" id="ribbonAnalyze">
+        <span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M9 13l2 2 4-4"/></svg></span>
+        Analyze
+      </button>
+      <div class="rdiv"></div>
+      <button class="rbtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 5h16M4 12h16M4 19h10"/></svg></span>Review</button>
+      <button class="rbtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M8 4H5v16h3M16 4h3v16h-3"/></svg></span>Compare</button>
+      <button class="rbtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 19l7-7-3-3-7 7v3z"/><path d="M16 9l-3-3"/></svg></span>Draft</button>
+      <button class="rbtn"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="9"/><path d="M12 8v4l3 2"/></svg></span>History</button>
+    </div>
+  </div>
+
+  <div class="stage">
+    <div class="canvas" id="canvas">
+      <div class="page" id="page">
+        <div class="page-empty" id="pageEmpty">
+          <div>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.3"><path d="M14 3v5h5"/><path d="M14 3H6a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            <div>Your contract appears here.<br>Choose a <b>.docx</b> in the panel &rarr; then click <b>Analyze contract</b>.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <aside class="pane">
+      <div class="pane-head">
+        <div class="ph-row">
+          <div class="ph-logo">A</div>
+          <div class="ph-title">Accorder AI<small>Contract Analyzer</small></div>
+          <div class="ph-badge">LIVE</div>
+        </div>
+      </div>
+
+      <div class="pane-controls">
+        <div class="file-row">
+          <button class="file-btn" id="fileBtn">Choose .docx</button>
+          <span class="file-name" id="fileName">No file selected</span>
+          <input type="file" id="file" accept=".docx">
+        </div>
+        <button class="run-btn" id="run" disabled>Analyze contract</button>
+        <button class="link-btn" id="runClassic" disabled>Compare with classic (wait-then-dump) mode</button>
+      </div>
+
+      <div class="progress">
+        <div class="progress-top">
+          <span class="st" id="statusWrap"><span id="statusText">Ready when you are</span></span>
+          <span class="el" id="elapsed">0.0s</span>
+        </div>
+        <div class="pbar"><div class="pfill" id="pfill"></div></div>
+        <div class="pmeta"><span id="secCount">waiting</span><span id="firstMeta"></span></div>
+      </div>
+
+      <div class="sections" id="sections"></div>
+
+      <div class="pane-foot">
+        <span>Powered by AWS Bedrock &middot; Claude</span>
+        <span class="pulse" id="footPulse"></span>
+      </div>
+    </aside>
+  </div>
+</div>
+
+<script>
+  const $ = (id) => document.getElementById(id);
+  const STREAM_URL = "/Accorder/agents/contract-analyzer/stream?include_document=true";
+  const CLASSIC_URL = "/Accorder/agents/contract-analyzer";
+  const SESSION = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : "sess-" + Math.random().toString(16).slice(2);
+
+  const ICONS = {
+    summary: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>',
+    keyinfo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M3 5h7v7H3zM14 5h7v4h-7zM14 12h7v7h-7zM3 15h7v4H3z"/></svg>',
+    milestones: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    risks: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3l9 16H3z"/><path d="M12 10v4M12 17h.01"/></svg>',
+  };
+  const CARD_DEFS = [
+    { key: "summary", title: "Executive Summary", ic: "ic-sum" },
+    { key: "keyinfo", title: "Key Information", ic: "ic-key" },
+    { key: "milestones", title: "Timeline & Milestones", ic: "ic-mile" },
+    { key: "risks", title: "Risks & Compliance", ic: "ic-risk" },
+  ];
+
+  function esc(s) { return (s == null ? "" : String(s)).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+
+  function skel(n) { let s = ""; const w = ["s90", "s70", "s80", "s50", "s90"]; for (let i = 0; i < n; i++) s += '<div class="skel ' + w[i % w.length] + '"></div>'; return s; }
+
+  function buildCards() {
+    $("sections").innerHTML = CARD_DEFS.map(c => (
+      '<div class="sec" id="sec-' + c.key + '">' +
+        '<div class="sec-head">' +
+          '<div class="sec-ic ' + c.ic + '">' + ICONS[c.key] + '</div>' +
+          '<div class="sec-title">' + c.title + '<span class="cnt" id="cnt-' + c.key + '"></span></div>' +
+          '<span class="pill wait" id="pill-' + c.key + '">Waiting</span>' +
+        '</div>' +
+        '<div class="sec-body" id="body-' + c.key + '">' + skel(c.key === "summary" ? 4 : 3) + '</div>' +
+      '</div>'
+    )).join("");
+  }
+
+  function setPill(key, cls, label) { const p = $("pill-" + key); if (p) { p.className = "pill " + cls; p.textContent = label; } }
+  function setCount(key, n) { const c = $("cnt-" + key); if (c) c.textContent = n ? "(" + n + ")" : ""; }
+
+  // ---- progressive accumulators (filled item-by-item as the stream lands) ----
+  let kiAcc = [], mileAcc = [], riskAcc = [];
+
+  // ---- renderers ----
+  function renderSummary(text) {
+    $("body-summary").innerHTML = '<div class="summary-txt">' + esc(text || "") + "</div>";
+    setPill("summary", "ok", "Ready");
+  }
+  function renderKeyInfo() {
+    setCount("keyinfo", kiAcc.length);
+    $("body-keyinfo").innerHTML = kiAcc.length
+      ? kiAcc.map(k => '<div class="kv"><span class="k">' + esc(k.field_name) + '</span><span class="v">' + esc(k.value) + "</span></div>").join("")
+      : '<div class="empty-note">No key fields extracted.</div>';
+    setPill("keyinfo", "ok", "Ready");
+  }
+  function renderMilestones() {
+    setCount("milestones", mileAcc.length);
+    $("body-milestones").innerHTML = mileAcc.length
+      ? mileAcc.map(m => (
+          '<div class="mile"><div class="mt">' + esc(m.milestone_name) + "</div>" +
+          '<div class="md">' + esc(m.date_or_trigger) + "</div>" +
+          '<div class="mb">' + esc(m.description) + "</div></div>"
+        )).join("")
+      : '<div class="empty-note">No dated milestones found.</div>';
+    setPill("milestones", "ok", "Ready");
+  }
+  function renderRisks() {
+    setCount("risks", riskAcc.length);
+    $("body-risks").innerHTML = riskAcc.length
+      ? riskAcc.map(r => (
+          '<div class="risk ' + esc(r.severity) + '">' +
+            '<div class="risk-top"><span class="risk-title">' + esc(r.clause_title) + "</span>" +
+            '<span class="sev ' + esc(r.severity) + '">' + esc(r.severity) + "</span></div>" +
+            '<div class="risk-row"><b>Issue.</b> ' + esc(r.issue) + "</div>" +
+          "</div>"
+        )).join("")
+      : '<div class="empty-note">No material risks identified.</div>';
+    setPill("risks", "ok", "Ready");
+  }
+
+  // Append one streamed item to its card and re-render that card.
+  function addItem(section, value) {
+    if (section === "key_information") { kiAcc.push(value); renderKeyInfo(); }
+    else if (section === "timeline_and_key_milestones") { mileAcc.push(value); renderMilestones(); }
+    else if (section === "risk_and_compliance_insights") { riskAcc.push(value); renderRisks(); }
+  }
+
+  function markAllFailed() {
+    ["summary", "keyinfo", "milestones", "risks"].forEach(k => { const pill = $("pill-" + k); if (pill && pill.classList.contains("wait")) setPill(k, "err", "Failed"); });
+  }
+
+  // ---- document rendering ----
+  function renderDocument(text) {
+    $("pageEmpty") && ($("pageEmpty").style.display = "none");
+    const lines = (text || "").split("\\n").map(l => l.trim()).filter(Boolean);
+    let html = "";
+    lines.forEach((ln, i) => {
+      const isHeadingish = ln.length <= 70 && (ln === ln.toUpperCase() || /^(\\d+\\.|\\d+\\.\\d+|ARTICLE|SECTION)\\b/i.test(ln)) && !/[.;:]$/.test(ln);
+      if (i === 0 && ln.length <= 80) html += '<h1 class="doc-h">' + esc(ln) + "</h1>";
+      else if (isHeadingish) html += '<div class="doc-h2">' + esc(ln) + "</div>";
+      else html += "<p>" + esc(ln) + "</p>";
+    });
+    $("page").innerHTML = html || '<p class="ph">(empty document)</p>';
+  }
+
+  // ---- progress / timer ----
+  let received = 0, tickId = null, startT = 0, firstAt = null, busy = false;
+  function startTimer() { startT = performance.now(); tickId = setInterval(() => { $("elapsed").textContent = ((performance.now() - startT) / 1000).toFixed(1) + "s"; }, 100); }
+  function stopTimer() { if (tickId) clearInterval(tickId); tickId = null; }
+  function setStatus(html) { $("statusWrap").innerHTML = html; }
+  function bumpProgress() { received++; $("pfill").style.width = Math.min(92, 8 + received * 4) + "%"; $("secCount").textContent = received + (received === 1 ? " item" : " items"); }
+
+  function resetRun() {
+    received = 0; kiAcc = []; mileAcc = []; riskAcc = []; firstAt = null;
+    buildCards(); $("pfill").style.width = "0%"; $("secCount").textContent = "waiting";
+    $("firstMeta").textContent = ""; $("elapsed").textContent = "0.0s";
+    $("footPulse").innerHTML = '<span class="live-dot"></span> streaming';
+  }
+  function lockUI(on) { busy = on; $("run").disabled = on; $("runClassic").disabled = on; $("ribbonAnalyze").style.opacity = on ? .5 : 1; }
+
+  // ---- streaming run ----
+  async function runStream() {
+    const f = $("file").files[0]; if (!f || busy) return;
+    lockUI(true); resetRun();
+    setStatus('<span class="spin"></span><span id="statusText">Connecting&hellip;</span>');
+    startTimer();
+    const fd = new FormData(); fd.append("file", f);
+    try {
+      const res = await fetch(STREAM_URL, { method: "POST", headers: { "X-Session-Id": SESSION }, body: fd });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      setStatus('<span class="spin"></span><span id="statusText">Analyzing&hellip;</span>');
+      const reader = res.body.getReader(); const dec = new TextDecoder(); let buf = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += dec.decode(value, { stream: true });
+        let i;
+        while ((i = buf.indexOf("\\n\\n")) >= 0) { const frame = buf.slice(0, i); buf = buf.slice(i + 2); handleFrame(frame); }
+      }
+      finishRun(false);
+    } catch (e) {
+      console.error(e);
+      setStatus('<span id="statusText" style="color:var(--crit)">Error: ' + esc(e.message) + "</span>");
+      finishRun(true);
+    }
+  }
+
+  function handleFrame(frame) {
+    let ev = "message", data = "";
+    frame.split("\\n").forEach(line => {
+      if (line.startsWith("event:")) ev = line.slice(6).trim();
+      else if (line.startsWith("data:")) data += line.slice(5).trim();
+    });
+    if (!data) return;
+    let d; try { d = JSON.parse(data); } catch (_) { return; }
+
+    function markFirst() {
+      if (firstAt === null) { firstAt = performance.now(); $("firstMeta").textContent = "first in " + ((firstAt - startT) / 1000).toFixed(1) + "s"; }
+    }
+    if (ev === "document") { renderDocument(d.text); }
+    else if (ev === "start") { setStatus('<span class="spin"></span><span id="statusText">' + (d.cached ? "Loading saved analysis&hellip;" : "Analyzing contract&hellip;") + "</span>"); }
+    else if (ev === "summary") {
+      markFirst();
+      renderSummary(d.text);
+      setStatus('<span class="spin"></span><span id="statusText">Streaming analysis&hellip;</span>');
+    }
+    else if (ev === "item") {
+      markFirst();
+      bumpProgress();
+      addItem(d.section, d.value);
+    }
+    else if (ev === "done") { /* handled by stream end */ }
+    else if (ev === "error") { markAllFailed(); setStatus('<span id="statusText" style="color:var(--crit)">Stream error</span>'); }
+  }
+
+  function finishRun(errored) {
+    stopTimer();
+    CARD_DEFS.forEach(c => { const pill = $("pill-" + c.key); if (pill && pill.classList.contains("wait")) { $("body-" + c.key).innerHTML = '<div class="empty-note">No content.</div>'; setPill(c.key, "ok", "Ready"); } });
+    const total = ((performance.now() - startT) / 1000).toFixed(1);
+    if (!errored) setStatus('<span class="live-dot" style="animation:none"></span><span id="statusText" style="color:var(--ok)">Complete &middot; ' + total + "s</span>");
+    $("pfill").style.width = "100%";
+    $("footPulse").innerHTML = "done in " + total + "s";
+    lockUI(false);
+  }
+
+  // ---- classic (non-streaming) contrast ----
+  async function runClassic() {
+    const f = $("file").files[0]; if (!f || busy) return;
+    lockUI(true); resetRun();
+    $("footPulse").innerHTML = '<span class="spin"></span> waiting (classic)';
+    setStatus('<span class="spin"></span><span id="statusText">Classic mode: waiting for the full analysis&hellip;</span>');
+    startTimer();
+    const fd = new FormData(); fd.append("file", f);
+    try {
+      const res = await fetch(CLASSIC_URL, { method: "POST", headers: { "X-Session-Id": SESSION + "-classic" }, body: fd });
+      if (!res.ok) throw new Error("HTTP " + res.status);
+      const d = await res.json();
+      renderSummary(d.summary);
+      kiAcc = d.key_information || []; renderKeyInfo();
+      mileAcc = d.timeline_and_key_milestones || []; renderMilestones();
+      riskAcc = d.risk_and_compliance_insights || []; renderRisks();
+      received = kiAcc.length + mileAcc.length + riskAcc.length; $("pfill").style.width = "100%"; $("secCount").textContent = "analysis ready";
+      const total = ((performance.now() - startT) / 1000).toFixed(1);
+      $("firstMeta").textContent = "first in " + total + "s";
+      setStatus('<span id="statusText" style="color:var(--ink-dim)">Classic done &middot; ' + total + "s (nothing shown until now)</span>");
+      $("footPulse").innerHTML = "classic: " + total + "s";
+    } catch (e) {
+      setStatus('<span id="statusText" style="color:var(--crit)">Error: ' + esc(e.message) + "</span>");
+    } finally { stopTimer(); lockUI(false); }
+  }
+
+  // ---- wiring ----
+  $("fileBtn").addEventListener("click", () => $("file").click());
+  $("file").addEventListener("change", () => {
+    const f = $("file").files[0];
+    $("fileName").textContent = f ? f.name : "No file selected";
+    $("run").disabled = !f; $("runClassic").disabled = !f;
+  });
+  $("run").addEventListener("click", runStream);
+  $("ribbonAnalyze").addEventListener("click", () => { if (!$("run").disabled) runStream(); else $("file").click(); });
+  $("runClassic").addEventListener("click", runClassic);
+
+  // Drag & drop onto the page
+  const canvas = $("canvas");
+  canvas.addEventListener("dragover", e => { e.preventDefault(); });
+  canvas.addEventListener("drop", e => {
+    e.preventDefault();
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.toLowerCase().endsWith(".docx")) {
+      const dt = new DataTransfer(); dt.items.add(f); $("file").files = dt.files;
+      $("file").dispatchEvent(new Event("change"));
+    }
+  });
+
+  buildCards();
+</script>
+</body>
+</html>"""
+
+    @app.get("/demo/contract-analyzer", response_class=HTMLResponse)
+    async def demo_contract_analyzer_ui() -> HTMLResponse:
+        """Word add-in mockup that streams the real /contract-analyzer/stream endpoint."""
+
+        return HTMLResponse(content=_DEMO_CONTRACT_ANALYZER_HTML)
+
 
 def main_entry() -> None:
     uvicorn.run(app, host=settings.api_host, port=settings.api_port)
