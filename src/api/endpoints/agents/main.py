@@ -18,7 +18,10 @@ from src.schemas.playbook_review import (
 from src.tools.comparision import run as compare_documents_service
 from src.tools.describe_draft import generate_describe_draft
 from src.tools.doc_chat import document_chat_service, document_chat_stream_service
-from src.tools.general_review import clause_review, full_document_review
+from src.tools.general_review import (
+    general_review_service,
+    general_review_streaming_service,
+)
 from src.tools.key_information import (
     get_key_information_generate,
     get_key_information_stream,
@@ -61,28 +64,46 @@ async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, ses
     return comparison_result
 
 
+# @router.post("/general-review", response_model=GeneralReviewResponse)
+# async def review_contract(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> GeneralReviewResponse:
+#     """Run the general review agent against an ingested document."""
+
+#     try:
+#         if request.selected_clause and request.selected_clause.strip():
+#             return await clause_review(
+#                 session_id=session_id,
+#                 clause_text=request.selected_clause,
+#                 user_prompt=request.prompt,
+#                 clause_title=(request.clause_title or "Selected Clause").strip() or "Selected Clause",
+#             )
+
+#         return await full_document_review(
+#             session_id=session_id,
+#             user_prompt=request.prompt,
+#         )
+
+#     except ValueError as err:
+#         raise HTTPException(status_code=400, detail=str(err))
+#     except Exception as err:
+#         raise HTTPException(status_code=500, detail=f"General review error: {str(err)}")
+
+
 @router.post("/general-review", response_model=GeneralReviewResponse)
-async def review_contract(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> GeneralReviewResponse:
-    """Run the general review agent against an ingested document."""
+async def general_review_endpoint(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> GeneralReviewResponse:
+    "Review the user query to the document or the clause."
 
-    try:
-        if request.selected_clause and request.selected_clause.strip():
-            return await clause_review(
-                session_id=session_id,
-                clause_text=request.selected_clause,
-                user_prompt=request.prompt,
-                clause_title=(request.clause_title or "Selected Clause").strip() or "Selected Clause",
-            )
+    review_result = await general_review_service(request=request, session_id=session_id)
 
-        return await full_document_review(
-            session_id=session_id,
-            user_prompt=request.prompt,
-        )
+    return review_result
 
-    except ValueError as err:
-        raise HTTPException(status_code=400, detail=str(err))
-    except Exception as err:
-        raise HTTPException(status_code=500, detail=f"General review error: {str(err)}")
+
+@router.post("/general-review/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+@router.post("/general-review/stream/", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+async def general_review_stream_endpoint(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    "Review the user query to the document or the clause."
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(general_review_streaming_service(request=request, session_id=session_id), media_type="text/event-stream", headers=headers)
 
 
 @router.post("/contract-analyzer", response_model=ContractAnalyzerResponse, status_code=status.HTTP_200_OK)

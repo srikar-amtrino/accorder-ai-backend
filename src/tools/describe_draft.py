@@ -1,28 +1,9 @@
-"""
-Describe & Draft tool — classify intent, generate a draft, validate.
-
-Two modes, gated by the `use_document_context` toggle and whether a document is
-attached to the session:
-  - With document context: the full text of the uploaded document is fed to the
-    model so the draft is grounded in its parties and governing law.
-  - Without document context: drafts are emitted as reusable templates with
-    [PLACEHOLDER] tokens (ALL CAPS in square brackets) that the frontend can
-    substitute later.
-
-The classifier routes each prompt to single_clause (one clause requested) or
-list_of_clauses (a whole agreement requested). Each call is independent — there
-is no regenerate flow and no cross-call session memory.
-
-All business logic for the Describe & Draft Agent lives here. The agent module
-(src/agents/describe_draft.py) is a thin dispatcher that delegates to this module.
-"""
-
 import logging
 import re
 import time
 from typing import List, Optional, Tuple
 
-from src.core.container import get_service_container
+from src.core.container import get_bedrock_model, get_session_manager
 from src.schemas.describe_draft import (
     ClauseListEntry,
     ClauseListLLMResponse,
@@ -33,6 +14,7 @@ from src.schemas.describe_draft import (
     IntentClassification,
 )
 from src.services.prompts.v1 import load_prompt
+from src.services.session_manager import SessionData
 
 logger = logging.getLogger(__name__)
 
@@ -356,20 +338,22 @@ def _validate_clause_list(
         )
 
 
-async def _classify_intent(prompt: str) -> IntentClassification:
-    container = get_service_container()
-    llm = container.llm_model
+async def _classify_intent(prompt: str, session_id: str) -> IntentClassification:
+    # container = get_service_container()
+    llm = get_bedrock_model()
     rendered = load_prompt("describe_draft_classifier_prompt", context={"user_prompt": prompt})
-    return await llm.generate(
+    response: IntentClassification = await llm.generate(
         prompt=rendered,
         context={},
         response_model=IntentClassification,
-        mode="JSON",
+        session_id=session_id,
         system_message="Classify the user's drafting intent. Return ONLY valid JSON.",
     )
 
+    return response
 
-def _session_has_document(session) -> bool:
+
+def _session_has_document(session: SessionData) -> bool:
     """True when the session has at least one ingested document."""
     docs = getattr(session, "documents", None)
     if docs:
@@ -384,8 +368,8 @@ def _get_document_text(session_id: str) -> Optional[str]:
     Concatenates the session chunk store in chunk order. This is the full document
     content the model is grounded in when document context is on.
     """
-    container = get_service_container()
-    session = container.session_manager.get_or_create_session(session_id)
+    session_manager = get_session_manager()
+    session = session_manager.get_or_create_session(session_id)
     chunk_store = getattr(session, "chunk_store", None)
     if not chunk_store:
         return None
@@ -394,19 +378,11 @@ def _get_document_text(session_id: str) -> Optional[str]:
     return content.strip() or None
 
 
-async def _generate_clause_draft(
-    prompt: str,
-    agreement_type: Optional[str],
-    document_text: Optional[str] = None,
-) -> DescribeDraftLLMResponse:
-    """single_clause mode: generate exactly 1 draft of the requested clause.
+async def _generate_clause_draft(prompt: str, agreement_type: Optional[str], session_id: str, document_text: Optional[str] = None) -> DescribeDraftLLMResponse:
+    """single_clause mode: generate exactly 1 draft of the requested clause."""
 
-    If `document_text` is given, the full document is injected so the draft is
-    grounded in its parties and governing law. Otherwise the prompt instructs the
-    LLM to use `[PLACEHOLDER]` tokens.
-    """
-    container = get_service_container()
-    llm = container.llm_model
+    # container = get_service_container()
+    llm = get_bedrock_model()
     mode_instruction = f"Draft a {agreement_type or 'legal'} clause as requested by the user."
     has_document_context = bool(document_text)
 
@@ -422,24 +398,22 @@ async def _generate_clause_draft(
         "document_text": document_text or "",
     }
     rendered = load_prompt("describe_draft_generation_user", context=context)
-    return await llm.generate(
+    response: DescribeDraftResponse = await llm.generate(
         prompt=rendered,
         context={},
         response_model=DescribeDraftLLMResponse,
-        mode="JSON",
         system_message=_GENERATION_SYSTEM,
-        cache_system=True,
+        session_id=session_id,
     )
 
+    return response
 
-async def _generate_clause_list(
-    prompt: str,
-    agreement_type: Optional[str],
-    document_text: Optional[str] = None,
-) -> ClauseListLLMResponse:
+
+async def _generate_clause_list(prompt: str, agreement_type: Optional[str], session_id: str, document_text: Optional[str] = None) -> ClauseListLLMResponse:
     """list_of_clauses mode: return ONE comprehensive clause list with drafted bodies."""
-    container = get_service_container()
-    llm = container.llm_model
+
+    # container = get_service_container()
+    llm = get_bedrock_model()
     mode_instruction = f"List all clauses that should appear in a " f"{agreement_type or 'legal agreement'} as requested by the user, " f"and draft the body of each one."
     has_document_context = bool(document_text)
 
@@ -455,14 +429,15 @@ async def _generate_clause_list(
         "document_text": document_text or "",
     }
     rendered = load_prompt("describe_draft_generation_user", context=context)
-    return await llm.generate(
+    response: ClauseListLLMResponse = await llm.generate(
         prompt=rendered,
         context={},
         response_model=ClauseListLLMResponse,
-        mode="JSON",
         system_message=_GENERATION_SYSTEM,
-        cache_system=True,
+        session_id=session_id,
     )
+
+    return response
 
 
 def _error_response(
@@ -473,7 +448,7 @@ def _error_response(
 ) -> DescribeDraftResponse:
     return DescribeDraftResponse(
         session_id=session_id,
-        mode=mode,  # type: ignore[arg-type]
+        mode=mode,
         status="error",
         disclaimer=None,
         error_type=error_type,
@@ -482,25 +457,15 @@ def _error_response(
 
 
 async def _run_single_clause_generation(
-    session_id: str,
-    clean_prompt: str,
-    agreement_type: Optional[str],
-    document_text: Optional[str],
-    grounded: bool,
+    session_id: str, clean_prompt: str, agreement_type: Optional[str], document_text: Optional[str], grounded: bool
 ) -> Tuple[Optional[ClauseVersion], Optional[DescribeDraftResponse]]:
-    """Single-clause generation + validation with one retry.
+    """Single-clause generation + validation with one retry."""
 
-    Returns (clause_version, None) on success, or (None, error_response) on failure.
-    """
     validation_error: Optional[str] = None
 
     for attempt in range(2):
         try:
-            raw = await _generate_clause_draft(
-                prompt=clean_prompt,
-                agreement_type=agreement_type,
-                document_text=document_text,
-            )
+            raw = await _generate_clause_draft(prompt=clean_prompt, agreement_type=agreement_type, document_text=document_text, session_id=session_id)
             _validate_draft_response(
                 raw,
                 require_placeholders=not grounded,
@@ -539,21 +504,9 @@ async def _run_single_clause_generation(
     )
 
 
-async def generate_describe_draft(
-    prompt: Optional[str],
-    session_id: str,
-    use_document_context: bool = True,
-) -> DescribeDraftResponse:
-    """
-    Main entry point for the describe-draft agent.
+async def generate_describe_draft(prompt: Optional[str], session_id: str, use_document_context: bool = True) -> DescribeDraftResponse:
+    """Main entry point for the describe-draft agent."""
 
-    Flow:
-      1. Sanitize input, classify intent (single_clause or list_of_clauses).
-      2. If use_document_context and a document is attached, load the full document text.
-      3. Generate (clause list with drafted bodies, or one clause draft), validate,
-         retry once.
-      4. Emit audit log and return.
-    """
     start_time = time.time()
 
     raw_prompt = prompt or ""
@@ -576,7 +529,7 @@ async def generate_describe_draft(
 
     # Classify intent
     try:
-        classification = await _classify_intent(clean_prompt)
+        classification = await _classify_intent(clean_prompt, session_id=session_id)
     except Exception as e:
         logger.error("describe_draft classify error session=%s error=%s", session_id, str(e))
         return _error_response(
@@ -591,8 +544,8 @@ async def generate_describe_draft(
 
     # Load the full document only when the user asked for document context AND a
     # document is actually attached to the session.
-    container = get_service_container()
-    session_obj = container.session_manager.get_or_create_session(session_id)
+    session_manager = get_session_manager()
+    session_obj = session_manager.get_or_create_session(session_id)
     document_text: Optional[str] = None
     if use_document_context and _session_has_document(session_obj):
         document_text = _get_document_text(session_id)
@@ -608,11 +561,7 @@ async def generate_describe_draft(
         validation_error: Optional[str] = None
         for attempt in range(2):
             try:
-                raw_list = await _generate_clause_list(
-                    prompt=clean_prompt,
-                    agreement_type=agreement_type,
-                    document_text=document_text,
-                )
+                raw_list = await _generate_clause_list(prompt=clean_prompt, agreement_type=agreement_type, document_text=document_text, session_id=session_id)
                 _validate_clause_list(
                     raw_list,
                     require_placeholders=not grounded,
@@ -658,7 +607,7 @@ async def generate_describe_draft(
         )
         return DescribeDraftResponse(
             session_id=session_id,
-            mode="list_of_clauses",
+            mode="list_of_clau" "ses",
             status="ok",
             agreement_summary=list_response.agreement_summary,
             clauses=list_response.clauses,
@@ -688,6 +637,6 @@ async def generate_describe_draft(
         session_id=session_id,
         mode="single_clause",
         status="ok",
-        versions=[version],  # type: ignore[list-item]
+        versions=[version],
         grounded_in_document=grounded,
     )
