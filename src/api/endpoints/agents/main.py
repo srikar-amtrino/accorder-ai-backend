@@ -2,11 +2,11 @@ import io
 from typing import Any
 
 from docx import Document
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
+from fastapi import APIRouter, Depends, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 # from src.api.session_utils import get_session_id
-from src.core.auth import generate_access_token, get_session_id, verify_token
+from src.core.auth import get_session_id
 from src.schemas.contract_analyzer import ContractAnalyzerResponse
 from src.schemas.describe_draft import DescribeDraftRequest, DescribeDraftResponse
 from src.schemas.doc_chat import DocChatResponse, DocuChatRequest
@@ -98,7 +98,6 @@ async def general_review_endpoint(request: GeneralReviewRequest, session_id: str
 
 
 @router.post("/general-review/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
-@router.post("/general-review/stream/", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
 async def general_review_stream_endpoint(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
     "Review the user query to the document or the clause."
 
