@@ -172,7 +172,7 @@ class BedrockModel(BaseLLMModel, Logger):
             self.logger.error(f"An error occurred while streaming response from the LLM model: {str(e)}")
             raise LLMModelError("An error occurred while streaming response from the LLM model.") from e
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Union[Type, None], mode: str = "JSON", system_message: Optional[str] = None, cache_system: bool = False, max_tokens: int = 4096) -> Any:
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Union[Type, None], mode: str = "JSON", system_message: Optional[str] = None, cache_system: bool = False, max_tokens: int = 4096, temperature: Optional[float] = None) -> Any:
         """Generate a response from Claude on Bedrock.
 
         JSON mode forces a tool-use call against the Pydantic response_model
@@ -183,14 +183,19 @@ class BedrockModel(BaseLLMModel, Logger):
         prompt caching, ~5 min TTL). Only worth setting when the same
         system_message will be reused across multiple calls in quick
         succession (e.g. the comparison agent's 6+ per-clause calls).
+
+        temperature is left at the Bedrock default (None) for every caller
+        unless explicitly set. Extraction-style agents pass 0 for deterministic,
+        less verbose output — lower temperature reduces length variance, which
+        on this output-bound path translates directly into steadier latency.
         """
 
         prompt = self.render_prompt_template(prompt=prompt, context=context)
         self.logger.info(f"Updated prompt for passing to the LLM: {prompt}")
 
         if mode == "JSON" and response_model is not None:
-            return await self._generate_json(prompt, response_model, system_message, cache_system, max_tokens)
-        return await self._generate_markdown(prompt, system_message, cache_system, max_tokens)
+            return await self._generate_json(prompt, response_model, system_message, cache_system, max_tokens, temperature)
+        return await self._generate_markdown(prompt, system_message, cache_system, max_tokens, temperature)
 
     @staticmethod
     def _build_system_field(system_message: Optional[str], cache_system: bool) -> Optional[Any]:
@@ -202,7 +207,7 @@ class BedrockModel(BaseLLMModel, Logger):
             return [{"type": "text", "text": system_message, "cache_control": {"type": "ephemeral"}}]
         return system_message
 
-    async def _generate_json(self, prompt: str, response_model: Type, system_message: Optional[str], cache_system: bool = False, max_tokens: int = 4096) -> Any:
+    async def _generate_json(self, prompt: str, response_model: Type, system_message: Optional[str], cache_system: bool = False, max_tokens: int = 4096, temperature: Optional[float] = None) -> Any:
         """Generate a JSON response by forcing tool-use against response_model's schema."""
 
         try:
@@ -219,6 +224,8 @@ class BedrockModel(BaseLLMModel, Logger):
                 "tools": [tool],
                 "tool_choice": {"type": "tool", "name": response_model.__name__},
             }
+            if temperature is not None:
+                body["temperature"] = temperature
             system_field = self._build_system_field(system_message, cache_system)
             if system_field is not None:
                 body["system"] = system_field
@@ -248,7 +255,7 @@ class BedrockModel(BaseLLMModel, Logger):
             self.logger.error(f"An error occurred while generating response from the LLM model: {str(e)}")
             raise LLMModelError("An error occurred while generating response from the LLM model.") from e
 
-    async def _generate_markdown(self, prompt: str, system_message: Optional[str], cache_system: bool = False, max_tokens: int = 4096) -> str:
+    async def _generate_markdown(self, prompt: str, system_message: Optional[str], cache_system: bool = False, max_tokens: int = 4096, temperature: Optional[float] = None) -> str:
         """Generate a markdown/text response."""
 
         try:
@@ -259,6 +266,8 @@ class BedrockModel(BaseLLMModel, Logger):
                 "messages": [{"role": "user", "content": prompt}],
                 "system": self._build_system_field(effective_system, cache_system) or effective_system,
             }
+            if temperature is not None:
+                body["temperature"] = temperature
 
             # Offload the blocking boto3 stream-drain to a worker thread (see _generate_json).
             response_text, usage = await asyncio.to_thread(self._collect_text, body)
