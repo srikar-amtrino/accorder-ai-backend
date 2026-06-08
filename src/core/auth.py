@@ -16,6 +16,11 @@ settings = get_settings()
 
 
 def generate_access_token() -> Any:
+    if not settings.token_url or not settings.client_id or not settings.client_secret:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cognito client credentials authentication is not configured on this server."
+        )
     TOKEN_URL = settings.token_url
 
     data = {
@@ -32,11 +37,23 @@ def generate_access_token() -> Any:
 
 @lru_cache()
 def get_jwks() -> Any:
+    if not settings.aws_cognito_jwks_url:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cognito JWKS URL is not configured."
+        )
     response = requests.get(settings.aws_cognito_jwks_url)
     return response.json()
 
 
 def verify_cognito_token(token: str) -> None:
+    issuer = settings.aws_cognito_issuer
+    jwks_url = settings.aws_cognito_jwks_url
+    if not jwks_url or not issuer:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Cognito token verification is not configured on this server."
+        )
     try:
         jwks = get_jwks()
         header = jwt.get_unverified_header(token)
@@ -50,7 +67,7 @@ def verify_cognito_token(token: str) -> None:
         if not isinstance(public_key, RSAPublicKey):
             raise Exception("Expected RSA public key")
 
-        jwt.decode(token, public_key, algorithms=["RS256"], issuer=settings.aws_cognito_issuer)  # type; ignore
+        jwt.decode(token, public_key, algorithms=["RS256"], issuer=issuer)  # type; ignore
 
     except Exception:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")

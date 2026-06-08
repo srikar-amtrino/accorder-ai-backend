@@ -48,13 +48,14 @@ class Settings(BaseSettings):
     logs_directory: str = Field(default="./logs", description="Directory for application logs")
 
     # Application Auth
-    token_url: str = Field(default=..., description="")
-    client_id: str = Field(default=..., description="")
-    client_secret: str = Field(default=..., description="")
+    token_url: Union[str, None] = Field(default=None, description="")
+    client_id: Union[str, None] = Field(default=None, description="")
+    client_secret: Union[str, None] = Field(default=None, description="")
     aws_cognito_region: str = Field(default="us-west-1", description="")
-    aws_cognito_user_pool_id: str = Field(default=..., description="")
-    aws_cognito_issuer: str = Field(default=..., description="")
-    aws_cognito_jwks_url: str = Field(default=..., description="")
+    aws_cognito_user_pool_id: Union[str, None] = Field(default=None, description="")
+    aws_cognito_issuer: Union[str, None] = Field(default=None, description="")
+    aws_cognito_jwks_url: Union[str, None] = Field(default=None, description="")
+
 
     aws_access_key_id: Union[str, None] = Field(default=None, description="AWS Access Key ID for Bedrock authentication. Optional if using IAM roles or other credential providers.")
     aws_secret_access_key: Union[str, None] = Field(default=None, description="AWS Secret Access Key for Bedrock authentication. Optional if using IAM roles or other credential providers.")

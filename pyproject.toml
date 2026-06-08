@@ -7,6 +7,7 @@ packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
+pyjwt = {extras = ["crypto"], version = "^2.13.0"}
 
 [tool.poetry.scripts]
 contract-api = "src.api.main:main_entry"
