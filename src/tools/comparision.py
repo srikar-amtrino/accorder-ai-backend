@@ -65,6 +65,7 @@ CONFIDENCE_HIGH = 0.90
 CONFIDENCE_MEDIUM = 0.80
 REORDER_DRIFT_THRESHOLD = 0.15
 CONTAINMENT_SIZE_RATIO = 1.3
+HEADING_MATCH_MIN_SIMILARITY = 0.40
 
 
 _GENERIC_HEADINGS = {
@@ -117,11 +118,40 @@ def _resolve_clause_heading(content: str, metadata_heading: Optional[str]) -> Op
     return metadata_heading
 
 
+def _clean_clause_name(name: Optional[str]) -> Optional[str]:
+    """Normalize a clause heading: collapse whitespace, drop a trailing period."""
+
+    if not name:
+        return None
+    cleaned = re.sub(r"\s+", " ", name).strip().rstrip(".").strip()
+    if not cleaned:
+        return None
+    if re.fullmatch(r"(?:by|name|title|date|signature)\s*:?", cleaned, flags=re.IGNORECASE):
+        return None
+    return cleaned
+
+
+def _looks_like_heading_only(content: str) -> bool:
+    """True when a unit is just a clause title with no body (e.g. ``Audit Rights.``)."""
+
+    c = content.strip()
+    words = c.rstrip(".").split()
+    if not words or len(words) > 6:
+        return False
+    if "." in c[:-1]:  # an internal period means it is a sentence, not a bare heading
+        return False
+    connectors = {"and", "or", "of", "to", "the", "for", "on", "in", "with", "a", "an", "&"}
+    significant = [w for w in words if w.lower() not in connectors]
+    # Heading style: every significant word is capitalised (Title Case / ALL CAPS).
+    return bool(significant) and all(w[:1].isupper() for w in significant)
+
+
 def extract_clauses(document: ParseResult) -> List[ClauseUnit]:
     """Extract clauses from a document's chunks, using metadata and fallback heuristics for headings."""
 
     clauses: List[ClauseUnit] = []
     order = 0
+    pending_heading: Optional[str] = None
 
     for chunk in document.chunks:
         if chunk is None:
@@ -131,7 +161,17 @@ def extract_clauses(document: ParseResult) -> List[ClauseUnit]:
         if not content:
             continue
 
-        heading = _extract_heading_fallback(content) or chunk.metadata.get("section_heading")
+        # A heading split onto its own line: carry it forward to the next body unit.
+        if _looks_like_heading_only(content):
+            pending_heading = content if not pending_heading else f"{pending_heading} {content}"
+            continue
+
+        if pending_heading:
+            heading = _clean_clause_name(pending_heading)
+            content = f"{pending_heading} {content}"
+            pending_heading = None
+        else:
+            heading = _clean_clause_name(_resolve_clause_heading(content, chunk.metadata.get("section_heading")))
 
         clauses.append(
             ClauseUnit(
@@ -144,6 +184,11 @@ def extract_clauses(document: ParseResult) -> List[ClauseUnit]:
             )
         )
         order += 1
+
+    # A trailing heading with no following body (rare): fold it into the previous clause
+    # so we never emit a unit with an empty embedding (which would break the similarity matrix).
+    if pending_heading and clauses:
+        clauses[-1].content = f"{clauses[-1].content} {pending_heading}"
 
     return clauses
 
@@ -260,6 +305,10 @@ async def match_clauses(clauses_a: List[ClauseUnit], clauses_b: List[ClauseUnit]
     # Compute content similarity for heading-matched pairs
     for i, j in heading_matched_indices:
         sim = _cosine_similarity(clauses_a[i].embedding, clauses_b[j].embedding)
+        if sim < HEADING_MATCH_MIN_SIMILARITY:
+            used_a.discard(i)
+            used_b.discard(j)
+            continue
         heading_pairs.append((i, j, sim))
         logger.info("Content similarity:", heading=clauses_a[i].heading, index_a=i, index_b=j, similarity=sim, session_id=session_id)
 
@@ -834,9 +883,6 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
     if cached_data:
         logger.info("Cache miss for session", session_id=session_id, agent=AGENT_NAME)
 
-    doc_a: ParseResult = await parser.parse_document(document_a, session_data=session_data)  # type: ignore
-    doc_b: ParseResult = await parser.parse_document(document_b, session_data=session_data)  # type: ignore
-
     # Guard: same document
     if hash_a == hash_b:
         return CompareResponse(
@@ -845,6 +891,11 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
             summary=_zero_changes_summary(),
             sections=[],
         )
+
+    doc_a, doc_b = await asyncio.gather(
+        parser.parse_document(document_a, session_data=session_data),  # type: ignore
+        parser.parse_document(document_b, session_data=session_data),  # type: ignore
+    )
 
     # Stage 1: Extract clauses
     logger.info("Extracting clauses for the doccuments...", session_id=session_id)

@@ -123,7 +123,7 @@ class GeneralReviewRequest(BaseModel):
     """Request body for the general review endpoint."""
 
     textinformation: List[TextInformation] = Field(..., description="List of text paragraphs to check")
-    query: str = Field(..., description="The user query to be answered based on the ingested document.")
+    query: str = Field(..., description="The user query to be answered.")
 
 
 class Suggestion(BaseModel):

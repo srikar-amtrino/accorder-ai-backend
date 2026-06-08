@@ -61,8 +61,6 @@ async def add_process_time_header(request: Request, call_next: typing.Callable) 
 
 
 app.include_router(ingestion_router, prefix="/ingestion")
-# app.include_router(clause_extraction_router, prefix="/api/v1/clause-extraction")
-# app.include_router(describe_draft_router, prefix="/api/v1/describe-draft")
 # app.include_router(admin_router, prefix="/admin")
 app.include_router(agents_router, prefix="/Accorder/agents")
 
