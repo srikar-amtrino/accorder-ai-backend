@@ -12,8 +12,8 @@ class BaseParser(ABC, Logger):
     """Abstract base class for parsers in the registry service."""
 
     @abstractmethod
-    async def parse_document(self, document: Document, session_data: Optional["SessionData"] = None) -> ParseResult:
-        """Parse the given document."""
+    async def parse_document(self, document: Document, session_data: Optional["SessionData"] = None, index: bool = True) -> ParseResult:
+        """Parse the given document. Set index=False to skip vector-store indexing."""
         pass
 
     @abstractmethod

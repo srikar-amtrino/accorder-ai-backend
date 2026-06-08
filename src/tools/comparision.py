@@ -25,12 +25,15 @@ AGENT_NAME = "document_comparison_agent"
 # Split into a static system block (role, schema, field semantics, examples) and
 # a tiny dynamic user block (just the two clause texts). Loaded once at import.
 #
-# Caching: the static block is ~1,650 tokens and, together with the forced
-# tool schema that precedes the system block in the cached prefix, clears
-# Sonnet 4.6's 1,024-token cache minimum. This agent fans out up to
-# MAX_LLM_CALLS comparisons per document, every one re-sending the identical
-# block, so cache_system=True turns that repetition into cache reads — the
-# largest per-document caching win in the app.
+# Caching: the static system block (~1,650 tokens) plus the forced tool schema
+# that precedes it in the cached prefix measure ~2,300 tokens combined (per
+# Bedrock usage logs), clearing Sonnet 4.6's 2,048-token prompt-cache minimum
+# by a thin ~250-token margin. Do NOT trim this block or the response schema
+# below that floor — caching then silently switches off (cache_creation /
+# cache_read drop to 0) and every per-clause call pays full input price. This
+# agent fans out up to MAX_LLM_CALLS comparisons per document, every one
+# re-sending the identical block, so cache_system=True turns that repetition
+# into cache reads — the largest per-document caching win in the app.
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
 _COMPARISON_SYSTEM = (_PROMPTS_DIR / "clause_comparison_system.mustache").read_text(encoding="utf-8")
 _COMPARISON_USER = (_PROMPTS_DIR / "clause_comparison_user.mustache").read_text(encoding="utf-8")
@@ -273,7 +276,13 @@ async def _ensure_embeddings(clauses_a: List[ClauseUnit], clauses_b: List[Clause
     if not targets:
         return
 
-    results = await asyncio.gather(*(embedding_service.generate_embeddings(c.content) for c in targets))
+    # One batched encode for all missing clauses — same vectors as the per-text
+    # path, far fewer calls. Falls back to per-text gather if the service has no
+    # batch API, preserving the original behavior exactly.
+    if hasattr(embedding_service, "generate_embeddings_batch"):
+        results = await embedding_service.generate_embeddings_batch([c.content for c in targets])
+    else:
+        results = await asyncio.gather(*(embedding_service.generate_embeddings(c.content) for c in targets))
     for clause, embedding in zip(targets, results):
         clause.embedding = embedding
 
@@ -897,10 +906,8 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
     if cached_data:
         logger.info(f"Cache miss for session {session_id} agent {AGENT_NAME} — documents differ, recomputing")
 
-    doc_a: ParseResult = await parser.parse_document(document_a)
-    doc_b: ParseResult = await parser.parse_document(document_b)
-
-    # Guard: same document
+    # Guard: same document — identical text means nothing to compare, so return
+    # before the (expensive) parse + embed of both documents rather than after.
     if hash_a == hash_b:
         return CompareResponse(
             success=True,
@@ -908,6 +915,14 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
             summary=_zero_changes_summary(),
             sections=[],
         )
+
+    # Parse both documents concurrently. index=False: this agent does its own
+    # in-memory clause matching and never queries the vector store, so indexing
+    # would only pollute the shared store and add per-vector cost for no benefit.
+    doc_a, doc_b = await asyncio.gather(
+        parser.parse_document(document_a, index=False),
+        parser.parse_document(document_b, index=False),
+    )
 
     # Stage 1: Extract clauses
     logger.info("Extracting clauses for the doccuments...")

@@ -460,7 +460,7 @@ class DocxParser(BaseParser, Logger):
             processing_time=time.perf_counter() - start,
         )
 
-    async def parse_document(self, document: Document, session_data: Optional["SessionData"] = None) -> ParseResult:
+    async def parse_document(self, document: Document, session_data: Optional["SessionData"] = None, index: bool = True) -> ParseResult:
 
         start = time.perf_counter()
         try:
@@ -524,8 +524,13 @@ class DocxParser(BaseParser, Logger):
                 chunk_vectors = np.vstack([chunk_vectors, pad])
 
             # ── Step 6: single bulk_index call for everything ──
-            combined = np.vstack([chunk_vectors, tbl_vectors]) if len(tbl_vectors) else chunk_vectors
-            await _bulk_index(vector_store, combined)
+            # Skipped when index=False (e.g. the comparison agent, which does its own
+            # in-memory matching and never queries the store) — avoids polluting the
+            # vector store and the per-vector add/log cost. The returned chunks are
+            # identical either way; indexing is a pure side effect.
+            if index:
+                combined = np.vstack([chunk_vectors, tbl_vectors]) if len(tbl_vectors) else chunk_vectors
+                await _bulk_index(vector_store, combined)
 
             # ── Step 7: build Chunk objects (batch UUIDs, one timestamp) ──
             total = len(chunk_texts) + len(table_rows)
