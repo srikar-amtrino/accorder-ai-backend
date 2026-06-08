@@ -22,6 +22,7 @@ import time
 from typing import List, Optional, Tuple
 
 from src.dependencies import get_service_container
+from src.exceptions.llm_exceptions import EmptyResponseError, ResponseParsingError
 from src.schemas.describe_draft import (
     ClauseListEntry,
     ClauseListLLMResponse,
@@ -90,8 +91,14 @@ _INJECTION_PATTERNS = [
     "system: ",
 ]
 
-# Placeholder token format: [ALL CAPS + SPACES + DIGITS], e.g. [PARTY A], [EFFECTIVE DATE]
-_PLACEHOLDER_PATTERN = re.compile(r"\[([A-Z][A-Z0-9 /\-&]{1,60})\]")
+# Placeholder token format: [ALL CAPS + SPACES + DIGITS + punctuation], e.g.
+# [PARTY A], [EFFECTIVE DATE], [LIQUIDATED DAMAGES AMOUNT – UNAUTHORIZED DISCLOSURE].
+# The char class includes hyphen-minus AND en/em dashes (– —): the model frequently
+# uses an en-dash to qualify a token name, and without it those tokens silently fail
+# to extract — dropping them from `placeholders` (so the frontend never prompts for
+# them) and from the grounded-forbidden check (so a dash-containing party/gov-law
+# token could slip past). Keep all three dash forms in the class.
+_PLACEHOLDER_PATTERN = re.compile(r"\[([A-Z][A-Z0-9 /\-–—&]{1,60})\]")
 
 # Placeholder token-name substrings that MUST NOT appear when document context is used.
 # A grounded draft reads the parties and the governing law / forum straight from the
@@ -409,12 +416,17 @@ async def _generate_clause_draft(
     prompt: str,
     agreement_type: Optional[str],
     document_text: Optional[str] = None,
+    temperature: float = 0.0,
 ) -> DescribeDraftLLMResponse:
     """single_clause mode: generate exactly 1 draft of the requested clause.
 
     If `document_text` is given, the full document is injected so the draft is
     grounded in its parties and governing law. Otherwise the prompt instructs the
     LLM to use `[PLACEHOLDER]` tokens.
+
+    `temperature` defaults to 0 for deterministic, length-stable output (a strict
+    JSON tool-use schema benefits from low variance); callers bump it on retry so
+    a deterministic glitch gets a genuinely different second attempt.
     """
     container = get_service_container()
     llm = container.llm_model
@@ -443,6 +455,7 @@ async def _generate_clause_draft(
         system_message=_GENERATION_SYSTEM,
         cache_system=True,
         max_tokens=3072,  # one drafted clause
+        temperature=temperature,
     )
 
 
@@ -450,8 +463,14 @@ async def _generate_clause_list(
     prompt: str,
     agreement_type: Optional[str],
     document_text: Optional[str] = None,
+    temperature: float = 0.0,
 ) -> ClauseListLLMResponse:
-    """list_of_clauses mode: return ONE comprehensive clause list with drafted bodies."""
+    """list_of_clauses mode: return ONE comprehensive clause list with drafted bodies.
+
+    `temperature` defaults to 0 (see `_generate_clause_draft`); callers bump it on
+    retry. This is the largest output path — a full grounded agreement — so it
+    carries the most generous `max_tokens` ceiling.
+    """
     container = get_service_container()
     llm = container.llm_model
     mode_instruction = (
@@ -480,7 +499,13 @@ async def _generate_clause_list(
         mode="JSON",
         system_message=_GENERATION_SYSTEM,
         cache_system=True,
-        max_tokens=8192,  # full multi-clause agreement (hard ceiling)
+        # Full multi-clause agreement. A grounded full agreement (whole document
+        # injected + every clause drafted with real party names) is the largest
+        # output the agent produces and previously overran an 8192 ceiling mid-JSON
+        # → unparseable. 16384 gives headroom; temperature=0 keeps the typical
+        # output well under it, so this is a safety margin, not the normal length.
+        max_tokens=16384,
+        temperature=temperature,
     )
 
 
@@ -511,14 +536,20 @@ async def _run_single_clause_generation(
 
     Returns (clause_version, None) on success, or (None, error_response) on failure.
     """
-    validation_error: Optional[str] = None
+    last_error: Optional[str] = None
+    last_error_type = DescribeDraftErrorType.VALIDATION_FAILED
 
     for attempt in range(2):
+        # Attempt 0 is deterministic (temp 0). The retry bumps temperature so a
+        # deterministic glitch — a truncated or malformed JSON body — gets a
+        # genuinely different second sampling rather than reproducing the failure.
+        temperature = 0.0 if attempt == 0 else 0.4
         try:
             raw = await _generate_clause_draft(
                 prompt=clean_prompt,
                 agreement_type=agreement_type,
                 document_text=document_text,
+                temperature=temperature,
             )
             _validate_draft_response(
                 raw,
@@ -527,12 +558,25 @@ async def _run_single_clause_generation(
             )
             return raw.versions[0], None
         except ValueError as ve:
-            validation_error = str(ve)
+            last_error = str(ve)
+            last_error_type = DescribeDraftErrorType.VALIDATION_FAILED
             logger.warning(
                 "describe_draft validation failed session=%s attempt=%d error=%s",
-                session_id, attempt + 1, validation_error,
+                session_id, attempt + 1, last_error,
+            )
+        except (ResponseParsingError, EmptyResponseError) as pe:
+            # Transient model-output glitch (truncated / malformed JSON, empty
+            # response). Retry — these often resolve on a second, hotter sampling.
+            last_error = str(pe)
+            last_error_type = DescribeDraftErrorType.LLM_FAILED
+            logger.warning(
+                "describe_draft transient LLM parse/empty error session=%s attempt=%d "
+                "error=%s — retrying",
+                session_id, attempt + 1, last_error,
             )
         except Exception as e:
+            # Infrastructure failure (credentials, throttling, validation error from
+            # boto3). Retrying won't help — fail fast.
             error_msg = str(e)
             logger.error(
                 "describe_draft generation error session=%s attempt=%d error=%s",
@@ -553,8 +597,8 @@ async def _run_single_clause_generation(
     return None, _error_response(
         session_id,
         "single_clause",
-        DescribeDraftErrorType.VALIDATION_FAILED,
-        f"Generation validation failed after 2 attempts: {validation_error}",
+        last_error_type,
+        f"Generation failed after 2 attempts: {last_error}",
     )
 
 
@@ -627,13 +671,19 @@ async def generate_describe_draft(
 
     if mode == "list_of_clauses":
         list_response: Optional[ClauseListLLMResponse] = None
-        validation_error: Optional[str] = None
+        last_error: Optional[str] = None
+        last_error_type = DescribeDraftErrorType.VALIDATION_FAILED
         for attempt in range(2):
+            # Deterministic first pass; hotter retry so a truncated/malformed JSON
+            # body (the failure mode on large grounded agreements) gets a different
+            # second sampling instead of reproducing the same broken output.
+            temperature = 0.0 if attempt == 0 else 0.4
             try:
                 raw_list = await _generate_clause_list(
                     prompt=clean_prompt,
                     agreement_type=agreement_type,
                     document_text=document_text,
+                    temperature=temperature,
                 )
                 _validate_clause_list(
                     raw_list,
@@ -643,12 +693,23 @@ async def generate_describe_draft(
                 list_response = raw_list
                 break
             except ValueError as ve:
-                validation_error = str(ve)
+                last_error = str(ve)
+                last_error_type = DescribeDraftErrorType.VALIDATION_FAILED
                 logger.warning(
                     "describe_draft list validation failed session=%s attempt=%d error=%s",
-                    session_id, attempt + 1, validation_error,
+                    session_id, attempt + 1, last_error,
+                )
+            except (ResponseParsingError, EmptyResponseError) as pe:
+                # Transient model-output glitch (truncated / malformed JSON). Retry.
+                last_error = str(pe)
+                last_error_type = DescribeDraftErrorType.LLM_FAILED
+                logger.warning(
+                    "describe_draft list transient parse/empty error session=%s attempt=%d "
+                    "error=%s — retrying",
+                    session_id, attempt + 1, last_error,
                 )
             except Exception as e:
+                # Infrastructure failure — retrying won't help, fail fast.
                 error_msg = str(e)
                 logger.error(
                     "describe_draft list generation error session=%s attempt=%d error=%s",
@@ -667,8 +728,8 @@ async def generate_describe_draft(
             return _error_response(
                 session_id,
                 mode,
-                DescribeDraftErrorType.VALIDATION_FAILED,
-                f"Clause-list validation failed after 2 attempts: {validation_error}",
+                last_error_type,
+                f"Clause-list generation failed after 2 attempts: {last_error}",
             )
 
         latency_ms = int((time.time() - start_time) * 1000)
