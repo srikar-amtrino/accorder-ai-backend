@@ -16,6 +16,7 @@ from src.schemas.playbook_review import (
     PlayBookReviewFinalResponse,
     RuleCheckRequest,
 )
+from src.tools.comparision import compare_documents_stream_service
 from src.tools.comparision import run as compare_documents_service
 from src.tools.doc_chat import query_document as query_document_service
 from src.tools.general_review import clause_review, full_document_review
@@ -49,6 +50,27 @@ async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, ses
 
     comparison_result = await compare_documents_service(session_id=session_id, document_a=document_a, document_b=document_b)
     return comparison_result
+
+
+@router.post("/compare-documents/stream", response_class=StreamingResponse)
+async def compare_documents_stream_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    """Compare two documents and stream each change as its analysis lands (SSE).
+
+    Emits one ``data: {json}`` frame per event (``status`` -> ``change`` per clause,
+    fastest first -> final ``summary``), terminated by ``data: [DONE]``. The frontend
+    renders each ``change`` as a card the moment it arrives instead of waiting for the
+    whole comparison.
+    """
+
+    document_a = Document(io.BytesIO(await file_a.read()))
+    document_b = Document(io.BytesIO(await file_b.read()))
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive", "X-Accel-Buffering": "no"}
+    return StreamingResponse(
+        compare_documents_stream_service(session_id=session_id, document_a=document_a, document_b=document_b),
+        media_type="text/event-stream",
+        headers=headers,
+    )
 
 
 @router.post("/playbook-review", response_model=PlayBookReviewFinalResponse)

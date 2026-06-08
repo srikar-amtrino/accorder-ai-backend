@@ -1,4 +1,5 @@
 import asyncio
+import json
 import re
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
@@ -1004,3 +1005,146 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
         summary=summary,
         sections=sections,
     )
+
+
+def _sse(payload: Dict) -> str:
+    """Format a dict as a single Server-Sent Events frame."""
+
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+async def compare_documents_stream_service(session_id: str, document_a: Document, document_b: Document):
+    """Stream the document comparison as Server-Sent Events.
+
+    Same pipeline as ``run()``, but each change is emitted the moment it is
+    determined instead of being returned in one final payload. Deterministic
+    changes (added / removed / reordered / split-merge / containment) are sent
+    immediately; the LLM-compared changes are sent as each per-clause-pair
+    comparison resolves (fastest first, via ``asyncio.as_completed``). A final
+    ``summary`` event carries the aggregate statistics.
+
+    Wire format matches the other streaming agents: one ``data: {json}`` frame per
+    event, terminated by ``data: [DONE]``. Each event dict has a ``type`` field:
+      - status  : pipeline progress (stage + human message + optional counts)
+      - change  : one ChangeEntry (the unit the frontend renders as a card)
+      - summary : the aggregate CompareSummary, sent once at the end
+      - error   : a terminal failure message
+    """
+
+    try:
+        container = get_service_container()
+        embedding_service = container.embedding_service
+        llm_client = container.llm_model
+        parser = get_parser()
+
+        yield _sse({"type": "status", "stage": "parsing", "message": "Parsing both documents..."})
+
+        doc_text_a = await extract_text(document_a)
+        doc_text_b = await extract_text(document_b)
+
+        # Same-document guard — identical text means nothing to compare.
+        if hash(doc_text_a) == hash(doc_text_b):
+            yield _sse({"type": "summary", "data": _zero_changes_summary().model_dump()})
+            yield _sse({"type": "status", "stage": "done", "message": "Both documents are identical. No differences found."})
+            yield "data: [DONE]\n\n"
+            return
+
+        doc_a, doc_b = await asyncio.gather(
+            parser.parse_document(document_a, index=False),
+            parser.parse_document(document_b, index=False),
+        )
+
+        clauses_a = extract_clauses(doc_a)
+        clauses_b = extract_clauses(doc_b)
+        yield _sse({
+            "type": "status",
+            "stage": "extracted",
+            "clauses_a": len(clauses_a),
+            "clauses_b": len(clauses_b),
+            "message": f"Extracted {len(clauses_a)} clauses from A and {len(clauses_b)} from B.",
+        })
+
+        all_changes: List[ChangeEntry] = []
+
+        def _change_event(entry: ChangeEntry) -> str:
+            all_changes.append(entry)
+            return _sse({"type": "change", "index": len(all_changes) - 1, "data": entry.model_dump()})
+
+        # Edge case: one or both documents have no extractable clauses.
+        if not clauses_a or not clauses_b:
+            for entry in _build_unmatched_entries(list(range(len(clauses_a))), list(range(len(clauses_b))), clauses_a, clauses_b):
+                yield _change_event(entry)
+            yield _sse({"type": "summary", "data": _compute_summary(all_changes, 0, 0).model_dump()})
+            yield "data: [DONE]\n\n"
+            return
+
+        # Stages 2-3.5: deterministic matching and reconciliation.
+        yield _sse({"type": "status", "stage": "matching", "message": f"Matching {len(clauses_a)} against {len(clauses_b)} clauses..."})
+
+        match_result = await match_clauses(clauses_a, clauses_b, embedding_service)
+        surviving_pairs, matched_containment_entries = _reconcile_matched_containment(match_result.matched_pairs, clauses_a, clauses_b)
+        match_result.matched_pairs = surviving_pairs
+        split_merge_entries, remaining_a, remaining_b = _detect_splits_and_merges(match_result, clauses_a, clauses_b)
+        containment_entries, remaining_a, remaining_b = _reconcile_containment(remaining_a, remaining_b, clauses_a, clauses_b)
+        unmatched_entries = _build_unmatched_entries(remaining_a, remaining_b, clauses_a, clauses_b)
+
+        # Emit every deterministic (no-LLM) change immediately.
+        for entry in matched_containment_entries + split_merge_entries + containment_entries + unmatched_entries:
+            yield _change_event(entry)
+
+        # Stage 4 / Pass 1: classify matched pairs into reorder / skipped / needs-LLM.
+        len_a, len_b = len(clauses_a), len(clauses_b)
+        llm_jobs: List[Tuple[int, int, float]] = []
+        for idx_a, idx_b, similarity in match_result.matched_pairs:
+            clause_a, clause_b = clauses_a[idx_a], clauses_b[idx_b]
+            if clause_a.content == clause_b.content:
+                if _position_drift(clause_a, clause_b, len_a, len_b) >= REORDER_DRIFT_THRESHOLD:
+                    yield _change_event(_make_reorder_entry(clause_a, clause_b))
+                continue
+            if len(llm_jobs) >= MAX_LLM_CALLS:
+                yield _change_event(_make_skipped_entry(clause_a, clause_b, "Comparison skipped due to LLM call limit."))
+                continue
+            llm_jobs.append((idx_a, idx_b, similarity))
+
+        # Stage 4 / Pass 2: run the per-pair LLM comparisons, emitting each as it resolves.
+        llm_calls_made = 0
+        llm_calls_skipped = sum(1 for c in all_changes if c.change_type == "unknown")
+
+        if llm_jobs:
+            yield _sse({
+                "type": "status",
+                "stage": "comparing",
+                "pending": len(llm_jobs),
+                "message": f"Analyzing {len(llm_jobs)} changed clause(s) with the model...",
+            })
+            semaphore = asyncio.Semaphore(MAX_LLM_CONCURRENCY)
+
+            async def _run_one(idx_a: int, idx_b: int, similarity: float) -> ChangeEntry:
+                clause_a, clause_b = clauses_a[idx_a], clauses_b[idx_b]
+                async with semaphore:
+                    try:
+                        comparison = await _compare_single_pair(clause_a, clause_b, llm_client)
+                        return _build_change_entry(clause_a, clause_b, comparison, similarity)
+                    except Exception as exc:
+                        logger.error(f"LLM comparison failed for {clause_a.clause_id} vs {clause_b.clause_id}: {exc}")
+                        return _make_skipped_entry(clause_a, clause_b, f"Comparison failed: {exc}")
+
+            tasks = [asyncio.create_task(_run_one(*job)) for job in llm_jobs]
+            for future in asyncio.as_completed(tasks):
+                entry = await future
+                if entry.change_type == "unknown":
+                    llm_calls_skipped += 1
+                else:
+                    llm_calls_made += 1
+                yield _change_event(entry)
+
+        # Final aggregate summary over every change emitted.
+        summary = _compute_summary(all_changes, llm_calls_made, llm_calls_skipped)
+        yield _sse({"type": "summary", "data": summary.model_dump()})
+        yield _sse({"type": "status", "stage": "done", "message": f"Comparison complete — {summary.total_changes} change(s) found."})
+        yield "data: [DONE]\n\n"
+
+    except Exception as exc:
+        logger.error(f"Compare streaming failed: {exc}")
+        yield _sse({"type": "error", "message": str(exc)})
+        yield "data: [DONE]\n\n"
