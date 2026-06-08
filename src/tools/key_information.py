@@ -49,6 +49,7 @@ async def _analyze(content: str) -> ContractAnalyzerResponse:
         system_message=_KEY_INFO_SYSTEM,
         cache_system=True,
         max_tokens=_MAX_TOKENS,
+        temperature=0,  # deterministic, terse extraction — trims length variance and steadies latency
     )
 
 
