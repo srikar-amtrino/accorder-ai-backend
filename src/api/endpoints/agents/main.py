@@ -20,7 +20,10 @@ from src.tools.describe_draft import (
     describe_draft_service,
     describe_draft_stream_service,
 )
-from src.tools.doc_chat import document_chat_service, document_chat_stream_service
+from src.tools.doc_chat import (
+    document_chat_service,
+    document_chat_stream_service,
+)
 from src.tools.general_review import (
     general_review_service,
     general_review_streaming_service,
