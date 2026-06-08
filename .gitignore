@@ -219,3 +219,8 @@ __marimo__/
 # extra files
 *.drawio.bkp 
 *.drawio
+# Local validation artifacts (agent response dumps + test documents, not code)
+AnalyzerResponse.json
+CompareResponse.json
+DescribeDraftResponse.json
+Old-1.docx
