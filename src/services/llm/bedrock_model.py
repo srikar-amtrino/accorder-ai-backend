@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from typing import Any, Dict, Optional, Type, cast
@@ -62,41 +63,96 @@ class BedrockModel(BaseLLMModel):
 
         return pystache.render(template=prompt, context=context)
 
-    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, system_message: Optional[str] = None) -> Any:
-        """Yields raw text chunks as they arrive from Bedrock."""
+    # async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, system_message: Optional[str] = None) -> Any:
+    #     """Yields raw text chunks as they arrive from Bedrock."""
 
-        prompt = self.render_prompt_template(prompt=prompt, context=context)
+    #     prompt = self.render_prompt_template(prompt=prompt, context=context)
+    #     native_request = {
+    #         "anthropic_version": "bedrock-2023-05-31",
+    #         "max_tokens": 10000,
+    #         "temperature": 0.5,
+    #         "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
+    #         "system": system_message or "You are a helpful assistant.",
+    #     }
+
+    #     start_time = time.time()
+    #     streaming_response = self.client.invoke_model_with_response_stream(
+    #         modelId=self.model_id,
+    #         body=json.dumps(native_request),
+    #     )
+    #     end_time = time.time()
+    #     logger.info("invoked bedrock model with streaming response", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
+
+    #     usage = streaming_response.get("usage", {})
+    #     logger.info(
+    #         "bedrock model generation complete",
+    #         model_id=self.model_id,
+    #         session_id=session_id,
+    #         tokens_input=usage.get("input_tokens"),
+    #         output_tokens=usage.get("output_tokens"),
+    #     )
+
+    #     for event in streaming_response["body"]:
+    #         chunk = json.loads(event["chunk"]["bytes"])
+    #         if chunk["type"] == "content_block_delta":
+    #             text = chunk["delta"].get("text", "")
+    #             if text:
+    #                 yield text
+
+    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, system_message: Optional[str] = None) -> Any:
+        """Yields text chunks as they arrive from Bedrock."""
+
+        prompt = self.render_prompt_template(
+            prompt=prompt,
+            context=context,
+        )
+
         native_request = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 10000,
             "temperature": 0.5,
-            "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [{"type": "text", "text": prompt}],
+                }
+            ],
             "system": system_message or "You are a helpful assistant.",
         }
 
         start_time = time.time()
-        streaming_response = self.client.invoke_model_with_response_stream(
+
+        streaming_response = await asyncio.to_thread(
+            self.client.invoke_model_with_response_stream,
             modelId=self.model_id,
             body=json.dumps(native_request),
         )
-        end_time = time.time()
-        logger.info("invoked bedrock model with streaming response", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
 
-        usage = streaming_response.get("usage", {})
         logger.info(
-            "bedrock model generation complete",
+            "invoked bedrock model with streaming response",
             model_id=self.model_id,
             session_id=session_id,
-            tokens_input=usage.get("input_tokens"),
-            output_tokens=usage.get("output_tokens"),
+            time_taken=time.time() - start_time,
         )
 
-        for event in streaming_response["body"]:
+        body_iter = iter(streaming_response["body"])
+
+        while True:
+            event = await asyncio.to_thread(lambda: next(body_iter, None))
+
+            if event is None:
+                break
+
             chunk = json.loads(event["chunk"]["bytes"])
-            if chunk["type"] == "content_block_delta":
+
+            if chunk.get("type") == "content_block_delta":
                 text = chunk["delta"].get("text", "")
+
                 if text:
                     yield text
+
+                    # give control back to event loop
+                    await asyncio.sleep(0)
 
     def _normalize_tool_response(self, value: Any) -> Any:
         if isinstance(value, str):
@@ -116,10 +172,56 @@ class BedrockModel(BaseLLMModel):
 
         return value
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None) -> BaseModel:
-        """Sends a generation request to Bedrock and returns the full response once complete."""
+    # async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None) -> BaseModel:
+    #     """Sends a generation request to Bedrock and returns the full response once complete."""
 
-        prompt = self.render_prompt_template(prompt=prompt, context=context)
+    #     prompt = self.render_prompt_template(prompt=prompt, context=context)
+
+    #     tool = {
+    #         "name": response_model.__name__,
+    #         "description": f"Submit a structured {response_model.__name__} response.",
+    #         "input_schema": response_model.model_json_schema(),
+    #     }
+
+    #     native_request = {
+    #         "anthropic_version": "bedrock-2023-05-31",
+    #         "max_tokens": 10000,
+    #         "temperature": 0.5,
+    #         "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
+    #         "system": system_message or "You are a helpful assistant.",
+    #         "tools": [tool],
+    #         "tool_choice": {"type": "tool", "name": response_model.__name__},
+    #     }
+
+    #     start_time = time.time()
+    #     response = self.client.invoke_model(
+    #         modelId=self.model_id,
+    #         body=json.dumps(native_request),
+    #     )
+    #     end_time = time.time()
+
+    #     logger.info("invoked bedrock model with generate", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
+
+    #     model_response = json.loads(response["body"].read())
+    #     usage = model_response.get("usage", {})
+    #     logger.info(
+    #         "bedrock model generation complete",
+    #         model_id=self.model_id,
+    #         session_id=session_id,
+    #         tokens_input=usage.get("input_tokens"),
+    #         output_tokens=usage.get("output_tokens"),
+    #     )
+    #     tool_use_block = next(block for block in model_response["content"] if block["type"] == "tool_use")
+    #     normalized_input = self._normalize_tool_response(tool_use_block["input"])
+
+    #     return cast(response_model, response_model.model_validate(normalized_input))  # type: ignore
+
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None) -> BaseModel:
+
+        prompt = self.render_prompt_template(
+            prompt=prompt,
+            context=context,
+        )
 
         tool = {
             "name": response_model.__name__,
@@ -131,31 +233,45 @@ class BedrockModel(BaseLLMModel):
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 10000,
             "temperature": 0.5,
-            "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        }
+                    ],
+                }
+            ],
             "system": system_message or "You are a helpful assistant.",
             "tools": [tool],
-            "tool_choice": {"type": "tool", "name": response_model.__name__},
+            "tool_choice": {
+                "type": "tool",
+                "name": response_model.__name__,
+            },
         }
 
         start_time = time.time()
-        response = self.client.invoke_model(
+
+        response = await asyncio.to_thread(
+            self.client.invoke_model,
             modelId=self.model_id,
             body=json.dumps(native_request),
         )
-        end_time = time.time()
 
-        logger.info("invoked bedrock model with generate", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
+        logger.info("invoked bedrock model with generate", model_id=self.model_id, session_id=session_id, time_taken=time.time() - start_time)
 
-        model_response = json.loads(response["body"].read())
+        response_body = await asyncio.to_thread(response["body"].read)
+
+        model_response = json.loads(response_body)
+
         usage = model_response.get("usage", {})
-        logger.info(
-            "bedrock model generation complete",
-            model_id=self.model_id,
-            session_id=session_id,
-            tokens_input=usage.get("input_tokens"),
-            output_tokens=usage.get("output_tokens"),
-        )
+
+        logger.info("bedrock model generation complete", model_id=self.model_id, session_id=session_id, tokens_input=usage.get("input_tokens"), output_tokens=usage.get("output_tokens"))
+
         tool_use_block = next(block for block in model_response["content"] if block["type"] == "tool_use")
+
         normalized_input = self._normalize_tool_response(tool_use_block["input"])
 
         return cast(response_model, response_model.model_validate(normalized_input))  # type: ignore
