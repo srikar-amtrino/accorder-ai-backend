@@ -250,8 +250,8 @@ from src.services.llm.base_model import BaseLLMModel
 logger = get_logger(__name__)
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "playbook"
-_KEY_INFO_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
-_KEY_INFO_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
+_PLAYBOOK_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
+_PLAYBOOK_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "missing_clauses"
 _MISSING_CLAUSES_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
@@ -266,7 +266,7 @@ async def review_document(session_id: str, request: RuleCheckRequest) -> PlayBoo
     try:
         # take all the rule and paragraph information and feed to the LLM to get a review response for this clause
         llm_response: PlayBookReviewLLMResponse = await llm_model.generate(
-            prompt=_KEY_INFO_USER,
+            prompt=_PLAYBOOK_REVIEW_USER,
             context={
                 "rules": [
                     {
@@ -282,7 +282,7 @@ async def review_document(session_id: str, request: RuleCheckRequest) -> PlayBoo
             },
             response_model=PlayBookReviewLLMResponse,
             session_id=session_id,
-            system_message=_KEY_INFO_SYSTEM,
+            system_message=_PLAYBOOK_REVIEW_SYSTEM,
         )
 
         return PlayBookReviewLLMResponse(results=llm_response.results)
