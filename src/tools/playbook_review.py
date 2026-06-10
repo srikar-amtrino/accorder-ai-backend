@@ -249,7 +249,7 @@ from src.services.llm.base_model import BaseLLMModel
 
 logger = get_logger(__name__)
 
-_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "playbook"
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v3" / "playbook_review"
 _PLAYBOOK_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
 _PLAYBOOK_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
 
@@ -285,79 +285,26 @@ async def review_document(session_id: str, request: RuleCheckRequest) -> PlayBoo
             system_message=_PLAYBOOK_REVIEW_SYSTEM,
         )
 
-        return PlayBookReviewLLMResponse(results=llm_response.results)
+        return PlayBookReviewLLMResponse(results=llm_response.results, missing_clauses=llm_response.missing_clauses)
 
     except Exception:
         logger.exception("Document review failed with an error.", session_id=session_id)
-        return PlayBookReviewLLMResponse(results=[])
-
-
-# async def playbook_review_service(session_id: str, request: RuleCheckRequest) -> PlayBookReviewFinalResponse:
-#     """Service function for playbook review. Validates input, interacts with the LLM, and returns the final review response."""
-
-#     if not request.rulesinformation:
-#         logger.warning("No rules provided in the request.", session_id=session_id)
-#         return PlayBookReviewFinalResponse(
-#             rules_review=[],
-#             missing_clauses=None,
-#         )
-
-#     try:
-#         # Call the review_document function to get the LLM response
-#         review_response: PlayBookReviewLLMResponse = await review_document(session_id, request)
-
-#         reviews = []
-
-#         for result in review_response.results:
-
-#             if result.rule_index < 0 or result.rule_index >= len(request.rulesinformation):
-#                 logger.warning("Received invalid rule index from LLM response, skipping.", rule_index=result.rule_index, session_id=session_id)
-#                 continue
-
-#             rule = request.rulesinformation[result.rule_index]
-
-#             reviews.append(
-#                 PlayBookReviewResponse(
-#                     rule_title=rule.title,
-#                     rule_type=rule.rule_type,
-#                     rule_instruction=rule.instruction,
-#                     rule_description=rule.description,
-#                     content=result,
-#                 )
-#             )
-
-#         missing_clauses = None
-
-#         # Return the final response
-#         return PlayBookReviewFinalResponse(
-#             rules_review=reviews,
-#             missing_clauses=missing_clauses,
-#         )
-
-#     except Exception:
-#         logger.exception("Playbook review failed with an error.", session_id=session_id)
-#         return PlayBookReviewFinalResponse(
-#             rules_review=[],
-#             missing_clauses=None,
-#         )
+        return PlayBookReviewLLMResponse(results=[], missing_clauses=[])
 
 
 async def playbook_review_service(session_id: str, request: RuleCheckRequest) -> PlayBookReviewFinalResponse:
-    """Service function for playbook review."""
+    """Service function for playbook review. Validates input, interacts with the LLM, and returns the final review response."""
 
     if not request.rulesinformation:
         logger.warning("No rules provided in the request.", session_id=session_id)
         return PlayBookReviewFinalResponse(
             rules_review=[],
-            missing_clauses=None,
+            missing_clauses=[],
         )
 
     try:
-        # Run both LLM calls in parallel
-        review_response, missing_clauses_response = await asyncio.gather(
-            review_document(session_id, request),
-            identify_missing_clauses(session_id, request),
-        )
+        # Call the review_document function to get the LLM response
+        review_response: PlayBookReviewLLMResponse = await review_document(session_id, request)
 
         reviews = []
 
@@ -379,207 +326,258 @@ async def playbook_review_service(session_id: str, request: RuleCheckRequest) ->
                 )
             )
 
+        # Return the final response
         return PlayBookReviewFinalResponse(
             rules_review=reviews,
-            missing_clauses=missing_clauses_response,
+            missing_clauses=review_response.missing_clauses,
         )
 
     except Exception:
         logger.exception("Playbook review failed with an error.", session_id=session_id)
-
         return PlayBookReviewFinalResponse(
             rules_review=[],
-            missing_clauses=None,
+            missing_clauses=[],
         )
 
 
-async def identify_missing_clauses(session_id: str, request: RuleCheckRequest) -> MissingClausesLLMResponse:
+# async def playbook_review_service(session_id: str, request: RuleCheckRequest) -> PlayBookReviewFinalResponse:
+#     """Service function for playbook review."""
 
-    llm_model: BaseLLMModel = get_bedrock_model()
-
-    try:
-        response: MissingClausesLLMResponse = await llm_model.generate(
-            prompt=_MISSING_CLAUSES_USER,
-            context={"document_content": [para.model_dump() for para in request.textinformation]},
-            response_model=MissingClausesLLMResponse,
-            session_id=session_id,
-            system_message=_MISSING_CLAUSES_SYSTEM,
-        )
-
-        return response
-
-    except Exception:
-        logger.exception("Missing clause review failed.", session_id=session_id)
-
-        return MissingClausesLLMResponse(missing_clauses=[])
-
-
-# async def playbook_review_stream_service(session_id: str, request: RuleCheckRequest) -> Any:
-#     """Service function for streaming playbook review."""
-
-#     try:
-#         llm_model = get_bedrock_model()
-
-#         start_time = time.time()
-#         stream = llm_model.generate_stream(
-#             prompt=_KEY_INFO_USER,
-#             context={
-#                 "rules": [
-#                     {
-#                         "rule_index": idx,
-#                         "title": rule.title,
-#                         "instruction": rule.instruction,
-#                         "description": rule.description,
-#                         "rule_type": rule.rule_type,
-#                     }
-#                     for idx, rule in enumerate(request.rulesinformation)
-#                 ],
-#                 "paragraphs": [para.model_dump() for para in request.textinformation],
-#             },
-#             session_id=session_id,
-#             system_message=_KEY_INFO_SYSTEM,
+#     if not request.rulesinformation:
+#         logger.warning("No rules provided in the request.", session_id=session_id)
+#         return PlayBookReviewFinalResponse(
+#             rules_review=[],
+#             missing_clauses=None,
 #         )
 
-#         async for chunk in stream:
-#             yield f"data: {json.dumps(chunk)}\n\n"
+#     try:
+#         # Run both LLM calls in parallel
+#         review_response, missing_clauses_response = await asyncio.gather(
+#             review_document(session_id, request),
+#             identify_missing_clauses(session_id, request),
+#         )
 
-#         yield 'data: {"__section__": "missing_clauses"}\n\n'
+#         reviews = []
 
-#         draft_stream = llm_model.generate_stream(
+#         for result in review_response.results:
+
+#             if result.rule_index < 0 or result.rule_index >= len(request.rulesinformation):
+#                 logger.warning("Received invalid rule index from LLM response, skipping.", rule_index=result.rule_index, session_id=session_id)
+#                 continue
+
+#             rule = request.rulesinformation[result.rule_index]
+
+#             reviews.append(
+#                 PlayBookReviewResponse(
+#                     rule_title=rule.title,
+#                     rule_type=rule.rule_type,
+#                     rule_instruction=rule.instruction,
+#                     rule_description=rule.description,
+#                     content=result,
+#                 )
+#             )
+
+#         return PlayBookReviewFinalResponse(
+#             rules_review=reviews,
+#             missing_clauses=missing_clauses_response,
+#         )
+
+#     except Exception:
+#         logger.exception("Playbook review failed with an error.", session_id=session_id)
+
+#         return PlayBookReviewFinalResponse(
+#             rules_review=[],
+#             missing_clauses=None,
+#         )
+
+
+# async def identify_missing_clauses(session_id: str, request: RuleCheckRequest) -> MissingClausesLLMResponse:
+
+#     llm_model: BaseLLMModel = get_bedrock_model()
+
+#     try:
+#         response: MissingClausesLLMResponse = await llm_model.generate(
 #             prompt=_MISSING_CLAUSES_USER,
-#             context={
-#                 "document_content": [para.model_dump() for para in request.textinformation],
-#             },
+#             context={"document_content": [para.model_dump() for para in request.textinformation]},
+#             response_model=MissingClausesLLMResponse,
 #             session_id=session_id,
 #             system_message=_MISSING_CLAUSES_SYSTEM,
 #         )
 
-#         async for chunk in draft_stream:
-#             yield f"data: {json.dumps(chunk)}\n\n"
+#         return response
 
-#         yield "data: [DONE]\n\n"
+#     except Exception:
+#         logger.exception("Missing clause review failed.", session_id=session_id)
 
-#         logger.info("playbook review streaming completed", time_taken=time.time() - start_time, session_id=session_id)
-
-#     except Exception as exc:
-#         logger.exception(
-#             "Playbook review streaming failed.",
-#             session_id=session_id,
-#         )
-
-#         yield f'data: {json.dumps({"error": str(exc)})}\n\n'
+#         return MissingClausesLLMResponse(missing_clauses=[])
 
 
-async def _pump_stream(stream_factory: Callable[[], AsyncGenerator], section: str, queue: asyncio.Queue) -> None:
-    """Consume a stream and push chunks into a shared queue."""
+async def playbook_review_stream_service(session_id: str, request: RuleCheckRequest) -> Any:
+    """Service function for streaming playbook review."""
+
     try:
-        logger.info("%s: starting stream", section)
+        llm_model = get_bedrock_model()
 
-        stream = stream_factory()
-
-        first_chunk = True
-        async for chunk in stream:
-            if first_chunk:
-                logger.info("%s: received first chunk", section)
-                first_chunk = False
-
-            await queue.put(
-                {
-                    "__section__": section,
-                    "__data__": chunk,
-                }
-            )
-
-    except Exception as exc:
-        logger.exception("%s stream failed", section)
-        await queue.put(
-            {
-                "__section__": section,
-                "__error__": str(exc),
-            }
-        )
-
-    finally:
-        await queue.put(
-            {
-                "__section__": section,
-                "__completed__": True,
-            }
-        )
-
-
-async def playbook_review_stream_service(session_id: str, request: RuleCheckRequest) -> AsyncGenerator:
-    """Run rules review and missing clauses streams concurrently."""
-    try:
         start_time = time.time()
+        stream = llm_model.generate_stream(
+            prompt=_PLAYBOOK_REVIEW_USER,
+            context={
+                "rules": [
+                    {
+                        "rule_index": idx,
+                        "title": rule.title,
+                        "instruction": rule.instruction,
+                        "description": rule.description,
+                        "rule_type": rule.rule_type,
+                    }
+                    for idx, rule in enumerate(request.rulesinformation)
+                ],
+                "paragraphs": [para.model_dump() for para in request.textinformation],
+            },
+            session_id=session_id,
+            system_message=_PLAYBOOK_REVIEW_SYSTEM,
+        )
 
-        rules_context = {
-            "rules": [
-                {
-                    "rule_index": idx,
-                    "title": rule.title,
-                    "instruction": rule.instruction,
-                    "description": rule.description,
-                    "rule_type": rule.rule_type,
-                }
-                for idx, rule in enumerate(request.rulesinformation)
-            ],
-            "paragraphs": [para.model_dump() for para in request.textinformation],
-        }
+        async for chunk in stream:
+            yield f"data: {json.dumps(chunk)}\n\n"
 
-        missing_context = {
-            "document_content": [para.model_dump() for para in request.textinformation],
-        }
+        # yield 'data: {"__section__": "missing_clauses"}\n\n'
 
-        # Use separate model instances to avoid any hidden locks
-        review_model = get_bedrock_model()
-        missing_model = get_bedrock_model()
+        # draft_stream = llm_model.generate_stream(
+        #     prompt=_MISSING_CLAUSES_USER,
+        #     context={
+        #         "document_content": [para.model_dump() for para in request.textinformation],
+        #     },
+        #     session_id=session_id,
+        #     system_message=_MISSING_CLAUSES_SYSTEM,
+        # )
 
-        queue: asyncio.Queue = asyncio.Queue()
-
-        async def review_stream() -> AsyncGenerator:
-            async for chunk in review_model.generate_stream(
-                prompt=_KEY_INFO_USER,
-                context=rules_context,
-                session_id=session_id,
-                system_message=_KEY_INFO_SYSTEM,
-            ):
-                yield chunk
-
-        async def missing_stream() -> AsyncGenerator:
-            async for chunk in missing_model.generate_stream(
-                prompt=_MISSING_CLAUSES_USER,
-                context=missing_context,
-                session_id=session_id,
-                system_message=_MISSING_CLAUSES_SYSTEM,
-            ):
-                yield chunk
-
-        review_task = asyncio.create_task(_pump_stream(review_stream, "rules_review", queue))
-
-        missing_task = asyncio.create_task(_pump_stream(missing_stream, "missing_clauses", queue))
-
-        completed = 0
-
-        while completed < 2:
-            item = await queue.get()
-
-            if item.get("__completed__"):
-                completed += 1
-                continue
-
-            if "__error__" in item:
-                logger.error("stream error", section=item["__section__"], error=item["__error__"], session_id=session_id)
-                continue
-
-            yield f"data: {json.dumps(item)}\n\n"
-
-        await asyncio.gather(review_task, missing_task, return_exceptions=True)
-
-        logger.info("playbook review streaming completed", session_id=session_id, time_taken=time.time() - start_time)
+        # async for chunk in draft_stream:
+        #     yield f"data: {json.dumps(chunk)}\n\n"
 
         yield "data: [DONE]\n\n"
 
+        logger.info("playbook review streaming completed", time_taken=time.time() - start_time, session_id=session_id)
+
     except Exception as exc:
-        logger.exception("Playbook review streaming failed", session_id=session_id)
+        logger.exception(
+            "Playbook review streaming failed.",
+            session_id=session_id,
+        )
+
         yield f'data: {json.dumps({"error": str(exc)})}\n\n'
+
+
+# async def _pump_stream(stream_factory: Callable[[], AsyncGenerator], section: str, queue: asyncio.Queue) -> None:
+#     """Consume a stream and push chunks into a shared queue."""
+#     try:
+#         logger.info("%s: starting stream", section)
+
+#         stream = stream_factory()
+
+#         first_chunk = True
+#         async for chunk in stream:
+#             if first_chunk:
+#                 logger.info("%s: received first chunk", section)
+#                 first_chunk = False
+
+#             await queue.put(
+#                 {
+#                     "__section__": section,
+#                     "__data__": chunk,
+#                 }
+#             )
+
+#     except Exception as exc:
+#         logger.exception("%s stream failed", section)
+#         await queue.put(
+#             {
+#                 "__section__": section,
+#                 "__error__": str(exc),
+#             }
+#         )
+
+#     finally:
+#         await queue.put(
+#             {
+#                 "__section__": section,
+#                 "__completed__": True,
+#             }
+#         )
+
+
+# async def playbook_review_stream_service(session_id: str, request: RuleCheckRequest) -> AsyncGenerator:
+#     """Run rules review and missing clauses streams concurrently."""
+#     try:
+#         start_time = time.time()
+
+#         rules_context = {
+#             "rules": [
+#                 {
+#                     "rule_index": idx,
+#                     "title": rule.title,
+#                     "instruction": rule.instruction,
+#                     "description": rule.description,
+#                     "rule_type": rule.rule_type,
+#                 }
+#                 for idx, rule in enumerate(request.rulesinformation)
+#             ],
+#             "paragraphs": [para.model_dump() for para in request.textinformation],
+#         }
+
+#         missing_context = {
+#             "document_content": [para.model_dump() for para in request.textinformation],
+#         }
+
+#         # Use separate model instances to avoid any hidden locks
+#         review_model = get_bedrock_model()
+#         missing_model = get_bedrock_model()
+
+#         queue: asyncio.Queue = asyncio.Queue()
+
+#         async def review_stream() -> AsyncGenerator:
+#             async for chunk in review_model.generate_stream(
+#                 prompt=_PLAYBOOK_REVIEW_USER,
+#                 context=rules_context,
+#                 session_id=session_id,
+#                 system_message=_PLAYBOOK_REVIEW_SYSTEM,
+#             ):
+#                 yield chunk
+
+#         async def missing_stream() -> AsyncGenerator:
+#             async for chunk in missing_model.generate_stream(
+#                 prompt=_MISSING_CLAUSES_USER,
+#                 context=missing_context,
+#                 session_id=session_id,
+#                 system_message=_MISSING_CLAUSES_SYSTEM,
+#             ):
+#                 yield chunk
+
+#         review_task = asyncio.create_task(_pump_stream(review_stream, "rules_review", queue))
+
+#         missing_task = asyncio.create_task(_pump_stream(missing_stream, "missing_clauses", queue))
+
+#         completed = 0
+
+#         while completed < 2:
+#             item = await queue.get()
+
+#             if item.get("__completed__"):
+#                 completed += 1
+#                 continue
+
+#             if "__error__" in item:
+#                 logger.error("stream error", section=item["__section__"], error=item["__error__"], session_id=session_id)
+#                 continue
+
+#             yield f"data: {json.dumps(item)}\n\n"
+
+#         await asyncio.gather(review_task, missing_task, return_exceptions=True)
+
+#         logger.info("playbook review streaming completed", session_id=session_id, time_taken=time.time() - start_time)
+
+#         yield "data: [DONE]\n\n"
+
+#     except Exception as exc:
+#         logger.exception("Playbook review streaming failed", session_id=session_id)
+#         yield f'data: {json.dumps({"error": str(exc)})}\n\n'
