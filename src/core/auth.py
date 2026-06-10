@@ -3,7 +3,7 @@ from typing import Any
 from uuid import uuid4
 
 import jwt
-import requests
+import requests  # type: ignore
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPublicKey
 from fastapi import Depends, Header, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer

@@ -230,16 +230,14 @@
 #     )
 
 
-import asyncio
 import json
 import time
 from pathlib import Path
-from typing import Any, AsyncGenerator, Callable
+from typing import Any
 
 from src.config.logging import get_logger
 from src.core.container import get_bedrock_model
 from src.schemas.playbook_review import (
-    MissingClausesLLMResponse,
     PlayBookReviewFinalResponse,
     PlayBookReviewLLMResponse,
     PlayBookReviewResponse,
@@ -253,9 +251,9 @@ _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" /
 _PLAYBOOK_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
 _PLAYBOOK_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
 
-_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "missing_clauses"
-_MISSING_CLAUSES_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
-_MISSING_CLAUSES_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
+# _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "missing_clauses"
+# _MISSING_CLAUSES_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
+# _MISSING_CLAUSES_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
 
 
 async def review_document(session_id: str, request: RuleCheckRequest) -> PlayBookReviewLLMResponse:

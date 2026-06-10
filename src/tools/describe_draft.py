@@ -687,7 +687,9 @@ async def describe_draft_service(session_id: str, request: DescribeDraftRequest)
 async def describe_draft_stream_service(session_id: str, request: DescribeDraftRequest) -> Any:
     """Draft the clause based on the provided description in stream mode."""
 
-    prompt = _DOCUMENT_DRAFT_USER if request.use_document_context else _GENERAL_DRAFT_USER
+    has_document_context = bool(request.textinformation)
+
+    prompt = _DOCUMENT_DRAFT_USER if has_document_context else _GENERAL_DRAFT_USER
 
     llm_model = get_bedrock_model()
 
