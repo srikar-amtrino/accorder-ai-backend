@@ -15,7 +15,7 @@ from src.schemas.playbook_review import (
     PlayBookReviewFinalResponse,
     RuleCheckRequest,
 )
-from src.tools.comparision import run as compare_documents_service
+from src.tools.comparision import compare_documents_stream_service, run as compare_documents_service
 from src.tools.describe_draft import generate_describe_draft
 from src.tools.doc_chat import document_chat_service, document_chat_stream_service
 from src.tools.general_review import (
@@ -62,6 +62,17 @@ async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, ses
 
     comparison_result = await compare_documents_service(session_id=session_id, document_a=document_a, document_b=document_b)
     return comparison_result
+
+
+@router.post("/compare-documents/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+async def compare_documents_stream_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    """Compare two documents and stream the detected changes as they arrive."""
+
+    document_a = Document(io.BytesIO(await file_a.read()))
+    document_b = Document(io.BytesIO(await file_b.read()))
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(compare_documents_stream_service(session_id=session_id, document_a=document_a, document_b=document_b), media_type="text/event-stream", headers=headers)
 
 
 # @router.post("/general-review", response_model=GeneralReviewResponse)
