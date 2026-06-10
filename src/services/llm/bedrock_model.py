@@ -116,7 +116,7 @@ class BedrockModel(BaseLLMModel):
 
         return value
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None) -> BaseModel:
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None, cache_system: bool = False, max_tokens: int = 10000) -> BaseModel:
         """Sends a generation request to Bedrock and returns the full response once complete."""
 
         prompt = self.render_prompt_template(prompt=prompt, context=context)
@@ -127,12 +127,20 @@ class BedrockModel(BaseLLMModel):
             "input_schema": response_model.model_json_schema(),
         }
 
+        # When caching is requested, send the system prompt as a content block with an
+        # ephemeral cache breakpoint so a repeated system prompt is billed at the cache
+        # read rate on subsequent calls within the cache window.
+        if cache_system and system_message:
+            system_field: Any = [{"type": "text", "text": system_message, "cache_control": {"type": "ephemeral"}}]
+        else:
+            system_field = system_message or "You are a helpful assistant."
+
         native_request = {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 10000,
+            "max_tokens": max_tokens,
             "temperature": 0.5,
             "messages": [{"role": "user", "content": [{"type": "text", "text": prompt}]}],
-            "system": system_message or "You are a helpful assistant.",
+            "system": system_field,
             "tools": [tool],
             "tool_choice": {"type": "tool", "name": response_model.__name__},
         }
