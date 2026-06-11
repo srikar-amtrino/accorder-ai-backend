@@ -128,13 +128,6 @@ class BedrockModel(BaseLLMModel):
             body=json.dumps(native_request),
         )
 
-        logger.info(
-            "invoked bedrock model with streaming response",
-            model_id=self.model_id,
-            session_id=session_id,
-            time_taken=time.time() - start_time,
-        )
-
         body_iter = iter(streaming_response["body"])
 
         while True:
@@ -153,6 +146,13 @@ class BedrockModel(BaseLLMModel):
 
                     # give control back to event loop
                     await asyncio.sleep(0)
+
+        logger.info(
+            "invoked bedrock model with streaming response",
+            model_id=self.model_id,
+            session_id=session_id,
+            time_taken=time.time() - start_time,
+        )
 
     def _normalize_tool_response(self, value: Any) -> Any:
         if isinstance(value, str):
@@ -260,15 +260,20 @@ class BedrockModel(BaseLLMModel):
             body=json.dumps(native_request),
         )
 
-        logger.info("invoked bedrock model with generate", model_id=self.model_id, session_id=session_id, time_taken=time.time() - start_time)
-
         response_body = await asyncio.to_thread(response["body"].read)
 
         model_response = json.loads(response_body)
 
         usage = model_response.get("usage", {})
 
-        logger.info("bedrock model generation complete", model_id=self.model_id, session_id=session_id, tokens_input=usage.get("input_tokens"), output_tokens=usage.get("output_tokens"))
+        logger.info(
+            "bedrock model generation complete",
+            model_id=self.model_id,
+            session_id=session_id,
+            time_taken=time.time() - start_time,
+            tokens_input=usage.get("input_tokens"),
+            output_tokens=usage.get("output_tokens"),
+        )
 
         tool_use_block = next(block for block in model_response["content"] if block["type"] == "tool_use")
 

@@ -7,12 +7,11 @@ RiskLevel = Literal["high", "medium", "low"]
 
 
 class HolisticChange(BaseModel):
-    """One change emitted by the single holistic document-comparison LLM call.
+    """One change emitted by the single document-comparison LLM call.
 
-    Internal plumbing — mapped onto the public ChangeEntry before it reaches the API
-    response. The model produces these by reading both full documents and aligning them
-    by meaning (so renumbered/restructured sections are matched, not reported as a
-    remove-plus-add).
+    Internal plumbing — mapped onto the public ChangeEntry before it reaches the API response.
+    The model copies the full clause text on each side into text_from_doc_a/b so it can be
+    streamed to the client verbatim.
     """
 
     clause_name: str = Field(description="Short title of the clause/section where the change occurs (e.g. 'Integration Testing', 'Term').")
@@ -21,8 +20,8 @@ class HolisticChange(BaseModel):
     modification_type: Optional[str] = Field(None, description="For 'modified' only: value, language, scope, structural, rewritten. Null otherwise.")
     risk_level: RiskLevel = Field(description="high | medium | low")
     affected_party: Optional[str] = Field(None, description="Party whose position materially changes, 'Both', or null.")
-    text_from_doc_a: Optional[str] = Field(None, description="The specific original excerpt that changed or was removed. Null for additions.")
-    text_from_doc_b: Optional[str] = Field(None, description="The specific revised excerpt that changed or was added. Null for removals.")
+    text_from_doc_a: Optional[str] = Field(None, description="The FULL original clause/paragraph (verbatim) containing the change, or the full removed clause. Null for additions.")
+    text_from_doc_b: Optional[str] = Field(None, description="The FULL revised clause/paragraph (verbatim) containing the change, or the full added clause. Null for removals.")
     summary: str = Field(description="One concrete sentence: what changed, stated as before -> after.")
     is_substantive: bool = Field(description="True for meaningful changes; false for purely cosmetic ones.")
 

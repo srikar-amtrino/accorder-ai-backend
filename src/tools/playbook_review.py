@@ -417,7 +417,7 @@ async def playbook_review_stream_service(session_id: str, request: RuleCheckRequ
     try:
         llm_model = get_bedrock_model()
 
-        start_time = time.time()
+        # start_time = time.time()
         stream = llm_model.generate_stream(
             prompt=_PLAYBOOK_REVIEW_USER,
             context={
@@ -456,7 +456,7 @@ async def playbook_review_stream_service(session_id: str, request: RuleCheckRequ
 
         yield "data: [DONE]\n\n"
 
-        logger.info("playbook review streaming completed", time_taken=time.time() - start_time, session_id=session_id)
+        # logger.info("playbook review streaming completed", time_taken=time.time() - start_time, session_id=session_id)
 
     except Exception as exc:
         logger.exception(
