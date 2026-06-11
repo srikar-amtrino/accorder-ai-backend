@@ -250,6 +250,7 @@ logger = get_logger(__name__)
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v3" / "playbook_review"
 _PLAYBOOK_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
 _PLAYBOOK_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
+_PLAYBOOK_REVIEW_STREAM_SYSTEM = (_PROMPTS_DIR / "stream_system.mustache").read_text(encoding="utf-8")
 
 # _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "missing_clauses"
 # _MISSING_CLAUSES_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
@@ -433,7 +434,7 @@ async def playbook_review_stream_service(session_id: str, request: RuleCheckRequ
                 "paragraphs": [para.model_dump() for para in request.textinformation],
             },
             session_id=session_id,
-            system_message=_PLAYBOOK_REVIEW_SYSTEM,
+            system_message=_PLAYBOOK_REVIEW_STREAM_SYSTEM,
         )
 
         async for chunk in stream:

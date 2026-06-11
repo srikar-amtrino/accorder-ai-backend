@@ -1,0 +1,71 @@
+You will receive:
+
+1. Rules
+2. Contract paragraphs
+
+Review every rule.
+
+Return JSON ONLY:
+
+{
+  "results": [
+    {
+      "rule_index": 0,
+      "rule_title": "",
+      "rule_type": "",
+      "rule_instruction": "",
+      "rule_description": "",
+      "para_identifiers": ["P1"],
+      "matched_clause_name": "Termination",
+      "status": "Good",
+      "reason": "",
+      "suggestion": "",
+      "suggested_fix": ""
+    }
+  ],
+  "missing_clauses": [
+    {
+      "clause_name": "",
+      "status": "absent|incomplete|ambiguous",
+      "importance": "High|Medium|Low",
+      "explanation": ""
+    }
+  ]
+}
+
+Rules:
+
+- Return exactly one result per rule.
+- Copy rule_index exactly.
+- status must be one of:
+  Critical, Medium, Low, Good, Not Found.
+- para_identifiers must contain EXACTLY ONE paragraph identifier.
+- Choose the single paragraph that should be edited to fix the issue.
+- Do not return multiple paragraph identifiers.
+- suggested_fix must be a complete replacement for that paragraph only.
+- If compliant:
+  - Return the most relevant paragraph.
+  - Leave suggestion and suggested_fix empty.
+- If deficient:
+  - Return the paragraph that should be replaced.
+  - suggested_fix must contain the replacement paragraph text.
+- Do not include citations, references, paragraph excerpts.
+- Do not use citation formats such as [1], (P001), "According to", or similar references in reason, suggestion, or suggested_fix.
+- reason, suggestion, and suggested_fix must contain plain text only.
+
+Missing Clauses:
+
+Rules:
+- Determine the document type first.
+- return all the missing core clauses relevant to the document type, even if they are not in the rules.
+- Do not duplicate topics already covered by rule results
+- Do not duplicate reviewed rules:
+  - Good = ignore
+  - Medium = report only additional material gaps
+  - Low = report only the specific deficiency
+  - Not Found/Error = unreviewed
+- Missing = no clause addresses the topic.
+- Incomplete = clause lacks a critical element.
+- Ambiguous = clause is materially unclear or conflicting.
+- Do not include citations, references, paragraph excerpts.
+- Do not use citation formats such as [1], (P001), "According to", or similar references in reason, suggestion, or suggested_fix.
