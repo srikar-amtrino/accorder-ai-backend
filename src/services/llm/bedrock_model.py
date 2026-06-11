@@ -1,3 +1,4 @@
+import asyncio
 import json
 import time
 from typing import Any, Dict, Optional, Type, cast
@@ -81,7 +82,8 @@ class BedrockModel(BaseLLMModel):
         }
 
         start_time = time.time()
-        streaming_response = self.client.invoke_model_with_response_stream(
+        streaming_response = await asyncio.to_thread(
+            self.client.invoke_model_with_response_stream,
             modelId=self.model_id,
             body=json.dumps(native_request),
         )
@@ -91,7 +93,12 @@ class BedrockModel(BaseLLMModel):
         usage: Dict[str, Any] = {}
         first_chunk_time = None
 
-        for event in streaming_response["body"]:
+        body_iter = iter(streaming_response["body"])
+        while True:
+            event = await asyncio.to_thread(lambda: next(body_iter, None))
+            if event is None:
+                break
+
             chunk = json.loads(event["chunk"]["bytes"])
             chunk_type = chunk.get("type")
             if chunk_type == "message_start":
@@ -102,6 +109,8 @@ class BedrockModel(BaseLLMModel):
                     if first_chunk_time is None:
                         first_chunk_time = time.time()
                     yield text
+                    # give control back to event loop
+                    await asyncio.sleep(0)
             elif chunk_type == "message_delta":
                 usage.update(chunk.get("usage", {}))
 
@@ -166,7 +175,8 @@ class BedrockModel(BaseLLMModel):
         }
 
         start_time = time.time()
-        response = self.client.invoke_model(
+        response = await asyncio.to_thread(
+            self.client.invoke_model,
             modelId=self.model_id,
             body=json.dumps(native_request),
         )
@@ -174,7 +184,8 @@ class BedrockModel(BaseLLMModel):
 
         logger.info("invoked bedrock model with generate", model_id=self.model_id, session_id=session_id, time_taken=end_time - start_time)
 
-        model_response = json.loads(response["body"].read())
+        response_body = await asyncio.to_thread(response["body"].read)
+        model_response = json.loads(response_body)
         usage = model_response.get("usage", {})
         logger.info(
             "bedrock model generation complete",

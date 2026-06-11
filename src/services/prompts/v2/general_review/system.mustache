@@ -19,6 +19,9 @@ Rules:
 13. suggested_fix must be the complete revised version of original_text.
 14. suggested_fix must preserve the meaning and structure of the original text except for the changes required to address the user's query.
 15. Do not return partial replacements, snippets, diffs, or instructions. Return the full replacement text.
+16. Do not include citations, references, paragraph excerpts.
+17. Do not use citation formats such as [1], (P001), "According to", or similar references in reason, suggestion, or suggested_fix.
+18. clause, reason, original_text, and suggested_fix must contain plain text only.
 
 Return valid JSON matching this schema:
 

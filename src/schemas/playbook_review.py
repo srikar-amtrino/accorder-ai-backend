@@ -109,10 +109,12 @@ class RuleReviewResult(BaseModel):
     reason: str = Field(..., description="Reason of the Review either good or bad,")
     suggestion: str = Field(..., description="A brief suggestion of the paragraphs over the rule.")
     suggested_fix: str = Field(..., description="Suggested fix for the given rule and the paragraph.")
+    # missing_clauses: List[MissingClause] = Field(..., description="List of identified missing clauses related to the rule, if any.")
 
 
 class PlayBookReviewLLMResponse(BaseModel):
     results: List[RuleReviewResult] = Field(..., description="List of review results for each rule and its associated paragraphs.")
+    missing_clauses: List[MissingClause] = Field(..., description="List of identified missing clauses related to the rule, if any.")
 
 
 # class PlayBookReviewLLMResponse(BaseModel):
@@ -150,7 +152,7 @@ class PlayBookReviewFinalResponse(BaseModel):
     """Schema for the final response of the playbook review."""
 
     rules_review: List[PlayBookReviewResponse] = Field(..., description="List of reviews for each rule.")
-    missing_clauses: Optional[MissingClausesLLMResponse] = Field(None, description="Identified missing clauses in the contract, if any.")
+    missing_clauses: List[MissingClause] = Field(None, description="Identified missing clauses in the contract, if any.")
 
 
 class Clause(BaseModel):

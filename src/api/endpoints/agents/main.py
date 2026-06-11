@@ -16,8 +16,14 @@ from src.schemas.playbook_review import (
     RuleCheckRequest,
 )
 from src.tools.comparision import compare_documents_stream_service, run as compare_documents_service
-from src.tools.describe_draft import generate_describe_draft
-from src.tools.doc_chat import document_chat_service, document_chat_stream_service
+from src.tools.describe_draft import (
+    describe_draft_service,
+    describe_draft_stream_service,
+)
+from src.tools.doc_chat import (
+    document_chat_service,
+    document_chat_stream_service,
+)
 from src.tools.general_review import (
     general_review_service,
     general_review_streaming_service,
@@ -46,11 +52,15 @@ router = APIRouter(tags=["agents"])
 @router.post("/describe-draft", response_model=DescribeDraftResponse)
 async def generate_draft(request: DescribeDraftRequest, session_id: str = Depends(get_session_id)) -> DescribeDraftResponse:
     """Draft an document from user query."""
-    return await generate_describe_draft(
-        prompt=request.prompt,
-        session_id=session_id,
-        use_document_context=request.use_document_context,
-    )
+    return await describe_draft_service(session_id=session_id, request=request)
+
+
+@router.post("/describe-draft/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+async def generate_draft_stream_endpoint(request: DescribeDraftRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    "Draft an document from user query."
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(describe_draft_stream_service(session_id=session_id, request=request), media_type="text/event-stream", headers=headers)
 
 
 @router.post("/compare-documents")

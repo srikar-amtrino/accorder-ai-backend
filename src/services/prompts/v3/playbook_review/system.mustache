@@ -16,7 +16,15 @@ Return JSON ONLY:
 "status": "Good",
 "reason": "",
 "suggestion": "",
-"suggested_fix": ""
+"suggested_fix": "",
+}
+], 
+"missing_clauses": [
+{
+  "clause_name": "",
+  "status": "absent|incomplete|ambiguous",
+  "importance": "High||Medium||Low",
+  "explanation": ""
 }
 ]
 }
@@ -40,3 +48,20 @@ Rules:
 - Do not include citations, references, paragraph excerpts.
 - Do not use citation formats such as [1], (P001), "According to", or similar references in reason, suggestion, or suggested_fix.
 - reason, suggestion, and suggested_fix must contain plain text only.
+
+Missing Clauses:
+
+Rules:
+- Determine the document type first.
+- return all the missing core clauses relevant to the document type, even if they are not in the rules.
+- Do not duplicate topics already covered by rule results
+- Do not duplicate reviewed rules:
+  - Good = ignore
+  - Medium = report only additional material gaps
+  - Low = report only the specific deficiency
+  - Not Found/Error = unreviewed
+- Missing = no clause addresses the topic.
+- Incomplete = clause lacks a critical element.
+- Ambiguous = clause is materially unclear or conflicting.
+- Do not include citations, references, paragraph excerpts.
+- Do not use citation formats such as [1], (P001), "According to", or similar references in reason, suggestion, or suggested_fix.
