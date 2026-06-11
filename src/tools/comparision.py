@@ -2,7 +2,7 @@ import difflib
 import json
 import re
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from docx.document import Document
 from docx.table import Table
@@ -25,11 +25,14 @@ logger = get_logger(__name__)
 AGENT_NAME = "document_comparison_agent"
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
+# One prompt drives both endpoints: the model emits the full clause text on each side, so the
+# streaming endpoint can stream it token by token (like the other agents) and the non-streaming
+# endpoint accumulates the same generation.
 _COMPARISON_SYSTEM = (_PROMPTS_DIR / "clause_comparison_diff_system.mustache").read_text(encoding="utf-8")
 _COMPARISON_USER = (_PROMPTS_DIR / "clause_comparison_diff_user.mustache").read_text(encoding="utf-8")
 
-# Output-token budget for the single classification call. Generous so the change list
-# never truncates mid-stream — a truncated list is a missed change.
+# Output-token budget. Generous so the change list never truncates mid-stream — a truncated
+# list is a missed change.
 _DIFF_MAX_TOKENS = 20000
 
 
@@ -60,26 +63,29 @@ def _extract_paragraphs(document: Document) -> List[str]:
 _SENTENCE_BOUNDARY = re.compile(r"(?<=[.;:!?])\s+(?=[A-Z(“\"'])")
 
 
-def _split_into_sentences(paragraphs: List[str]) -> List[str]:
+def _split_into_sentences(paragraphs: List[str]) -> Tuple[List[str], List[int]]:
     """Split paragraphs into sentence-level units for fine-grained diffing.
 
-    Contracts often pack many sub-clauses into one large paragraph, so diffing whole
-    paragraphs lumps unrelated edits together and sends large unchanged spans to the LLM.
-    Splitting into sentences isolates each edit into its own small region. The split is
-    deterministic, so unchanged text splits identically on both sides and still aligns.
+    Contracts often pack many sub-clauses into one large paragraph, so diffing whole paragraphs
+    lumps unrelated edits together. Splitting into sentences isolates each edit into its own small
+    region; the split is deterministic, so unchanged text splits identically on both sides and
+    still aligns. Also returns each unit's parent-paragraph index so a changed region can be
+    expanded back to its full parent clause.
     """
 
     units: List[str] = []
-    for paragraph in paragraphs:
+    owners: List[int] = []
+    for para_index, paragraph in enumerate(paragraphs):
         for sentence in _SENTENCE_BOUNDARY.split(paragraph):
             sentence = sentence.strip()
             if sentence:
                 units.append(sentence)
-    return units
+                owners.append(para_index)
+    return units, owners
 
 
 def _normalize(text: str) -> str:
-    """Whitespace-insensitive key used to align paragraphs during diffing."""
+    """Whitespace-insensitive key used to align units during diffing."""
 
     return " ".join(text.split())
 
@@ -90,19 +96,49 @@ def _strip_whitespace(text: str) -> str:
     return "".join(text.split())
 
 
-def _build_diff_digest(units_a: List[str], units_b: List[str]) -> Tuple[str, int]:
-    """Diff the two sentence-unit lists and assemble a compact digest of only the changed regions.
+def _json_safe(text: str) -> str:
+    """Fold clause text to characters that never need JSON escaping.
 
-    Unchanged units are skipped entirely (this is what bounds cost to the size of the change,
-    not the document). Regions that differ only in whitespace are treated as trivial and
-    dropped. Returns the digest text and the number of changed regions kept.
+    The streaming model emits each clause as a JSON string value token by token, with no chance
+    to validate or retry — so any character that would need escaping (a double quote, backslash,
+    or raw newline) risks producing invalid JSON mid-stream and breaking the client's parse.
+    Fold those to safe equivalents up front: double/curly quotes -> single quote, backslash ->
+    slash, newlines/tabs -> space. A small cosmetic change that guarantees a valid live stream.
     """
 
+    text = text.replace("\\", "/")
+    for quote in ("“", "”", '"'):
+        text = text.replace(quote, "'")
+    return re.sub(r"[\n\r\t\f\v]+", " ", text).strip()
+
+
+def _full_clause(paras: List[str], owners: List[int], lo: int, hi: int) -> str:
+    """Full parent-clause text for the units in [lo:hi); empty when the side has no units."""
+
+    para_indices = sorted({owners[k] for k in range(lo, hi)})
+    if not para_indices:
+        return ""
+    return _json_safe("\n".join(paras[p] for p in para_indices))
+
+
+def _build_diff_digest(paras_a: List[str], paras_b: List[str]) -> Tuple[str, int]:
+    """Diff the two documents at sentence granularity and assemble a compact digest of only the
+    changed regions.
+
+    Unchanged units are skipped entirely (this is what bounds cost to the size of the change, not
+    the document). Regions that differ only in whitespace are dropped. Each kept region carries
+    the FULL parent clause on each side (so the model can quote the whole provision verbatim) plus
+    the specific changed wording (so it can pinpoint the edit). Returns (digest, region_count).
+    """
+
+    units_a, owners_a = _split_into_sentences(paras_a)
+    units_b, owners_b = _split_into_sentences(paras_b)
     keys_a = [_normalize(u) for u in units_a]
     keys_b = [_normalize(u) for u in units_b]
     matcher = difflib.SequenceMatcher(a=keys_a, b=keys_b, autojunk=False)
 
-    regions: List[Tuple[str, List[str], List[str]]] = []
+    parts: List[str] = []
+    count = 0
     for tag, i1, i2, j1, j2 in matcher.get_opcodes():
         if tag == "equal":
             continue
@@ -114,31 +150,47 @@ def _build_diff_digest(units_a: List[str], units_b: List[str]) -> Tuple[str, int
         if _strip_whitespace("".join(old_block)) == _strip_whitespace("".join(new_block)):
             continue
 
-        # One unit of unchanged context before the region (often the clause heading),
-        # taken from whichever side has a preceding unit. For orientation only.
-        context = ""
-        if i1 > 0:
-            context = units_a[i1 - 1]
-        elif j1 > 0:
-            context = units_b[j1 - 1]
-
-        regions.append((context, old_block, new_block))
-
-    if not regions:
-        return "", 0
-
-    parts: List[str] = []
-    for index, (context, old_block, new_block) in enumerate(regions, start=1):
-        lines = [f"=== Change region {index} ==="]
-        if context:
-            lines.append(f"[Context - unchanged, for orientation only]: {context}")
-        lines.append("[ORIGINAL]:")
-        lines.append("\n".join(old_block) if old_block else "(nothing - this text appears only in the revised version)")
-        lines.append("[REVISED]:")
-        lines.append("\n".join(new_block) if new_block else "(nothing - this text appeared only in the original version)")
+        clause_a = _full_clause(paras_a, owners_a, i1, i2)
+        clause_b = _full_clause(paras_b, owners_b, j1, j2)
+        count += 1
+        lines = [
+            f"=== Change region {count} ===",
+            "[ORIGINAL CLAUSE]:",
+            clause_a if clause_a else "(nothing - this clause appears only in the revised version)",
+            "[REVISED CLAUSE]:",
+            clause_b if clause_b else "(nothing - this clause appeared only in the original version)",
+            "[WHAT CHANGED - original]:",
+            "\n".join(old_block) if old_block else "(nothing - newly added)",
+            "[WHAT CHANGED - revised]:",
+            "\n".join(new_block) if new_block else "(nothing - removed)",
+        ]
         parts.append("\n".join(lines))
 
-    return "\n\n".join(parts), len(regions)
+    return "\n\n".join(parts), count
+
+
+def _parse_changes(raw: str) -> Optional[List[HolisticChange]]:
+    """Parse the model's free-text JSON output into the change list.
+
+    Tolerates a surrounding markdown code fence and any stray prose by extracting the outermost
+    {...} span before parsing. Returns None when nothing valid is found, so the caller can retry.
+    """
+
+    text = raw.strip()
+    if text.startswith("```"):
+        text = re.sub(r"^```[a-zA-Z0-9]*\s*", "", text)
+        text = re.sub(r"\s*```$", "", text).strip()
+
+    start = text.find("{")
+    end = text.rfind("}")
+    if start == -1 or end == -1 or end <= start:
+        return None
+
+    try:
+        data = json.loads(text[start : end + 1])
+        return HolisticCompareResponse.model_validate(data).changes
+    except Exception:
+        return None
 
 
 def _to_change_entry(change: HolisticChange) -> ChangeEntry:
@@ -215,22 +267,38 @@ def _zero_changes_summary() -> CompareSummary:
 
 
 async def _classify_changes(diff_digest: str, llm_client: BaseLLMModel, session_id: str) -> List[HolisticChange]:
-    """Send the changed-regions digest to the LLM in one call and return the classified change list."""
+    """Classify the changed regions and return the change list (with full clause text).
 
-    response: HolisticCompareResponse = await llm_client.generate(  # type: ignore[assignment]
-        prompt=_COMPARISON_USER,
-        context={"diff_digest": diff_digest},
-        response_model=HolisticCompareResponse,
-        session_id=session_id,
-        system_message=_COMPARISON_SYSTEM,
-        cache_system=True,
-        max_tokens=_DIFF_MAX_TOKENS,
-    )
-    return response.changes
+    Uses free-text JSON generation (accumulated from the streaming call) rather than forced
+    tool-use: with full-clause output the tool-use path intermittently serializes the `changes`
+    array as a malformed JSON string and fails schema validation, whereas the model emits clean
+    JSON text reliably even for large outputs. The accumulated text is parsed; one retry covers a
+    rare bad parse.
+    """
+
+    for attempt in range(2):
+        chunks: List[str] = []
+        async for chunk in llm_client.generate_stream(
+            prompt=_COMPARISON_USER,
+            context={"diff_digest": diff_digest},
+            session_id=session_id,
+            system_message=_COMPARISON_SYSTEM,
+            cache_system=True,
+            max_tokens=_DIFF_MAX_TOKENS,
+        ):
+            chunks.append(chunk)
+
+        changes = _parse_changes("".join(chunks))
+        if changes is not None:
+            return changes
+
+        logger.warning("Change classification parse failed", attempt=attempt + 1, session_id=session_id)
+
+    raise ValueError("Could not parse a valid change list from the model output.")
 
 
 async def run(session_id: str, document_a: Document, document_b: Document) -> CompareResponse:
-    """Compare two documents: deterministic paragraph diff, then one LLM call to classify the changed regions."""
+    """Compare two documents: deterministic sentence diff, then one LLM call to classify the changed regions."""
 
     llm_client = get_bedrock_model()
     session_manager = get_session_manager()
@@ -270,9 +338,7 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
     if not text_a.strip() and not text_b.strip():
         return CompareResponse(success=True, summary=_zero_changes_summary(), sections=[])
 
-    units_a = _split_into_sentences(paras_a)
-    units_b = _split_into_sentences(paras_b)
-    digest, region_count = _build_diff_digest(units_a, units_b)
+    digest, region_count = _build_diff_digest(paras_a, paras_b)
     logger.info("Diff computed", changed_regions=region_count, chars_a=len(text_a), chars_b=len(text_b), session_id=session_id)
 
     # Only whitespace/trivial differences: nothing substantive to classify.
@@ -318,10 +384,11 @@ async def run(session_id: str, document_a: Document, document_b: Document) -> Co
 async def compare_documents_stream_service(session_id: str, document_a: Document, document_b: Document) -> Any:
     """Stream document differences as Server-Sent Events.
 
-    Code computes the paragraph diff (fast); the single classification call is then streamed
-    so chunks reach the client as the model produces them, instead of after the whole list is
-    built. Mirrors the SSE convention used by the other streaming agents: raw text chunks wrapped
-    as `data: ...` frames, terminated by `data: [DONE]`.
+    Code computes the sentence diff (fast); the single classification call is then streamed so
+    chunks reach the client as the model produces them — the model emits the full clause text on
+    each side, so the client renders changes progressively. Mirrors the SSE convention of the
+    other streaming agents: raw text chunks wrapped as `data: ...` frames, terminated by
+    `data: [DONE]`.
     """
 
     try:
@@ -342,9 +409,7 @@ async def compare_documents_stream_service(session_id: str, document_a: Document
             yield "data: [DONE]\n\n"
             return
 
-        units_a = _split_into_sentences(paras_a)
-        units_b = _split_into_sentences(paras_b)
-        digest, region_count = _build_diff_digest(units_a, units_b)
+        digest, region_count = _build_diff_digest(paras_a, paras_b)
         logger.info("Diff computed", changed_regions=region_count, chars_a=len(text_a), chars_b=len(text_b), session_id=session_id)
 
         if region_count == 0:
