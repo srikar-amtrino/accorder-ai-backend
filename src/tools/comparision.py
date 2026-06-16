@@ -35,6 +35,9 @@ _COMPARISON_USER = (_PROMPTS_DIR / "clause_comparison_diff_user.mustache").read_
 # list is a missed change.
 _DIFF_MAX_TOKENS = 20000
 
+# Risk ordering used when collapsing duplicate entries onto a single representative.
+_RISK_ORDER = {"high": 3, "medium": 2, "low": 1}
+
 
 def _extract_paragraphs(document: Document) -> List[str]:
     """Extract clean paragraph and table text as an ordered list of lines.
@@ -211,6 +214,106 @@ def _to_change_entry(change: HolisticChange) -> ChangeEntry:
     )
 
 
+def _change_signature(change: HolisticChange) -> Tuple[str, str]:
+    """Whitespace/case-insensitive (original, revised) key identifying the clause region a change
+    describes. Two entries with the same signature point at the same edited clause."""
+
+    side_a = _normalize((change.text_from_doc_a or "").lower())
+    side_b = _normalize((change.text_from_doc_b or "").lower())
+    return side_a, side_b
+
+
+def _is_genuine_reorder(change: HolisticChange) -> bool:
+    """True only for a real move: the SAME clause text is present on both sides (content
+    unchanged, only position moved). The sentence diff never reports moves — it emits a removal
+    plus an addition — so a 'reordered' entry whose two sides differ is not actually a move."""
+
+    if change.change_type != "reordered":
+        return False
+    if not change.text_from_doc_a or not change.text_from_doc_b:
+        return False
+    return _normalize(change.text_from_doc_a.lower()) == _normalize(change.text_from_doc_b.lower())
+
+
+def _merge_change_group(group: List[HolisticChange]) -> HolisticChange:
+    """Collapse several entries that describe the same clause region into one.
+
+    The highest-risk member supplies the representative fields; every distinct summary is kept so
+    no individual edit is lost, and the risk level is the max across the group.
+    """
+
+    primary = max(group, key=lambda c: _RISK_ORDER.get(c.risk_level, 0))
+
+    summaries: List[str] = []
+    for change in group:
+        text = (change.summary or "").strip()
+        if text and text not in summaries:
+            summaries.append(text)
+
+    return HolisticChange(
+        clause_name=primary.clause_name,
+        # Prefer a named section over null so a clause's edits never scatter across groups.
+        section=next((c.section for c in group if c.section), primary.section),
+        change_type=primary.change_type,
+        modification_type=primary.modification_type,
+        risk_level=max((c.risk_level for c in group), key=lambda r: _RISK_ORDER.get(r, 0)),
+        affected_party=primary.affected_party,
+        text_from_doc_a=primary.text_from_doc_a,
+        text_from_doc_b=primary.text_from_doc_b,
+        summary=" ".join(summaries),
+        is_substantive=any(c.is_substantive for c in group),
+    )
+
+
+def _dedupe_changes(changes: List[HolisticChange]) -> List[HolisticChange]:
+    """Remove the redundant entries the classifier sometimes emits for a single edited clause.
+
+    The model can report one edited clause two or three times — independent in-clause edits as
+    separate entries, plus a spurious 'reordered' entry repeating the same text. That shows the
+    same full clause several times and inflates the change counts. Fix it by:
+      1. dropping a 'reordered' entry that repeats a clause already reported as modified/added/
+         removed (the diff never detects moves, so that reorder claim is unfounded);
+      2. reclassifying any surviving 'reordered' whose two sides differ to 'modified' (a move
+         preserves the clause text);
+      3. merging entries that carry the same clause text on both sides into one, so the clause is
+         reported — and counted — once.
+    """
+
+    groups: Dict[Tuple[str, str], List[HolisticChange]] = {}
+    order: List[Tuple[str, str]] = []
+    standalone: List[HolisticChange] = []
+
+    for change in changes:
+        # Nothing to align on when both sides are empty — leave the entry untouched.
+        if not change.text_from_doc_a and not change.text_from_doc_b:
+            standalone.append(change)
+            continue
+        signature = _change_signature(change)
+        if signature not in groups:
+            groups[signature] = []
+            order.append(signature)
+        groups[signature].append(change)
+
+    result: List[HolisticChange] = []
+    for signature in order:
+        group = groups[signature]
+
+        # 1. A 'reordered' duplicate of a clause reported another way is noise — drop it.
+        non_reordered = [c for c in group if c.change_type != "reordered"]
+        if non_reordered:
+            group = non_reordered
+
+        # 2. A surviving 'reordered' that isn't a genuine move is an in-place modification.
+        for change in group:
+            if change.change_type == "reordered" and not _is_genuine_reorder(change):
+                change.change_type = "modified"
+
+        # 3. One entry per clause region.
+        result.append(group[0] if len(group) == 1 else _merge_change_group(group))
+
+    return result + standalone
+
+
 def group_by_section(changes: List[ChangeEntry]) -> List[SectionGroup]:
     """Group change entries by parent section heading."""
 
@@ -361,6 +464,11 @@ async def compare_documents_service(session_id: str, document_a: Document, docum
             sections=[],
         )
 
+    raw_count = len(changes)
+    changes = _dedupe_changes(changes)
+    if len(changes) != raw_count:
+        logger.info("Deduplicated change entries", raw=raw_count, deduped=len(changes), session_id=session_id)
+
     entries = [_to_change_entry(change) for change in changes]
     sections = group_by_section(entries)
     summary = _compute_summary(entries)
@@ -381,14 +489,109 @@ async def compare_documents_service(session_id: str, document_a: Document, docum
     return CompareResponse(success=True, message=message, summary=summary, sections=sections)
 
 
-async def compare_documents_stream_service(session_id: str, document_a: Document, document_b: Document) -> Any:
-    """Stream document differences as Server-Sent Events.
+def _sse(payload: Dict[str, Any]) -> str:
+    """Wrap one structured event as an SSE `data:` frame."""
 
-    Code computes the sentence diff (fast); the single classification call is then streamed so
-    chunks reach the client as the model produces them — the model emits the full clause text on
-    each side, so the client renders changes progressively. Mirrors the SSE convention of the
-    other streaming agents: raw text chunks wrapped as `data: ...` frames, terminated by
-    `data: [DONE]`.
+    return f"data: {json.dumps(payload)}\n\n"
+
+
+def _extract_ready_changes(buffer: str, state: Dict[str, Any]) -> List[str]:
+    """Pull every change object that is now fully closed out of a partially-streamed buffer.
+
+    The model streams one JSON object: ``{"changes": [ {..}, {..} ]}``. This scans from where it
+    last stopped and returns the raw JSON text of each array element whose closing brace has
+    arrived, so the caller can emit changes live instead of waiting for the whole list. Brace
+    counting respects string literals (and their escapes) so a brace inside clause text never
+    confuses it. ``state`` (keys: ``pos``, ``array_started``, ``array_done``) persists across calls;
+    ``buffer`` only ever grows, so the stored absolute offsets stay valid.
+    """
+
+    objects: List[str] = []
+    length = len(buffer)
+
+    # Locate the start of the "changes" array exactly once.
+    if not state["array_started"]:
+        key = buffer.find('"changes"')
+        if key == -1:
+            return objects
+        bracket = buffer.find("[", key)
+        if bracket == -1:
+            return objects
+        state["array_started"] = True
+        state["pos"] = bracket + 1
+
+    i = state["pos"]
+    while i < length and not state["array_done"]:
+        char = buffer[i]
+        if char in " \t\r\n,":
+            i += 1
+            continue
+        if char == "]":
+            state["array_done"] = True
+            i += 1
+            break
+        if char != "{":
+            # Stray prose between elements — skip it.
+            i += 1
+            continue
+
+        # Scan one object from i, tracking brace depth while respecting strings.
+        depth = 0
+        in_string = False
+        escaped = False
+        end = i
+        complete = False
+        while end < length:
+            current = buffer[end]
+            if in_string:
+                if escaped:
+                    escaped = False
+                elif current == "\\":
+                    escaped = True
+                elif current == '"':
+                    in_string = False
+            elif current == '"':
+                in_string = True
+            elif current == "{":
+                depth += 1
+            elif current == "}":
+                depth -= 1
+                if depth == 0:
+                    complete = True
+                    end += 1
+                    break
+            end += 1
+
+        if not complete:
+            # Object still streaming — resume from its start on the next call.
+            break
+
+        objects.append(buffer[i:end])
+        i = end
+
+    state["pos"] = i
+    return objects
+
+
+async def compare_documents_stream_service(session_id: str, document_a: Document, document_b: Document) -> Any:
+    """Stream document differences as Server-Sent Events, one change at a time.
+
+    The sentence diff runs server-side, then the single classification call is streamed. As the
+    model writes its ``{"changes": [...]}`` list, each change object is emitted the instant its
+    closing brace arrives — so the client renders changes progressively rather than waiting for the
+    whole comparison. Events:
+
+        {"type": "status",  "message": "..."}             progress / informational text
+        {"type": "change",  "data": {<ChangeEntry>}}      emitted live, as each change completes
+        {"type": "summary", "data": {<CompareSummary>}}   aggregate stats, emitted last
+
+    terminated by `data: [DONE]`; failures emit {"type": "error", "message": "..."}.
+
+    De-duplication is best-effort on a live stream (a duplicate can only be caught once it arrives,
+    not retroactively): each change has a bogus 'reordered' tag corrected to 'modified' inline, and
+    a change whose clause text was already emitted is skipped. The wholesale merge of two same-text
+    edits that the non-streaming path does is not possible here without buffering, so the prompt is
+    the first line of defence against repeats.
     """
 
     try:
@@ -400,12 +603,14 @@ async def compare_documents_stream_service(session_id: str, document_a: Document
         text_b = "\n".join(paras_b)
 
         if hash(text_a) == hash(text_b):
-            yield f"data: {json.dumps({'message': 'Both documents are identical. Provide two different documents to compare.'})}\n\n"
+            yield _sse({"type": "status", "message": "Both documents are identical. Provide two different documents to compare."})
+            yield _sse({"type": "summary", "data": _zero_changes_summary().model_dump()})
             yield "data: [DONE]\n\n"
             return
 
         if not text_a.strip() and not text_b.strip():
-            yield f"data: {json.dumps({'message': 'No content found in the documents.'})}\n\n"
+            yield _sse({"type": "status", "message": "No content found in the documents."})
+            yield _sse({"type": "summary", "data": _zero_changes_summary().model_dump()})
             yield "data: [DONE]\n\n"
             return
 
@@ -413,24 +618,77 @@ async def compare_documents_stream_service(session_id: str, document_a: Document
         logger.info("Diff computed", changed_regions=region_count, chars_a=len(text_a), chars_b=len(text_b), session_id=session_id)
 
         if region_count == 0:
-            yield f"data: {json.dumps({'message': 'No substantive differences found.'})}\n\n"
+            yield _sse({"type": "status", "message": "No substantive differences found."})
+            yield _sse({"type": "summary", "data": _zero_changes_summary().model_dump()})
             yield "data: [DONE]\n\n"
             return
+
+        yield _sse({"type": "status", "message": "Analyzing changes..."})
+
+        buffer = ""
+        scan_state: Dict[str, Any] = {"pos": 0, "array_started": False, "array_done": False}
+        seen_signatures: set = set()
+        emitted: List[ChangeEntry] = []
+
+        def _accept(obj_text: str) -> Optional[ChangeEntry]:
+            """Validate one streamed change object, correct + de-dupe it, return the entry to emit."""
+            try:
+                change = HolisticChange.model_validate_json(obj_text)
+            except Exception:
+                logger.warning("Skipping unparseable streamed change object", session_id=session_id)
+                return None
+            # A 'reordered' whose two sides differ is an in-place modification, not a move.
+            if change.change_type == "reordered" and not _is_genuine_reorder(change):
+                change.change_type = "modified"
+            signature = _change_signature(change)
+            if signature in seen_signatures:
+                return None
+            seen_signatures.add(signature)
+            entry = _to_change_entry(change)
+            emitted.append(entry)
+            return entry
 
         stream = llm_client.generate_stream(
             prompt=_COMPARISON_USER,
             context={"diff_digest": digest},
             session_id=session_id,
             system_message=_COMPARISON_SYSTEM,
-            # cache_system=True,
-            # max_tokens=_DIFF_MAX_TOKENS,
         )
 
         async for chunk in stream:
-            yield f"data: {json.dumps(chunk)}\n\n"
+            buffer += chunk
+            for obj_text in _extract_ready_changes(buffer, scan_state):
+                entry = _accept(obj_text)
+                if entry is not None:
+                    yield _sse({"type": "change", "data": entry.model_dump()})
+
+        # Fallback: if incremental parsing never located the array (e.g. the model wrapped its
+        # output differently), parse the complete buffer once so changes are not silently lost.
+        if not scan_state["array_started"] and not emitted:
+            fallback = _parse_changes(buffer)
+            for change in _dedupe_changes(fallback or []):
+                entry = _accept(json.dumps(change.model_dump()))
+                if entry is not None:
+                    yield _sse({"type": "change", "data": entry.model_dump()})
+
+        summary = _compute_summary(emitted)
+        yield _sse({"type": "summary", "data": summary.model_dump()})
+
+        logger.info(
+            "Compare stream complete",
+            total_changes=summary.total_changes,
+            added=summary.added,
+            removed=summary.removed,
+            modified=summary.modified,
+            reordered=summary.reordered,
+            changed_regions=region_count,
+            session_id=session_id,
+        )
 
         yield "data: [DONE]\n\n"
 
     except Exception as exc:
+        # No [DONE] after an error: the client treats [DONE] as success and would overwrite the
+        # error status. Ending the stream here surfaces the error and re-enables the client.
         logger.exception("Compare streaming failed", session_id=session_id)
-        yield f'data: {json.dumps({"error": str(exc)})}\n\n'
+        yield _sse({"type": "error", "message": str(exc)})
