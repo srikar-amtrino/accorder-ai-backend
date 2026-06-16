@@ -10,11 +10,13 @@ You receive numbered change regions ("=== Change region N ==="). Each region is 
 </input_format>
 
 <task>
-Report every distinct change as its own entry. For text_from_doc_a / text_from_doc_b, copy the ENTIRE clause verbatim — the full "[ORIGINAL CLAUSE]" / "[REVISED CLAUSE]" block — never just the few words that changed. The reader needs the whole provision; the "summary" field is where you name the specific edit.
-- Both clauses present -> "modified": text_from_doc_a = the full [ORIGINAL CLAUSE] verbatim, text_from_doc_b = the full [REVISED CLAUSE] verbatim. Use the "[WHAT CHANGED ...]" portions to identify the exact edit and write the summary. One clause may hold several SEPARATE, INDEPENDENT edits — report each as its own entry, each still carrying the full clause text on both sides.
+Report every changed clause as EXACTLY ONE entry — one entry per clause region, never more, even when the clause contains several edits. For text_from_doc_a / text_from_doc_b, copy the ENTIRE clause verbatim — the full "[ORIGINAL CLAUSE]" / "[REVISED CLAUSE]" block — never just the few words that changed. The reader needs the whole provision; the "summary" field is where you name the specific edit(s).
+- Both clauses present -> "modified": text_from_doc_a = the full [ORIGINAL CLAUSE] verbatim, text_from_doc_b = the full [REVISED CLAUSE] verbatim. Use the "[WHAT CHANGED ...]" portions to identify the exact edits and write the summary. If a clause holds several independent edits, report it as ONE "modified" entry and name every edit in the summary — do NOT emit a separate entry per edit, and never repeat the same clause text across multiple entries.
 - "[ORIGINAL CLAUSE]" is "(nothing...)" -> "added": text_from_doc_a = null, text_from_doc_b = the full new clause.
 - "[REVISED CLAUSE]" is "(nothing...)" -> "removed": text_from_doc_b = null, text_from_doc_a = the full removed clause.
-- The same clause removed in one region and added in another -> one "reordered" move, reported once (not remove + add). If a moved clause also changed internally, report the move AND each internal edit.
+- "reordered" applies ONLY when the SAME clause text appears as a removal in one region (its [REVISED CLAUSE] is "(nothing...)") AND as an addition in a different region (its [ORIGINAL CLAUSE] is "(nothing...)") — i.e. the clause moved with its wording unchanged. Report that as a single "reordered" entry. A region that has BOTH an [ORIGINAL CLAUSE] and a [REVISED CLAUSE] present is "modified", NEVER "reordered". Never emit a "reordered" entry that repeats the text of a clause you are also reporting as "modified".
+
+CRITICAL — one entry per clause. A single clause region produces EXACTLY ONE entry, even when it holds several edits and even if those edits are unrelated. Put all of its edits in that one entry's "summary". Never split a clause into multiple entries; never add a second "reordered"/"added"/"removed" entry carrying the same clause text; never output the same text_from_doc_a / text_from_doc_b pair twice. Before you write an entry, if its text_from_doc_a (or text_from_doc_b) matches one you already wrote, merge them into the earlier entry instead.
 
 CRITICAL — do not double-report. When an entire clause is rewritten or replaced wholesale (both sides present but the revised text takes a substantively different approach), report it as ONE "modified" entry with modification_type "rewritten". Do NOT additionally report sub-provisions of that same clause as separate "removed" or "added" entries — the rewrite already accounts for everything inside it. Only use "removed"/"added" when a clause is genuinely deleted or inserted as a standalone provision (its [ORIGINAL CLAUSE] or [REVISED CLAUSE] is "(nothing...)").
 
@@ -80,4 +82,15 @@ Audit Rights. Epit shall have the right, upon thirty (30) days' notice, to audit
 [WHAT CHANGED - original]: Epit shall have the right, upon thirty (30) days' notice, to audit Your use of the Specifications.
 [WHAT CHANGED - revised]: (nothing - removed)
 -> {"clause_name":"Audit Rights","section":null,"change_type":"removed","modification_type":null,"risk_level":"medium","affected_party":"Vendor","text_from_doc_a":"Audit Rights. Epit shall have the right, upon thirty (30) days' notice, to audit Your use of the Specifications.","text_from_doc_b":null,"summary":"The Audit Rights provision allowing Epit to audit the Vendor's use of the Specifications was removed.","is_substantive":true}
+
+=== Change region 3 ===  (one clause, TWO edits -> still ONE entry)
+[ORIGINAL CLAUSE]:
+Advertising. You may not include basic compatibility statements about the Vendor Software in Your marketing materials using the public interface specifications (e.g, HL9).
+[REVISED CLAUSE]:
+Advertising. You may include basic compatibility statements about the Vendor Software in Your marketing materials using the public interface specifications (e.g, HL7).
+[WHAT CHANGED - original]: may not include ... HL9
+[WHAT CHANGED - revised]: may include ... HL7
+-> {"clause_name":"Advertising","section":null,"change_type":"modified","modification_type":"scope","risk_level":"high","affected_party":"Both","text_from_doc_a":"Advertising. You may not include basic compatibility statements about the Vendor Software in Your marketing materials using the public interface specifications (e.g, HL9).","text_from_doc_b":"Advertising. You may include basic compatibility statements about the Vendor Software in Your marketing materials using the public interface specifications (e.g, HL7).","summary":"Two edits in this clause: the prohibition 'may not include' was flipped to the permission 'may include', and the interface reference was corrected from 'HL9' to 'HL7'.","is_substantive":true}
+
+WRONG for region 3 — never do this: emitting three entries for the one clause (a "reordered" entry, plus a separate "may not -> may" entry, plus a separate "HL9 -> HL7" entry). That repeats the clause text three times and inflates the change counts. One clause = one entry.
 </examples>
