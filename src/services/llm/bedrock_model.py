@@ -99,7 +99,7 @@ class BedrockModel(BaseLLMModel):
     #             if text:
     #                 yield text
 
-    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, system_message: Optional[str] = None) -> Any:
+    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, system_message: Optional[str] = None, max_tokens: int = 10000, temperature: float = 0.5) -> Any:
         """Yields text chunks as they arrive from Bedrock."""
 
         prompt = self.render_prompt_template(
@@ -109,8 +109,8 @@ class BedrockModel(BaseLLMModel):
 
         native_request = {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 10000,
-            "temperature": 0.5,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
             "messages": [
                 {
                     "role": "user",
@@ -216,7 +216,7 @@ class BedrockModel(BaseLLMModel):
 
     #     return cast(response_model, response_model.model_validate(normalized_input))  # type: ignore
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None) -> BaseModel:
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None, max_tokens: int = 10000, temperature: float = 0.5) -> BaseModel:
 
         prompt = self.render_prompt_template(
             prompt=prompt,
@@ -231,8 +231,8 @@ class BedrockModel(BaseLLMModel):
 
         native_request = {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 10000,
-            "temperature": 0.5,
+            "max_tokens": max_tokens,
+            "temperature": temperature,
             "messages": [
                 {
                     "role": "user",
@@ -275,7 +275,9 @@ class BedrockModel(BaseLLMModel):
             output_tokens=usage.get("output_tokens"),
         )
 
-        tool_use_block = next(block for block in model_response["content"] if block["type"] == "tool_use")
+        tool_use_block = next((block for block in model_response["content"] if block["type"] == "tool_use"), None)
+        if tool_use_block is None:
+            raise LLMModelError("Bedrock returned no tool_use block — the response may have been truncated at max_tokens or refused.")
 
         normalized_input = self._normalize_tool_response(tool_use_block["input"])
 
