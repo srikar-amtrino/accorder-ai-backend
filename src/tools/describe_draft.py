@@ -660,47 +660,63 @@ _DESCRIBE_DRAFT_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="
 _DOCUMENT_DRAFT_USER = (_PROMPTS_DIR / "document_draft.mustache").read_text(encoding="utf-8")
 _GENERAL_DRAFT_USER = (_PROMPTS_DIR / "general_draft.mustache").read_text(encoding="utf-8")
 
+# Generation ceiling. This is a CAP, not a target — generation stops at the JSON's end
+# token, so the higher value adds no latency on normal output; it only gives a full
+# multi-clause agreement room to finish instead of truncating mid-JSON (the prior
+# 10000 cap could truncate large grounded drafts).
+_DRAFT_MAX_TOKENS = 16384
+
+
+def _build_context_text(request: DescribeDraftRequest) -> str:
+    """Flatten the document paragraphs into clean text for grounding.
+
+    Passing the raw paragraph objects made pystache stringify a list-of-dicts AND
+    HTML-escape every quote/ampersand into entities (&#x27; &quot; &amp;). Joining the
+    text here keeps the grounding input clean — and slightly smaller.
+    """
+    if not request.textinformation:
+        return ""
+    return "\n".join(chunk.text for chunk in request.textinformation if chunk.text and chunk.text.strip())
+
 
 async def describe_draft_service(session_id: str, request: DescribeDraftRequest) -> DescribeDraftResponse:
-    """Draft the clauses based on the provided description."""
+    """Draft the clause(s) described by the user, grounded in the document when asked."""
 
-    has_document_context = bool(request.textinformation)
-
+    has_document_context = request.use_document_context and bool(request.textinformation)
     prompt = _DOCUMENT_DRAFT_USER if has_document_context else _GENERAL_DRAFT_USER
+    context_text = _build_context_text(request) if has_document_context else ""
 
     llm_model = get_bedrock_model()
 
     llm_result: DescribeDraftResponse = await llm_model.generate(
         prompt=prompt,
-        context={
-            "user_query": request.query,
-            "context": [chunk.model_dump() for chunk in request.textinformation] if request.textinformation else [],
-        },
+        context={"user_query": request.query, "context": context_text},
         response_model=DescribeDraftResponse,
         system_message=_DESCRIBE_DRAFT_SYSTEM,
         session_id=session_id,
+        max_tokens=_DRAFT_MAX_TOKENS,
+        temperature=0,
     )
 
     return llm_result
 
 
 async def describe_draft_stream_service(session_id: str, request: DescribeDraftRequest) -> Any:
-    """Draft the clause based on the provided description in stream mode."""
+    """Stream the drafted clause(s) as raw JSON deltas (SSE)."""
 
-    has_document_context = bool(request.textinformation)
-
+    has_document_context = request.use_document_context and bool(request.textinformation)
     prompt = _DOCUMENT_DRAFT_USER if has_document_context else _GENERAL_DRAFT_USER
+    context_text = _build_context_text(request) if has_document_context else ""
 
     llm_model = get_bedrock_model()
 
     stream = llm_model.generate_stream(
         prompt=prompt,
-        context={
-            "user_query": request.query,
-            "context": [chunk.model_dump() for chunk in request.textinformation] if request.textinformation else [],
-        },
+        context={"user_query": request.query, "context": context_text},
         system_message=_DESCRIBE_DRAFT_SYSTEM,
         session_id=session_id,
+        max_tokens=_DRAFT_MAX_TOKENS,
+        temperature=0,
     )
 
     async for chunk in stream:
