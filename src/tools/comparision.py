@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 AGENT_NAME = "document_comparison_agent"
 
-_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "comparsion"
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
 # One prompt drives both endpoints: the model emits the full clause text on each side, so the
 # streaming endpoint can stream it token by token (like the other agents) and the non-streaming
 # endpoint accumulates the same generation.
@@ -34,9 +34,6 @@ _COMPARISON_USER = (_PROMPTS_DIR / "clause_comparison_diff_user.mustache").read_
 # Output-token budget. Generous so the change list never truncates mid-stream — a truncated
 # list is a missed change.
 _DIFF_MAX_TOKENS = 20000
-
-# Risk ordering used when collapsing duplicate entries onto a single representative.
-_RISK_ORDER = {"high": 3, "medium": 2, "low": 1}
 
 
 def _extract_paragraphs(document: Document) -> List[str]:
@@ -191,9 +188,49 @@ def _parse_changes(raw: str) -> Optional[List[HolisticChange]]:
 
     try:
         data = json.loads(text[start : end + 1])
-        return HolisticCompareResponse.model_validate(data).changes  # type: ignore
+        return HolisticCompareResponse.model_validate(data).changes
     except Exception:
         return None
+
+
+async def _clean_json_stream(source: Any) -> Any:
+    """Strip any non-JSON wrapper off a streamed JSON object, token by token.
+
+    The model occasionally wraps its answer in a markdown code fence (```json ... ```) or
+    prefixes it with a sentence of reasoning. Forwarded raw, that wrapper reaches the client and
+    breaks its JSON.parse of the accumulated stream. This filter drops everything before the first
+    '{' and holds back a trailing fence / whitespace after the final '}', passing the JSON itself
+    through unchanged so the client still renders chunk by chunk. Same wrapper tolerance the
+    non-streaming path already gets from `_parse_changes`, applied live to the stream.
+    """
+
+    started = False
+    lead = ""  # buffers leading text until the first '{' appears
+    tail = ""  # withholds a possible trailing fence until real content proves it isn't trailing
+
+    async for chunk in source:
+        if not chunk:
+            continue
+
+        if not started:
+            lead += chunk
+            brace = lead.find("{")
+            if brace == -1:
+                continue  # still inside the opening fence / preamble — emit nothing yet
+            chunk = lead[brace:]
+            lead = ""
+            started = True
+
+        combined = tail + chunk
+        # The closing "```" fence and any trailing whitespace arrive last; withhold the longest
+        # whitespace/backtick suffix and only emit it once non-fence content follows.
+        cut = len(combined)
+        while cut > 0 and combined[cut - 1] in " \t\r\n`":
+            cut -= 1
+        emit, tail = combined[:cut], combined[cut:]
+        if emit:
+            yield emit
+    # Whatever is left in `tail` at end-of-stream is the trailing fence / whitespace — drop it.
 
 
 def _to_change_entry(change: HolisticChange) -> ChangeEntry:
@@ -212,106 +249,6 @@ def _to_change_entry(change: HolisticChange) -> ChangeEntry:
         summary=change.summary,
         is_substantive=change.is_substantive,
     )
-
-
-def _change_signature(change: HolisticChange) -> Tuple[str, str]:
-    """Whitespace/case-insensitive (original, revised) key identifying the clause region a change
-    describes. Two entries with the same signature point at the same edited clause."""
-
-    side_a = _normalize((change.text_from_doc_a or "").lower())
-    side_b = _normalize((change.text_from_doc_b or "").lower())
-    return side_a, side_b
-
-
-def _is_genuine_reorder(change: HolisticChange) -> bool:
-    """True only for a real move: the SAME clause text is present on both sides (content
-    unchanged, only position moved). The sentence diff never reports moves — it emits a removal
-    plus an addition — so a 'reordered' entry whose two sides differ is not actually a move."""
-
-    if change.change_type != "reordered":
-        return False
-    if not change.text_from_doc_a or not change.text_from_doc_b:
-        return False
-    return _normalize(change.text_from_doc_a.lower()) == _normalize(change.text_from_doc_b.lower())
-
-
-def _merge_change_group(group: List[HolisticChange]) -> HolisticChange:
-    """Collapse several entries that describe the same clause region into one.
-
-    The highest-risk member supplies the representative fields; every distinct summary is kept so
-    no individual edit is lost, and the risk level is the max across the group.
-    """
-
-    primary = max(group, key=lambda c: _RISK_ORDER.get(c.risk_level, 0))
-
-    summaries: List[str] = []
-    for change in group:
-        text = (change.summary or "").strip()
-        if text and text not in summaries:
-            summaries.append(text)
-
-    return HolisticChange(
-        clause_name=primary.clause_name,
-        # Prefer a named section over null so a clause's edits never scatter across groups.
-        section=next((c.section for c in group if c.section), primary.section),
-        change_type=primary.change_type,
-        modification_type=primary.modification_type,
-        risk_level=max((c.risk_level for c in group), key=lambda r: _RISK_ORDER.get(r, 0)),
-        affected_party=primary.affected_party,
-        text_from_doc_a=primary.text_from_doc_a,
-        text_from_doc_b=primary.text_from_doc_b,
-        summary=" ".join(summaries),
-        is_substantive=any(c.is_substantive for c in group),
-    )
-
-
-def _dedupe_changes(changes: List[HolisticChange]) -> List[HolisticChange]:
-    """Remove the redundant entries the classifier sometimes emits for a single edited clause.
-
-    The model can report one edited clause two or three times — independent in-clause edits as
-    separate entries, plus a spurious 'reordered' entry repeating the same text. That shows the
-    same full clause several times and inflates the change counts. Fix it by:
-      1. dropping a 'reordered' entry that repeats a clause already reported as modified/added/
-         removed (the diff never detects moves, so that reorder claim is unfounded);
-      2. reclassifying any surviving 'reordered' whose two sides differ to 'modified' (a move
-         preserves the clause text);
-      3. merging entries that carry the same clause text on both sides into one, so the clause is
-         reported — and counted — once.
-    """
-
-    groups: Dict[Tuple[str, str], List[HolisticChange]] = {}
-    order: List[Tuple[str, str]] = []
-    standalone: List[HolisticChange] = []
-
-    for change in changes:
-        # Nothing to align on when both sides are empty — leave the entry untouched.
-        if not change.text_from_doc_a and not change.text_from_doc_b:
-            standalone.append(change)
-            continue
-        signature = _change_signature(change)
-        if signature not in groups:
-            groups[signature] = []
-            order.append(signature)
-        groups[signature].append(change)
-
-    result: List[HolisticChange] = []
-    for signature in order:
-        group = groups[signature]
-
-        # 1. A 'reordered' duplicate of a clause reported another way is noise — drop it.
-        non_reordered = [c for c in group if c.change_type != "reordered"]
-        if non_reordered:
-            group = non_reordered
-
-        # 2. A surviving 'reordered' that isn't a genuine move is an in-place modification.
-        for change in group:
-            if change.change_type == "reordered" and not _is_genuine_reorder(change):
-                change.change_type = "modified"
-
-        # 3. One entry per clause region.
-        result.append(group[0] if len(group) == 1 else _merge_change_group(group))
-
-    return result + standalone
 
 
 def group_by_section(changes: List[ChangeEntry]) -> List[SectionGroup]:
@@ -386,8 +323,8 @@ async def _classify_changes(diff_digest: str, llm_client: BaseLLMModel, session_
             context={"diff_digest": diff_digest},
             session_id=session_id,
             system_message=_COMPARISON_SYSTEM,
-            # cache_system=True,
-            # max_tokens=_DIFF_MAX_TOKENS,
+            cache_system=True,
+            max_tokens=_DIFF_MAX_TOKENS,
         ):
             chunks.append(chunk)
 
@@ -400,7 +337,7 @@ async def _classify_changes(diff_digest: str, llm_client: BaseLLMModel, session_
     raise ValueError("Could not parse a valid change list from the model output.")
 
 
-async def compare_documents_service(session_id: str, document_a: Document, document_b: Document) -> CompareResponse:
+async def run(session_id: str, document_a: Document, document_b: Document) -> CompareResponse:
     """Compare two documents: deterministic sentence diff, then one LLM call to classify the changed regions."""
 
     llm_client = get_bedrock_model()
@@ -464,11 +401,6 @@ async def compare_documents_service(session_id: str, document_a: Document, docum
             sections=[],
         )
 
-    raw_count = len(changes)
-    changes = _dedupe_changes(changes)
-    if len(changes) != raw_count:
-        logger.info("Deduplicated change entries", raw=raw_count, deduped=len(changes), session_id=session_id)
-
     entries = [_to_change_entry(change) for change in changes]
     sections = group_by_section(entries)
     summary = _compute_summary(entries)
@@ -493,14 +425,10 @@ async def compare_documents_stream_service(session_id: str, document_a: Document
     """Stream document differences as Server-Sent Events.
 
     Code computes the sentence diff (fast); the single classification call is then streamed so
-    chunks reach the client as the model produces them — raw text chunks wrapped as `data: ...`
-    frames, terminated by `data: [DONE]`. The client accumulates the chunks and parses the change
-    list as it builds up.
-
-    De-duplication is NOT post-processed here: a live token stream cannot be de-duplicated without
-    buffering the whole list first, which would defeat chunk-by-chunk streaming. Clean,
-    one-entry-per-clause output is enforced by the classification prompt instead. The non-streaming
-    endpoint keeps the post-processing dedup safety net.
+    chunks reach the client as the model produces them — the model emits the full clause text on
+    each side, so the client renders changes progressively. Mirrors the SSE convention of the
+    other streaming agents: raw text chunks wrapped as `data: ...` frames, terminated by
+    `data: [DONE]`.
     """
 
     try:
@@ -534,9 +462,13 @@ async def compare_documents_stream_service(session_id: str, document_a: Document
             context={"diff_digest": digest},
             session_id=session_id,
             system_message=_COMPARISON_SYSTEM,
+            cache_system=True,
+            max_tokens=_DIFF_MAX_TOKENS,
         )
 
-        async for chunk in stream:
+        # Forward only the JSON itself, stripping any markdown fence / reasoning the model wraps
+        # around it — otherwise that wrapper reaches the client and breaks its JSON.parse.
+        async for chunk in _clean_json_stream(stream):
             yield f"data: {json.dumps(chunk)}\n\n"
 
         yield "data: [DONE]\n\n"
