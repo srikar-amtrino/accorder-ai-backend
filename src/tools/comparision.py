@@ -193,6 +193,46 @@ def _parse_changes(raw: str) -> Optional[List[HolisticChange]]:
         return None
 
 
+async def _clean_json_stream(source: Any) -> Any:
+    """Strip any non-JSON wrapper off a streamed JSON object, token by token.
+
+    The model occasionally wraps its answer in a markdown code fence (```json ... ```) or
+    prefixes it with a sentence of reasoning. Forwarded raw, that wrapper reaches the client and
+    breaks its JSON.parse of the accumulated stream. This filter drops everything before the first
+    '{' and holds back a trailing fence / whitespace after the final '}', passing the JSON itself
+    through unchanged so the client still renders chunk by chunk. Same wrapper tolerance the
+    non-streaming path already gets from `_parse_changes`, applied live to the stream.
+    """
+
+    started = False
+    lead = ""  # buffers leading text until the first '{' appears
+    tail = ""  # withholds a possible trailing fence until real content proves it isn't trailing
+
+    async for chunk in source:
+        if not chunk:
+            continue
+
+        if not started:
+            lead += chunk
+            brace = lead.find("{")
+            if brace == -1:
+                continue  # still inside the opening fence / preamble — emit nothing yet
+            chunk = lead[brace:]
+            lead = ""
+            started = True
+
+        combined = tail + chunk
+        # The closing "```" fence and any trailing whitespace arrive last; withhold the longest
+        # whitespace/backtick suffix and only emit it once non-fence content follows.
+        cut = len(combined)
+        while cut > 0 and combined[cut - 1] in " \t\r\n`":
+            cut -= 1
+        emit, tail = combined[:cut], combined[cut:]
+        if emit:
+            yield emit
+    # Whatever is left in `tail` at end-of-stream is the trailing fence / whitespace — drop it.
+
+
 def _to_change_entry(change: HolisticChange) -> ChangeEntry:
     """Map a classified change onto the public ChangeEntry response contract."""
 
@@ -426,7 +466,9 @@ async def compare_documents_stream_service(session_id: str, document_a: Document
             max_tokens=_DIFF_MAX_TOKENS,
         )
 
-        async for chunk in stream:
+        # Forward only the JSON itself, stripping any markdown fence / reasoning the model wraps
+        # around it — otherwise that wrapper reaches the client and breaks its JSON.parse.
+        async for chunk in _clean_json_stream(stream):
             yield f"data: {json.dumps(chunk)}\n\n"
 
         yield "data: [DONE]\n\n"
