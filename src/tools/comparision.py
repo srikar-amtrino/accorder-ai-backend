@@ -24,7 +24,7 @@ logger = get_logger(__name__)
 
 AGENT_NAME = "document_comparison_agent"
 
-_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "comparsion"
 # One prompt drives both endpoints: the model emits the full clause text on each side, so the
 # streaming endpoint can stream it token by token (like the other agents) and the non-streaming
 # endpoint accumulates the same generation.

@@ -16,7 +16,6 @@ from src.schemas.playbook_review import (
     RuleCheckRequest,
 )
 from src.tools.comparision import (
-    compare_documents_service,
     compare_documents_stream_service,
 )
 from src.tools.describe_draft import (
@@ -66,15 +65,15 @@ async def generate_draft_stream_endpoint(request: DescribeDraftRequest, session_
     return StreamingResponse(describe_draft_stream_service(session_id=session_id, request=request), media_type="text/event-stream", headers=headers)
 
 
-@router.post("/compare-documents")
-async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Depends(get_session_id)) -> Any:
-    """Compare two documents and return their differences."""
+# @router.post("/compare-documents")
+# async def compare_documents_endpoint(file_a: UploadFile, file_b: UploadFile, session_id: str = Depends(get_session_id)) -> Any:
+#     """Compare two documents and return their differences."""
 
-    document_a = Document(io.BytesIO(await file_a.read()))
-    document_b = Document(io.BytesIO(await file_b.read()))
+#     document_a = Document(io.BytesIO(await file_a.read()))
+#     document_b = Document(io.BytesIO(await file_b.read()))
 
-    comparison_result = await compare_documents_service(session_id=session_id, document_a=document_a, document_b=document_b)
-    return comparison_result
+#     comparison_result = await compare_documents_service(session_id=session_id, document_a=document_a, document_b=document_b)
+#     return comparison_result
 
 
 @router.post("/compare-documents/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
