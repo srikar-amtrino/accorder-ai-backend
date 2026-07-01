@@ -159,7 +159,7 @@ async def contract_analyzer_v1_endpoint(request: ContractAnalyzerRequest, sessio
     # document = Document(io.BytesIO(await file.read()))
     # document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
 
-    document_data = "\n".join([para.text for para in request.textinformation])
+    document_data = "\n".join(f"[{para.paraindetifier}] {para.text}" for para in request.textinformation)
 
     analysis_result: ContractAnalyzerResponse = await get_key_information_generate(content=document_data, session_id=session_id)
     return analysis_result
@@ -172,7 +172,7 @@ async def contract_analyzer_stream_v1_endpoint(request: ContractAnalyzerRequest,
     # document = Document(io.BytesIO(await file.read()))
     # document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
 
-    document_data = "\n".join([para.text for para in request.textinformation])
+    document_data = "\n".join(f"[{para.paraindetifier}] {para.text}" for para in request.textinformation)
 
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
     return StreamingResponse(get_key_information_stream(content=document_data, session_id=session_id), media_type="text/event-stream", headers=headers)

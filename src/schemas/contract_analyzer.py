@@ -39,6 +39,7 @@ class RiskComplianceInsight(BaseModel):
     severity: str = Field(description="Severity level of the issue (Critical / High / Medium / Low)")
     clause_title: str = Field(description="The name of the clause where this issue appears (should always be present in the contract)")
     # issue_type: str = Field(description="Type of the issue (Missing Clause / Ambiguity / One-Sided Provision / Unusual Obligation / Broad Term / Unenforceable Clause / Jurisdiction Risk / Other)")
+    para_identifier: str = Field(description="Identifier for the paragraph where this issue appears (should always be present in the contract)")
     issue: str = Field(description="One to two sentences describing the issue, quoting specific language from the contract and the commercial consequence and which party bears it")
     # scenario: str = Field(description="One to two sentences describing a concrete situation where this causes harm, naming the parties and the outcome")
     # fix: str = Field(description="Exact sentences describing whether to accept, revise, or reject, plus the specific replacement or added language")
