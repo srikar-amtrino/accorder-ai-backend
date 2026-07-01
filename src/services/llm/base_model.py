@@ -13,6 +13,6 @@ class BaseLLMModel(ABC):
         pass
 
     @abstractmethod
-    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, system_message: Optional[str] = None) -> Any:
+    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, temperature: float, system_message: Optional[str] = None) -> Any:
         """Generate a streaming response from the model."""
         pass

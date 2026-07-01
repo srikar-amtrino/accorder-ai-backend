@@ -3,6 +3,19 @@ from typing import List
 from pydantic import BaseModel, Field
 
 
+class TextInformation(BaseModel):
+    """Request schema for the document chat."""
+
+    text: str = Field(..., description="Text content of the paragraph")
+    paraindetifier: str = Field(..., description="Identifier for the paragraph")
+
+
+class ContractAnalyzerRequest(BaseModel):
+    """Request body for the general review endpoint."""
+
+    textinformation: List[TextInformation] = Field(..., description="List of text paragraphs to check")
+
+
 class KeyInformationResponse(BaseModel):
     """Response model for key information extracted from a contract."""
 

@@ -99,7 +99,7 @@ class BedrockModel(BaseLLMModel):
     #             if text:
     #                 yield text
 
-    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, system_message: Optional[str] = None) -> Any:
+    async def generate_stream(self, prompt: str, context: Dict[str, Any], session_id: str, temperature: float = 0.0, system_message: Optional[str] = None) -> Any:
         """Yields text chunks as they arrive from Bedrock."""
 
         prompt = self.render_prompt_template(
@@ -110,7 +110,7 @@ class BedrockModel(BaseLLMModel):
         native_request = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 10000,
-            "temperature": 0.5,
+            "temperature": temperature,
             "messages": [
                 {
                     "role": "user",

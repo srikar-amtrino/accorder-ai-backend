@@ -7,7 +7,10 @@ from fastapi.responses import StreamingResponse
 
 # from src.api.session_utils import get_session_id
 from src.core.auth import get_session_id
-from src.schemas.contract_analyzer import ContractAnalyzerResponse
+from src.schemas.contract_analyzer import (
+    ContractAnalyzerRequest,
+    ContractAnalyzerResponse,
+)
 from src.schemas.describe_draft import DescribeDraftRequest, DescribeDraftResponse
 from src.schemas.doc_chat import DocChatResponse, DocuChatRequest
 from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
@@ -144,6 +147,32 @@ async def contract_analyzer_stream_endpoint(file: UploadFile, session_id: str = 
 
     document = Document(io.BytesIO(await file.read()))
     document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(get_key_information_stream(content=document_data, session_id=session_id), media_type="text/event-stream", headers=headers)
+
+
+@router.post("/v1/contract-analyzer", response_model=ContractAnalyzerResponse, status_code=status.HTTP_200_OK)
+async def contract_analyzer_v1_endpoint(request: ContractAnalyzerRequest, session_id: str = Depends(get_session_id)) -> ContractAnalyzerResponse:
+    """Analyze a contract document and extract key information."""
+
+    # document = Document(io.BytesIO(await file.read()))
+    # document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
+
+    document_data = "\n".join([para.text for para in request.textinformation])
+
+    analysis_result: ContractAnalyzerResponse = await get_key_information_generate(content=document_data, session_id=session_id)
+    return analysis_result
+
+
+@router.post("/v1/contract-analyzer/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+async def contract_analyzer_stream_v1_endpoint(request: ContractAnalyzerRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    """Analyze a contract document and stream the extracted key information as it arrives."""
+
+    # document = Document(io.BytesIO(await file.read()))
+    # document_data = "\n".join([para.text for para in document.paragraphs if para.text.strip() != ""])
+
+    document_data = "\n".join([para.text for para in request.textinformation])
 
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
     return StreamingResponse(get_key_information_stream(content=document_data, session_id=session_id), media_type="text/event-stream", headers=headers)
