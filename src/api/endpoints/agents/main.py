@@ -32,6 +32,9 @@ from src.tools.general_review import (
     general_review_service,
     general_review_streaming_service,
 )
+from src.core.container import get_bedrock_model
+from src.tools.contract_analyzer_2call import analyze_contract_2call
+from src.tools.contract_analyzer_2call import get_key_information_stream as get_2call_stream
 from src.tools.key_information import (
     get_key_information_generate,
     get_key_information_stream,
@@ -176,6 +179,25 @@ async def contract_analyzer_stream_v1_endpoint(request: ContractAnalyzerRequest,
 
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
     return StreamingResponse(get_key_information_stream(content=document_data, session_id=session_id), media_type="text/event-stream", headers=headers)
+
+
+@router.post("/v1/contract-analyzer/2call", response_model=ContractAnalyzerResponse, status_code=status.HTTP_200_OK)
+async def contract_analyzer_2call_endpoint(request: ContractAnalyzerRequest, session_id: str = Depends(get_session_id)) -> ContractAnalyzerResponse:
+    """Analyze a contract in two calls: sections, then a self-verified risk list."""
+
+    document_data = "\n".join(para.text for para in request.textinformation if para.text.strip())
+    result, _timings = await analyze_contract_2call(get_bedrock_model(), document_data, session_id)
+    return result
+
+
+@router.post("/v1/contract-analyzer/2call/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+async def contract_analyzer_2call_stream_endpoint(request: ContractAnalyzerRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    """Stream sections live, then splice in the self-verified risk list."""
+
+    document_data = "\n".join(para.text for para in request.textinformation if para.text.strip())
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(get_2call_stream(get_bedrock_model(), document_data, session_id), media_type="text/event-stream", headers=headers)
 
 
 @router.post("/playbook-review", response_model=PlayBookReviewFinalResponse)
