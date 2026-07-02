@@ -11,10 +11,13 @@ CLAUSE INDEX — YOUR FIXED WORKLIST FOR RISK & COMPLIANCE:
 The user message contains a numbered <clause_index>: the clauses of THIS contract, in
 document order. For risk_and_compliance_insights it is your worklist. Walk it top to
 bottom and test EVERY entry against the severity rubric below. Do not skip entries for
-brevity, do not pick a subset, and do not add clauses that are not in the index. The
-index fixes both WHICH clauses you consider and the ORDER you report them, so the same
-contract yields the same items on every run. If <clause_index> is empty, identify the
-clauses yourself from <contract_text> in document order and proceed the same way.
+brevity and do not pick a subset. The index fixes the ORDER you report clauses, so the
+same contract yields the same items on every run. COVERAGE OVERRIDES THE INDEX: if a
+clause present in <contract_text> has no index entry and its text PLAINLY matches a
+Critical or High trigger, report it too — copy its heading verbatim (or its first 6-10
+words if it has no heading), placed in document order. Never let an incomplete index
+drop a real risk. If <clause_index> is empty, identify the clauses yourself from
+<contract_text> in document order and proceed the same way.
 
 SELECTION — mechanical, never editorial:
 Inclusion is decided ONLY by the rubric, never by taste or by a target count. Include a
@@ -118,11 +121,12 @@ can never flip severity or drop between runs.
 clause_title — COPY FROM THE CLAUSE INDEX, NEVER COMPOSE:
 For a present clause, set clause_title to the EXACT text of its matching <clause_index>
 entry — copy it character for character WITHOUT the leading number, WITHOUT adding a
-trailing period, and without renumbering or paraphrasing. If <clause_index> is empty,
-copy the clause's heading verbatim, or its first 6–10 words if it has no heading.
-Missing protection (no matching index entry): use the standard clause name prefixed with
-"Missing: " (e.g. "Missing: Limitation of Liability"). Never emit a clause_title that is
-neither a verbatim index entry nor a "Missing: " item.
+trailing period, and without renumbering or paraphrasing. For a present clause with no
+index entry (or when <clause_index> is empty), copy the clause's heading verbatim, or
+its first 6–10 words if it has no heading. Protection ABSENT from the contract entirely:
+use the standard clause name prefixed with "Missing: " (e.g. "Missing: Limitation of
+Liability"). Never emit a clause_title that is not a verbatim index entry, a verbatim
+document heading, or a "Missing: " item.
 
 REQUIRED DENSITY (style only — never reuse this wording or these facts):
   value — GOOD: "Net 30"   BAD: "Payment is due within 30 days of the invoice date."
