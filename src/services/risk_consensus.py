@@ -66,12 +66,19 @@ def _ground_title(raw_title: str, index_norm: Dict[str, str]) -> Tuple[str, str]
     return key, raw_title.strip()
 
 
-def build_consensus(responses: List[ContractAnalyzerResponse], index_titles: List[str]) -> ContractAnalyzerResponse:
-    """Merge N analyzer responses into one stable consensus response."""
-    if not responses:
-        raise ValueError("build_consensus requires at least one response")
+def build_risk_consensus(risk_lists: List[List[RiskComplianceInsight]], index_titles: List[str]) -> List[RiskComplianceInsight]:
+    """Majority-vote N risk lists into one stable, grounded, ordered list."""
+    risks, _ = _vote_risks(risk_lists, index_titles)
+    return risks
 
-    n = len(responses)
+
+def _vote_risks(
+    risk_lists: List[List[RiskComplianceInsight]], index_titles: List[str]
+) -> Tuple[List[RiskComplianceInsight], set]:
+    if not risk_lists:
+        raise ValueError("risk consensus requires at least one risk list")
+
+    n = len(risk_lists)
     threshold = (n // 2) + 1  # simple majority (3 -> 2, 2 -> 2, 1 -> 1)
 
     index_norm = {_norm(t): t for t in index_titles}
@@ -82,9 +89,9 @@ def build_consensus(responses: List[ContractAnalyzerResponse], index_titles: Lis
     first_seen: Dict[str, int] = {}
     order_counter = 0
 
-    for resp in responses:
+    for risk_list in risk_lists:
         seen_in_resp = set()
-        for item in resp.risk_and_compliance_insights:
+        for item in risk_list:
             key, title = _ground_title(item.clause_title, index_norm)
             if not key or key in seen_in_resp:
                 continue  # drop empties and within-run duplicates
@@ -114,7 +121,18 @@ def build_consensus(responses: List[ContractAnalyzerResponse], index_titles: Lis
         issue = _pick_issue(bucket["issues"])
         risks.append(RiskComplianceInsight(severity=severity, clause_title=bucket["title"], issue=issue))
 
-    canonical = _pick_canonical(responses, set(consensus_keys), index_norm)
+    return risks, set(consensus_keys)
+
+
+def build_consensus(responses: List[ContractAnalyzerResponse], index_titles: List[str]) -> ContractAnalyzerResponse:
+    """Merge N analyzer responses into one stable consensus response."""
+    if not responses:
+        raise ValueError("build_consensus requires at least one response")
+
+    index_norm = {_norm(t): t for t in index_titles}
+    risks, consensus_keys = _vote_risks([r.risk_and_compliance_insights for r in responses], index_titles)
+
+    canonical = _pick_canonical(responses, consensus_keys, index_norm)
 
     return ContractAnalyzerResponse(
         summary=canonical.summary,
