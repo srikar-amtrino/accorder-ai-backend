@@ -30,9 +30,21 @@ def _norm(title: str) -> str:
     return re.sub(r"\s+", " ", (title or "").strip().strip(".").strip()).lower()
 
 
+# Lower rank = more severe; used for majority tie-breaks (tie -> the safer, more
+# severe tier). "Low" is not a reportable tier — items graded Low are dropped.
+_SEVERITY_RANK = {"Critical": 0, "High": 1, "Medium": 2}
+
+
 def _normalize_severity(severity: str) -> str:
-    """Collapse the tier onto the two the rubric allows: Critical or High."""
-    return "Critical" if (severity or "").strip().lower().startswith("crit") else "High"
+    """Map the model's tier text onto the rubric tiers: Critical / High / Medium / Low."""
+    s = (severity or "").strip().lower()
+    if s.startswith("crit"):
+        return "Critical"
+    if s.startswith("med"):
+        return "Medium"
+    if s.startswith("low"):
+        return "Low"
+    return "High"
 
 
 def _ground_title(raw_title: str, index_norm: Dict[str, str]) -> Tuple[str, str]:
@@ -92,12 +104,15 @@ def _vote_risks(
     for risk_list in risk_lists:
         seen_in_resp = set()
         for item in risk_list:
+            severity = _normalize_severity(item.severity)
+            if severity == "Low":
+                continue  # Low is below the reporting threshold
             key, title = _ground_title(item.clause_title, index_norm)
             if not key or key in seen_in_resp:
                 continue  # drop empties and within-run duplicates
             seen_in_resp.add(key)
             bucket = votes.setdefault(key, {"title": title, "severities": [], "issues": []})
-            bucket["severities"].append(_normalize_severity(item.severity))
+            bucket["severities"].append(severity)
             if item.issue and item.issue.strip():
                 bucket["issues"].append(item.issue.strip())
             if key not in first_seen:
@@ -143,10 +158,11 @@ def build_consensus(responses: List[ContractAnalyzerResponse], index_titles: Lis
 
 
 def _majority_severity(severities: List[str]) -> str:
-    """Mode of the tiers; a Critical/High tie breaks to the safer Critical."""
-    crit = severities.count("Critical")
-    high = severities.count("High")
-    return "Critical" if crit >= high else "High"
+    """Mode of the tiers; a tie breaks to the more severe (safer) tier."""
+    counts: Dict[str, int] = {}
+    for s in severities:
+        counts[s] = counts.get(s, 0) + 1
+    return max(counts, key=lambda s: (counts[s], -_SEVERITY_RANK[s]))
 
 
 def _pick_issue(issues: List[str]) -> str:

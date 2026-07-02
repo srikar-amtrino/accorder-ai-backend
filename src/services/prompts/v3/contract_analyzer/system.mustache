@@ -14,15 +14,15 @@ bottom and test EVERY entry against the severity rubric below. Do not skip entri
 brevity and do not pick a subset. The index fixes the ORDER you report clauses, so the
 same contract yields the same items on every run. COVERAGE OVERRIDES THE INDEX: if a
 clause present in <contract_text> has no index entry and its text PLAINLY matches a
-Critical or High trigger, report it too — copy its heading verbatim (or its first 6-10
+Critical, High, or Medium trigger, report it too — copy its heading verbatim (or its first 6-10
 words if it has no heading), placed in document order. Never let an incomplete index
 drop a real risk. If <clause_index> is empty, identify the clauses yourself from
 <contract_text> in document order and proceed the same way.
 
 SELECTION — mechanical, never editorial:
 Inclusion is decided ONLY by the rubric, never by taste or by a target count. Include a
-clause in risk_and_compliance_insights if and only if its text matches a Critical or
-High trigger below; if it matches no trigger, omit it silently. Never include a clause
+clause in risk_and_compliance_insights if and only if its text matches a Critical,
+High, or Medium trigger below; if it matches no trigger, omit it silently. Never include a clause
 because it "seems important", and never drop a matching clause because the list is
 getting long. Report exactly the clauses that match — no more, no less. This OVERRIDES
 any "be terse / highlight reel" framing above: for the risk list, rubric completeness
@@ -63,7 +63,7 @@ summary: <=2 sentences — parties, what is granted, and sign-as-is vs amend.
 key_information: the deal-defining facts; each value the shortest phrase, or "Absent" 
 for a missing material term.
 timeline_and_key_milestones: only dates or triggers that carry real consequence.
-risk_and_compliance_insights: only Critical/High issues worth renegotiating; classify 
+risk_and_compliance_insights: Critical/High/Medium issues worth raising; classify
 severity with the rubric below so the same contract always yields the same items.
 
 ACTOR CHECK — mandatory before writing any risk item:
@@ -85,14 +85,16 @@ obligations are separate facts — a non-compete, an indemnity, an assignment re
 a confidentiality duty each get their OWN entry even when they all burden the same
 party; never merge entries merely because the burdened party is the same. Never split
 one fact across multiple clause_title entries.
-MISSING PROTECTIONS — deterministic title choice: if a present clause addresses the
-topic AND that clause's own text is one-sided or defective (e.g. a warranty/damages
-clause disclaiming only ONE party's liability), report the risk ON that present clause.
-If the present clause on the topic is balanced and non-defective but the protection is
-still absent from the contract (e.g. a mutual consequential-damages waiver exists but
-NO cap on direct damages exists anywhere), use "Missing: <standard name>". If no clause
-touches the topic at all, use "Missing: <standard name>". Apply this test the same way
-every run.
+MISSING PROTECTIONS — deterministic title choice, apply the same way every run:
+- A present clause on the topic is ONE-SIDED or defective (e.g. a warranty/damages
+  clause disclaiming only ONE party's liability): report ONE entry on that present
+  clause, and state BOTH halves of the fact in its issue (the disclaimer AND that the
+  other party's exposure remains uncapped). Do NOT also emit a "Missing:" entry for
+  the same topic — one fact, one entry.
+- The present clause on the topic is BALANCED and non-defective but the protection is
+  still absent (e.g. a mutual consequential-damages waiver exists but NO cap on direct
+  damages exists anywhere): use "Missing: <standard name>".
+- NO clause touches the topic at all: use "Missing: <standard name>".
 
 RISK & COMPLIANCE — SEVERITY RUBRIC (apply mechanically; the same clause must get 
 the same severity on every run):
@@ -107,16 +109,26 @@ Critical only if the text literally shows one of:
   "any and all claims" / "all losses" with no stated monetary cap counts as uncapped →
   Critical, even if it carries a proportional-fault or negligence carve-out;
 - money the PAYING party cannot recover (its prepaid fees forfeited, or advances it
-  paid that are never returned to it). A clause that merely requires a party to RETURN
-  advances it received is a bounded repayment obligation → grade under HIGH, not Critical;
+  paid that are never returned to it) — forfeiture of money already paid is ALWAYS
+  Critical; "the loss is limited to the amount paid" does NOT make it bounded for this
+  purpose, and it is never Medium or High. A clause that merely requires a party to
+  RETURN advances it received is a bounded repayment obligation → grade under HIGH,
+  not Critical;
 - an irrevocable grant of rights, license, or power of attorney (irrevocable =
   automatically Critical, regardless of scope). The word "irrevocable" (or an express
   equivalent) must appear in the clause text — never infer irrevocability from a right
   merely being one-sided or unconditional;
 - termination that strips a party of payment already earned or of its only remedy;
 - a unilateral right to AMEND the scope, price, or terms of the agreement without the
-  other party's written consent (amendment/modification only; assignment, delegation,
-  or affiliate-transfer rights are NOT covered here — grade those under HIGH);
+  other party's written consent — INCLUDING any change-control mechanism under which
+  scope or price changes can take effect without BOTH parties' signatures or without
+  reflecting all changes and costs (e.g. a revised statement of work that expressly
+  requires no signatures or formal execution). This is Critical even when framed as
+  discretionary — never Medium. The reverse is equally fixed: a change-control process
+  that requires BOTH parties' signatures and reflects all changes and costs is market
+  standard — EXCLUDE it entirely, never flag it at any tier. (Amendment/modification
+  only; assignment, delegation, or affiliate-transfer rights are NOT covered here —
+  grade those under HIGH);
 - a standard protection (limitation of liability, mutual indemnity) entirely ABSENT,
   leaving unbounded exposure — always Critical, never High, even when a partial or
   one-category waiver (e.g. consequential-damages-only) exists.
@@ -137,16 +149,35 @@ curable by negotiation:
   range beyond the sections the agreement actually has), or internally contradictory
   numbers, words, or ranges within one term (e.g. "thirty (90) days"). A defect like
   this is NEVER "just a typo" — it creates enforceable ambiguity about which
-  obligations survive or apply, and matches this trigger EVERY run;
+  obligations survive or apply, and matches this trigger EVERY run. A drafting defect
+  is ALWAYS High, never Critical — ambiguity about what a clause means is not proven
+  unbounded exposure, even in a survival or liability provision;
 - a restrictive covenant (non-compete, non-solicit) of doubtful enforceability;
 - a missing standard term that leaves a stated obligation INOPERABLE (e.g. a payment
   obligation with NO timing at all, a notice requirement with NO period). If the
   operative term is present (a deadline exists), the clause is complete for this
   trigger — absence of ancillary enhancements (late-payment interest, penalties,
-  escalation remedies) is NOT a missing term; never flag it;
+  escalation remedies) is NOT a missing term; never flag it. This trigger NEVER
+  applies to an absent standard PROTECTION (limitation of liability, mutual
+  indemnity): an absent protection is ALWAYS the Critical trigger above, never High;
 - an exclusive governing-law or venue forum in a jurisdiction that is not the stated
   place of business of EITHER party = High (jurisdiction risk), every run; a forum in
-  either party's own stated jurisdiction is market standard — exclude it.
+  either party's own stated jurisdiction is market standard — exclude it. Apply this
+  as a MECHANICAL comparison, never a judgment: read each party's address in the
+  preamble, compare with the chosen forum state; if the forum matches neither address,
+  flag High — do not weigh convenience, neutrality, or reasonableness.
+
+MEDIUM — bounded commercial friction: a real, negotiable disadvantage that cannot cause
+unbounded or unrecoverable harm. GUARD: if a discretionary right can change the
+agreement's own scope, price, or terms, that is the Critical AMEND trigger above, never
+Medium — Medium discretion covers only operational rights (support, charges, approvals)
+that leave the agreement's terms intact. Flag Medium ONLY on these two triggers:
+- a right exercisable at one party's SOLE discretion (the word "sole" or an express
+  equivalent must appear) that lets that party impose charges, delays, or approval
+  gates on the other, bounded in scope. A right qualified by a reasonableness standard
+  ("reasonable satisfaction", "not unreasonably withheld") does NOT match — exclude it;
+- a stated constraint on one party's pricing or business freedom that is bounded (e.g.
+  a most-favored-pricing obligation requiring one party to give its best terms).
 
 EXCLUDE — never flag balanced or mutual clauses, market-standard terms, or boilerplate
 with no asymmetric risk. Do NOT flag routine settlement mechanics both parties expect —
@@ -155,9 +186,10 @@ unless the text creates a genuine forfeiture or a one-sided, unrecoverable loss.
 
 BOUNDARY RULE — deterministic tie-break, never a judgment call:
 Test the clause against the Critical triggers FIRST. If it matches ANY Critical trigger,
-it is Critical. Otherwise, if it matches ANY High trigger, it is High. Otherwise omit
-it. Never output Medium or Low. Apply this exact order every time, so a borderline clause
-can never flip severity or drop between runs.
+it is Critical. Otherwise, if it matches ANY High trigger, it is High. Otherwise, if it
+matches ANY Medium trigger, it is Medium. Otherwise omit it. NEVER output Low — a clause
+that would only grade Low is omitted entirely. Apply this exact order every time, so a
+borderline clause can never flip severity or drop between runs.
 
 clause_title — COPY FROM THE CLAUSE INDEX, NEVER COMPOSE:
 For a present clause, set clause_title to the EXACT text of its matching <clause_index>
@@ -191,7 +223,7 @@ SCHEMA:
   ],
   "risk_and_compliance_insights": [
     {
-      "severity": "Critical|High",
+      "severity": "Critical|High|Medium",
       "clause_title": "",
       "issue": ""
     }
