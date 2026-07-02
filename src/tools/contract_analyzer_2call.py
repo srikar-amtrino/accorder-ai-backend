@@ -1,11 +1,9 @@
 """Two-call Contract Analyzer.
 
-Call 1 returns summary/key_information/timeline (streamed live for instant feedback).
-The risk list is produced by N parallel clause-index-grounded votes merged by a
-majority-vote consensus in code (a single call is not repeatable on Bedrock), run
-CONCURRENTLY with the sections call and spliced into the same JSON object.
-
-Container-free (model passed in) so it is testable directly.
+One call returns summary/key_information/timeline and streams live. In parallel,
+several independent risk analyses run against the clause index and are merged by
+majority vote in code, then spliced into the same JSON object. The model instance
+is passed in so the module stays container-free and directly testable.
 """
 
 import asyncio
@@ -31,9 +29,8 @@ _RISK_USER = (_V3 / "contract_analyzer_2call" / "risk_user.mustache").read_text(
 
 _STREAM_CHUNK_CHARS = 48
 
-# Independent risk votes merged by majority. Risk-only output is small (~700 tokens),
-# so 5 votes cost far less than full reruns while giving a wider majority margin on
-# borderline clauses than 3; they run in parallel, so latency is the slowest vote.
+# Number of independent risk analyses merged by majority vote. They run in
+# parallel, so latency equals the slowest single call.
 RISK_VOTES = 5
 
 

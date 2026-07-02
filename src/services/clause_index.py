@@ -102,14 +102,3 @@ def build_clause_index(content: str) -> str:
     if not titles:
         return ""
     return "\n".join(f"{i}. {t}" for i, t in enumerate(titles, 1))
-
-
-if __name__ == "__main__":  # manual calibration: dump the index for a docx
-    import sys
-
-    from docx import Document
-
-    path = sys.argv[1] if len(sys.argv) > 1 else "Master Services Agreement v1.0.docx"
-    doc = Document(path)
-    text = "\n".join(p.text for p in doc.paragraphs if p.text.strip())
-    print(build_clause_index(text))

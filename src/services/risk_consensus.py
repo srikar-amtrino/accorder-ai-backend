@@ -1,11 +1,11 @@
-"""Self-consistency consensus for the Contract Analyzer.
+"""Majority-vote consensus for the Contract Analyzer risk output.
 
-A single Bedrock call at temperature 0 is not repeatable (no seed parameter), so
-borderline clauses drift between otherwise-identical runs. This removes that
-variance in code: run the analysis N times (default 3), ground each clause_title
-to the clause index, majority-vote each clause (severity ties break to Critical),
-then de-duplicate and order by document position. Model passed in (no DI
-container) so it is testable directly.
+A single model call is not repeatable, so borderline clauses can drift between
+otherwise-identical runs. This module removes that variance in code: it grounds
+each clause_title to the clause index, keeps a clause only when a majority of
+the independent analyses report it, takes the majority severity (ties break to
+the more severe tier), then de-duplicates and orders by document position. The
+model instance is passed in so the module stays container-free and testable.
 """
 
 import asyncio
