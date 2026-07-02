@@ -51,3 +51,17 @@ class ContractAnalyzerResponse(BaseModel):
     key_information: List[KeyInformationResponse] = Field(description="List of key information fields extracted from the contract")
     timeline_and_key_milestones: List[TimelineMilestone] = Field(description="List of key milestones and their timelines")
     risk_and_compliance_insights: List[RiskComplianceInsight] = Field(description="List of identified risks and compliance issues")
+
+
+class ContractSectionsResponse(BaseModel):
+    """First-call output: everything except risk & compliance."""
+
+    summary: str = Field(description="Summary of the contract and analysis")
+    key_information: List[KeyInformationResponse] = Field(description="List of key information fields extracted from the contract")
+    timeline_and_key_milestones: List[TimelineMilestone] = Field(description="List of key milestones and their timelines")
+
+
+class RiskOnlyResponse(BaseModel):
+    """Second-call output: the risk & compliance list only."""
+
+    risk_and_compliance_insights: List[RiskComplianceInsight] = Field(description="List of identified risks and compliance issues")

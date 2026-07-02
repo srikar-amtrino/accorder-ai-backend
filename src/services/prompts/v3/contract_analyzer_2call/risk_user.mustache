@@ -1,0 +1,16 @@
+<contract_text>
+{{contract_text}}
+</contract_text>
+
+<clause_index>
+{{{clause_index}}}
+</clause_index>
+
+Produce ONLY the risk_and_compliance_insights list, in two internal passes:
+1. DRAFT: walk every entry in <clause_index> in order and apply the severity rubric.
+2. SELF-VERIFY before answering: for each drafted item, confirm its text unambiguously
+   matches a Critical/High trigger, its clause_title is copied exactly from the index,
+   and no clause appears twice. Drop any item that fails; fix any severity that the
+   BOUNDARY RULE decides differently.
+
+Output the final verified list in clause-index order.
