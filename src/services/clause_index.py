@@ -22,8 +22,10 @@ _NUMBERED_RE = re.compile(r"^((?:Section|Article|ARTICLE)\s+[\w.\-]+|\d+\.[\d.]*
 
 # Inline heading: "Indemnity.  Service Provider agrees ..." -> "Indemnity".
 # Capture a short Title-ish phrase (no interior period) that is immediately
-# followed by a period and then real body text.
-_INLINE_RE = re.compile(r"^([A-Z][^.]{1,60}?)\.\s+\S")
+# followed by a period and then real body text. 80 chars covers long headings
+# ("Maintenance and Support of Your Development/the Vendor Software"); the
+# word-count and Title-Case checks in _looks_like_title screen out sentences.
+_INLINE_RE = re.compile(r"^([A-Z][^.]{1,80}?)\.\s+\S")
 
 # All-caps section banner: "LIMITATION OF LIABILITY", "RECITALS".
 _ALLCAPS_RE = re.compile(r"^[A-Z][A-Z0-9 &/\-]{3,}$")
