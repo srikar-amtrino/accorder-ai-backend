@@ -31,9 +31,10 @@ _RISK_USER = (_V3 / "contract_analyzer_2call" / "risk_user.mustache").read_text(
 
 _STREAM_CHUNK_CHARS = 48
 
-# Independent risk votes merged by majority. 3 balances stability against cost;
-# risk-only output is small, so the extra votes cost far less than full reruns.
-RISK_VOTES = 3
+# Independent risk votes merged by majority. Risk-only output is small (~700 tokens),
+# so 5 votes cost far less than full reruns while giving a wider majority margin on
+# borderline clauses than 3; they run in parallel, so latency is the slowest vote.
+RISK_VOTES = 5
 
 
 async def _sections(model: Any, content: str, session_id: str) -> ContractSectionsResponse:
