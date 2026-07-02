@@ -1,4 +1,5 @@
 import io
+import json
 from typing import Any
 
 from docx import Document
@@ -32,6 +33,8 @@ from src.tools.general_review import (
     general_review_service,
     general_review_streaming_service,
 )
+from src.core.container import get_bedrock_model, get_embedding_service
+from src.tools.contract_analyzer_rag import analyze_contract_rag
 from src.tools.key_information import (
     get_key_information_generate,
     get_key_information_stream,
@@ -176,6 +179,37 @@ async def contract_analyzer_stream_v1_endpoint(request: ContractAnalyzerRequest,
 
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
     return StreamingResponse(get_key_information_stream(content=document_data, session_id=session_id), media_type="text/event-stream", headers=headers)
+
+
+def _rag_embed_fn(texts: list) -> list:
+    """Batch-embed passages using the already-loaded MiniLM model."""
+    return get_embedding_service().tokenizer.encode(texts).tolist()
+
+
+@router.post("/v1/contract-analyzer/rag", response_model=ContractAnalyzerResponse, status_code=status.HTTP_200_OK)
+async def contract_analyzer_rag_endpoint(request: ContractAnalyzerRequest, session_id: str = Depends(get_session_id)) -> ContractAnalyzerResponse:
+    """Analyze a contract using retrieval-augmented generation (RAG)."""
+
+    document_data = "\n".join(para.text for para in request.textinformation if para.text.strip())
+    result, _diagnostics = await analyze_contract_rag(get_bedrock_model(), _rag_embed_fn, document_data, session_id)
+    return result
+
+
+@router.post("/v1/contract-analyzer/rag/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
+async def contract_analyzer_rag_stream_endpoint(request: ContractAnalyzerRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
+    """Analyze a contract with RAG and stream the result chunk by chunk."""
+
+    document_data = "\n".join(para.text for para in request.textinformation if para.text.strip())
+
+    async def event_stream() -> Any:
+        result, _diagnostics = await analyze_contract_rag(get_bedrock_model(), _rag_embed_fn, document_data, session_id)
+        payload = result.model_dump_json()
+        for start in range(0, len(payload), 48):
+            yield f"data: {json.dumps(payload[start : start + 48])}\n\n"
+        yield "data: [DONE]\n\n"
+
+    headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
+    return StreamingResponse(event_stream(), media_type="text/event-stream", headers=headers)
 
 
 @router.post("/playbook-review", response_model=PlayBookReviewFinalResponse)
