@@ -74,11 +74,25 @@ the sentence — do not assume the more common contract pattern. Then write harm
 as [Party Y] and confirm issue is consistent with that party being harmed, not the 
 party who initiates or requests.
 
-CANONICALIZATION — one fact, one entry:
-Each underlying fact gets exactly ONE risk entry anchored to the single clause that 
-most directly creates it. If two issues stem from the same clause family (e.g. two 
-IP-related issues from the same section), merge them into one entry with a single 
-issue string. Never split one fact across multiple clause_title entries.
+CANONICALIZATION — one fact, one entry, deterministic anchor:
+Each underlying fact gets exactly ONE risk entry anchored to a single clause. If two
+issues stem from the same clause family (e.g. two IP-related issues from the same
+section), merge them into one entry with a single issue string. When several clauses
+impose the SAME specific burden on the same party over the SAME subject matter (e.g. a
+use restriction and a confidentiality duty over the same information), anchor ONE entry
+to the EARLIEST such clause in the index and cover the rest in its issue. But DISTINCT
+obligations are separate facts — a non-compete, an indemnity, an assignment restriction,
+a confidentiality duty each get their OWN entry even when they all burden the same
+party; never merge entries merely because the burdened party is the same. Never split
+one fact across multiple clause_title entries.
+MISSING PROTECTIONS — deterministic title choice: if a present clause addresses the
+topic AND that clause's own text is one-sided or defective (e.g. a warranty/damages
+clause disclaiming only ONE party's liability), report the risk ON that present clause.
+If the present clause on the topic is balanced and non-defective but the protection is
+still absent from the contract (e.g. a mutual consequential-damages waiver exists but
+NO cap on direct damages exists anywhere), use "Missing: <standard name>". If no clause
+touches the topic at all, use "Missing: <standard name>". Apply this test the same way
+every run.
 
 RISK & COMPLIANCE — SEVERITY RUBRIC (apply mechanically; the same clause must get 
 the same severity on every run):
@@ -95,26 +109,44 @@ Critical only if the text literally shows one of:
 - money the PAYING party cannot recover (its prepaid fees forfeited, or advances it
   paid that are never returned to it). A clause that merely requires a party to RETURN
   advances it received is a bounded repayment obligation → grade under HIGH, not Critical;
-- an irrevocable grant of rights, license, or power of attorney (irrevocable = 
-  automatically Critical, regardless of scope);
+- an irrevocable grant of rights, license, or power of attorney (irrevocable =
+  automatically Critical, regardless of scope). The word "irrevocable" (or an express
+  equivalent) must appear in the clause text — never infer irrevocability from a right
+  merely being one-sided or unconditional;
 - termination that strips a party of payment already earned or of its only remedy;
 - a unilateral right to AMEND the scope, price, or terms of the agreement without the
   other party's written consent (amendment/modification only; assignment, delegation,
   or affiliate-transfer rights are NOT covered here — grade those under HIGH);
-- a standard protection (limitation of liability, mutual indemnity) entirely ABSENT, 
-  leaving unbounded exposure.
+- a standard protection (limitation of liability, mutual indemnity) entirely ABSENT,
+  leaving unbounded exposure — always Critical, never High, even when a partial or
+  one-category waiver (e.g. consequential-damages-only) exists.
 
 HIGH — materially one-sided, ambiguous, or likely unenforceable, but bounded or 
 curable by negotiation:
 - a one-sided obligation (indemnity, confidentiality, non-compete, assignment consent,
   IP assignment) binding ONE party only and not mutual, where one party bears the full
-  burden and the other bears none. Bright line: a confidentiality clause that protects
-  only ONE party's information (a one-way NDA) matches this trigger EVERY run — being
-  common in consulting agreements does not make it mutual; do not exclude it as routine;
+  burden and the other bears none. Bright lines — these two match this trigger EVERY
+  run; being common does not make them mutual, never exclude them as routine:
+  (a) a confidentiality clause that protects only ONE party's information (a one-way
+  NDA); (b) an assignment clause that restricts only ONE party (the other party free to
+  assign — e.g. to affiliates — or simply unaddressed). A mutual consent requirement or
+  mutual restriction stays excluded;
 - ambiguous language a court could read against one party;
+- a drafting defect that makes a clause's operation uncertain: a cross-reference to
+  section numbers that cannot exist in the agreement (e.g. a survival clause citing a
+  range beyond the sections the agreement actually has), or internally contradictory
+  numbers, words, or ranges within one term (e.g. "thirty (90) days"). A defect like
+  this is NEVER "just a typo" — it creates enforceable ambiguity about which
+  obligations survive or apply, and matches this trigger EVERY run;
 - a restrictive covenant (non-compete, non-solicit) of doubtful enforceability;
-- a missing standard term that is bounded in impact (e.g. absent payment timing, 
-  absent notice period).
+- a missing standard term that leaves a stated obligation INOPERABLE (e.g. a payment
+  obligation with NO timing at all, a notice requirement with NO period). If the
+  operative term is present (a deadline exists), the clause is complete for this
+  trigger — absence of ancillary enhancements (late-payment interest, penalties,
+  escalation remedies) is NOT a missing term; never flag it;
+- an exclusive governing-law or venue forum in a jurisdiction that is not the stated
+  place of business of EITHER party = High (jurisdiction risk), every run; a forum in
+  either party's own stated jurisdiction is market standard — exclude it.
 
 EXCLUDE — never flag balanced or mutual clauses, market-standard terms, or boilerplate
 with no asymmetric risk. Do NOT flag routine settlement mechanics both parties expect —
