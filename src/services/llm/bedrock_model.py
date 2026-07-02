@@ -216,7 +216,7 @@ class BedrockModel(BaseLLMModel):
 
     #     return cast(response_model, response_model.model_validate(normalized_input))  # type: ignore
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None) -> BaseModel:
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None, temperature: float = 0.0) -> BaseModel:
 
         prompt = self.render_prompt_template(
             prompt=prompt,
@@ -232,7 +232,7 @@ class BedrockModel(BaseLLMModel):
         native_request = {
             "anthropic_version": "bedrock-2023-05-31",
             "max_tokens": 10000,
-            "temperature": 0.5,
+            "temperature": temperature,
             "messages": [
                 {
                     "role": "user",
