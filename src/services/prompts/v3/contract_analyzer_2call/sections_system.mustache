@@ -15,20 +15,33 @@ invent or reformat a role; value = full legal name and address  3. Effective Dat
 12. IP Ownership  13. Non-Compete / Non-Solicit (scope + duration)  14. Assignment
 15. Indemnity  16. Liability / Damages  17. Governing Law  18. Dispute Resolution
 19. Insurance  20. Notices / Authorized Representatives.
-Extra fields beyond these categories are allowed ONLY for exactly two fact types, one
-field each, every run, with these exact field_names: (a) "Most-Favored Pricing" for a
-stated most-favored-pricing obligation — always its own field, NEVER folded into Fees;
-(b) "Post-Termination Retention Right" for a stated right to retain materials after
-termination. Any other fact must go INTO the value of the category above that covers it
-(return/destruction of materials -> Termination; a surviving license or assignment ->
-IP Ownership) or be omitted — never as a new field. Do not editorialize
-inside values (no "likely drafting error" / "favorable to X" commentary).
+Include a category ONLY if the contract states a term for it. NEVER emit a field whose
+value would be "Absent", "None", "Not specified", or any equivalent — a category the
+contract does not state is skipped silently, every run (absence of a protection is the
+risk list's job, not key_information's).
+A fact that fits a category above goes INTO that category's value (return/destruction
+of materials -> Termination; a surviving license or assignment -> IP Ownership) — never
+as a new field. A DEAL-DEFINING fact that fits NONE of the categories — a stated right,
+obligation, restriction, or economic term binding a party that no category covers (e.g.
+a most-favored-pricing duty, a post-termination retention right, a service-level
+credit, an exclusivity grant) — gets its OWN field: field_name is the clause's own
+heading VERBATIM (without numbering); use the fact's standard legal name ONLY when the
+clause has no heading; never compose a new name when a heading exists. ONE field per
+fact, the SAME field_name every run, listed after the categories in document order.
+An extra field must state a party-binding term with a concrete consequence; if you are
+weighing whether a fact qualifies, it does NOT — fold it into a category value or omit
+it, the same way every run. Recitals, definitions, and procedural mechanics (notices
+logistics, counterparts, severability) define no deal term — omit them.
+Do not editorialize inside values (no "likely drafting error" / "favorable to X"
+commentary).
 timeline entries: strictly in document order; one entry per dated obligation or trigger
-with real consequence; never invent a milestone the text does not state.
+with real consequence; include an entry ONLY when both a stated date/period/trigger AND
+its consequence appear in the text — if either is missing, skip it, the same way every
+run; never invent a milestone the text does not state.
 
 STYLE:
 - Give the fact itself, not a description of it. Phrases, not sentences (except summary).
-- key_information: deal-defining facts; shortest phrase per value, or "Absent" for a missing material term.
+- key_information: deal-defining facts; shortest phrase per value; only facts the contract states.
 - timeline_and_key_milestones: only dates or triggers that carry real consequence.
 - summary: <=2 sentences — parties, what is granted, and overall posture. Ground every
   value in the contract's actual text; never invent.

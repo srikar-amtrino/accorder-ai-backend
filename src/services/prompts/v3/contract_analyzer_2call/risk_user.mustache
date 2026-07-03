@@ -6,11 +6,18 @@
 {{{clause_index}}}
 </clause_index>
 
-Produce ONLY the risk_and_compliance_insights list, in two internal passes:
-1. DRAFT: walk every entry in <clause_index> in order and apply the severity rubric.
-2. SELF-VERIFY before answering: for each drafted item, confirm its text unambiguously
-   matches a Critical/High/Medium trigger, its clause_title is copied exactly from the
-   index, and no clause appears twice. Drop any item that fails; fix any severity that
-   the BOUNDARY RULE decides differently.
+Produce ONLY the risk_and_compliance_insights list, in three internal passes:
+1. DRAFT: walk every entry in <clause_index> in order and apply the severity principles.
+2. MERGE per CANONICALIZATION: items that are facets of the SAME duty on the SAME party
+   over the SAME subject matter collapse into ONE entry anchored to the EARLIEST such
+   clause, its issue stating the whole fact. Distinct duty types and duties over
+   different subject matter stay separate.
+3. SELF-VERIFY before answering: for each remaining item, confirm it does NOT match any
+   EXCLUDE entry (exclusion beats every tier — drop it entirely, never demote it), that
+   its own text exhibits a Critical/High/Medium principle, its clause_title is copied
+   exactly from the index, and no clause appears twice. Drop any item that fails; fix
+   any severity that the PRECEDENCE RULE decides differently. Then confirm coverage: no
+   index entry whose text matches a principle is missing from the list or unrepresented
+   in a merged entry.
 
 Output the final verified list in clause-index order.
