@@ -19,6 +19,17 @@ Include a category ONLY if the contract states a term for it. NEVER emit a field
 value would be "Absent", "None", "Not specified", or any equivalent — a category the
 contract does not state is skipped silently, every run (absence of a protection is the
 risk list's job, not key_information's).
+Three category boundaries, decided the same way every run: (a) "Non-Compete /
+Non-Solicit" exists ONLY for an express covenant not to compete or not to solicit;
+use restrictions, license limits, exclusivity, or confidentiality duties never create
+this field. (b) "Dispute Resolution" exists ONLY when the contract states a mechanism
+beyond governing law and venue (arbitration, mediation, escalation steps); a clause
+that only names courts, jurisdiction, or injunctive relief belongs entirely in
+"Governing Law" — never emit "Dispute Resolution" for it. (c) "Notices / Authorized
+Representatives" exists ONLY when the contract states a procedure for formal legal
+notices between the parties (addresses, delivery methods, effectiveness); inquiry
+email addresses, signature-block mechanics, and amendment formalities do not create
+this field — omit them.
 A fact that fits a category above goes INTO that category's value (return/destruction
 of materials -> Termination; a surviving license or assignment -> IP Ownership) — never
 as a new field. A DEAL-DEFINING fact that fits NONE of the categories — a stated right,
@@ -28,9 +39,11 @@ credit, an exclusivity grant) — gets its OWN field: field_name is the clause's
 heading VERBATIM (without numbering); use the fact's standard legal name ONLY when the
 clause has no heading; never compose a new name when a heading exists. ONE field per
 fact, the SAME field_name every run, listed after the categories in document order.
-An extra field must state a party-binding term with a concrete consequence; if you are
-weighing whether a fact qualifies, it does NOT — fold it into a category value or omit
-it, the same way every run. Recitals, definitions, and procedural mechanics (notices
+An extra field must state a party-binding term with a concrete consequence; a stated
+right, gate, or requirement one party can enforce against the other (an approval or
+testing gate, a pricing constraint, a retention right) ALWAYS qualifies — include it
+every run. If you are still weighing whether a fact qualifies, it does NOT — fold it
+into a category value or omit it, the same way every run. Recitals, definitions, and procedural mechanics (notices
 logistics, counterparts, severability) define no deal term — omit them.
 Do not editorialize inside values (no "likely drafting error" / "favorable to X"
 commentary).
