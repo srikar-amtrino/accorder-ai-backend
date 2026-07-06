@@ -111,10 +111,13 @@ def _vote_risks(
             if not key or key in seen_in_resp:
                 continue  # drop empties and within-run duplicates
             seen_in_resp.add(key)
-            bucket = votes.setdefault(key, {"title": title, "severities": [], "issues": []})
+            bucket = votes.setdefault(key, {"title": title, "severities": [], "issues": [], "para_identifiers": []})
             bucket["severities"].append(severity)
             if item.issue and item.issue.strip():
                 bucket["issues"].append(item.issue.strip())
+            pid = (getattr(item, "para_identifier", "") or "").strip()
+            if pid:
+                bucket["para_identifiers"].append(pid)
             if key not in first_seen:
                 first_seen[key] = order_counter
                 order_counter += 1
@@ -134,7 +137,8 @@ def _vote_risks(
         bucket = votes[key]
         severity = _majority_severity(bucket["severities"])
         issue = _pick_issue(bucket["issues"])
-        risks.append(RiskComplianceInsight(severity=severity, clause_title=bucket["title"], issue=issue))
+        para_identifier = _pick_para_identifier(bucket["para_identifiers"])
+        risks.append(RiskComplianceInsight(severity=severity, clause_title=bucket["title"], para_identifier=para_identifier, issue=issue))
 
     return risks, set(consensus_keys)
 
@@ -170,6 +174,16 @@ def _pick_issue(issues: List[str]) -> str:
     if not issues:
         return ""
     return sorted(issues, key=lambda s: (len(s), s))[0]
+
+
+def _pick_para_identifier(identifiers: List[str]) -> str:
+    """Most common paragraph identifier for the clause; ties break by text for stability."""
+    if not identifiers:
+        return ""
+    counts: Dict[str, int] = {}
+    for pid in identifiers:
+        counts[pid] = counts.get(pid, 0) + 1
+    return sorted(counts, key=lambda p: (-counts[p], p))[0]
 
 
 def _pick_canonical(
