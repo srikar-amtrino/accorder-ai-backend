@@ -8,9 +8,10 @@ is passed in so the module stays container-free and directly testable.
 
 import asyncio
 import json
+import re
 import time
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Dict, List, Optional, Tuple
 
 from src.schemas.contract_analyzer import (
     ContractAnalyzerResponse,
@@ -32,6 +33,37 @@ _STREAM_CHUNK_CHARS = 48
 # Number of independent risk analyses merged by majority vote. They run in
 # parallel, so latency equals the slowest single call.
 RISK_VOTES = 5
+
+
+def _norm_title(title: str) -> str:
+    """Normalise a clause title for matching (mirror of risk_consensus._norm)."""
+    return re.sub(r"\s+", " ", (title or "").strip().strip(".").strip()).lower()
+
+
+def build_para_map(textinformation: List[Any]) -> Dict[str, str]:
+    """Map each clause title to the input paragraph identifier it came from.
+
+    Grounding para_identifier in code (not via the model) keeps it deterministic
+    and guarantees the caller's own paragraph id (e.g. "P0026") instead of a
+    section number the model infers from the contract's own text.
+    """
+    para_map: Dict[str, str] = {}
+    for para in textinformation:
+        for title in extract_clause_titles(para.text):
+            key = _norm_title(title)
+            if key and key not in para_map:
+                para_map[key] = para.paraindetifier
+    return para_map
+
+
+def _apply_para_ids(risks: List[RiskComplianceInsight], para_map: Optional[Dict[str, str]]) -> None:
+    """Overwrite each risk's para_identifier with the grounded input paragraph id."""
+    if not para_map:
+        return
+    for r in risks:
+        pid = para_map.get(_norm_title(r.clause_title))
+        if pid:
+            r.para_identifier = pid
 
 
 async def _sections(model: Any, content: str, session_id: str) -> ContractSectionsResponse:
@@ -72,7 +104,9 @@ async def _risk_consensus(model: Any, content: str, session_id: str) -> List[Ris
     return build_risk_consensus(risk_lists, extract_clause_titles(content))
 
 
-async def analyze_contract_2call(model: Any, content: str, session_id: str) -> Tuple[ContractAnalyzerResponse, Dict[str, float]]:
+async def analyze_contract_2call(
+    model: Any, content: str, session_id: str, para_map: Optional[Dict[str, str]] = None
+) -> Tuple[ContractAnalyzerResponse, Dict[str, float]]:
     """Sections and risk consensus run concurrently, merged into one response."""
     t0 = time.time()
     sections, risks = await asyncio.gather(
@@ -81,6 +115,7 @@ async def analyze_contract_2call(model: Any, content: str, session_id: str) -> T
     )
     total = time.time() - t0
 
+    _apply_para_ids(risks, para_map)
     response = ContractAnalyzerResponse(
         summary=sections.summary,
         key_information=sections.key_information,
@@ -90,7 +125,7 @@ async def analyze_contract_2call(model: Any, content: str, session_id: str) -> T
     return response, {"total_s": total}
 
 
-def get_key_information_stream(model: Any, content: str, session_id: str) -> Any:
+def get_key_information_stream(model: Any, content: str, session_id: str, para_map: Optional[Dict[str, str]] = None) -> Any:
     """Stream sections live while the risk consensus runs; splice into one JSON object."""
 
     async def event_stream() -> Any:
@@ -121,6 +156,7 @@ def get_key_information_stream(model: Any, content: str, session_id: str) -> Any
 
             # Phase 2: the consensus risk list, usually already done or nearly done.
             risks = await risk_task
+            _apply_para_ids(risks, para_map)
         except BaseException:
             risk_task.cancel()
             raise

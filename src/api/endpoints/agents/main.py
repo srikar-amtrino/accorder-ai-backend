@@ -33,7 +33,7 @@ from src.tools.general_review import (
     general_review_streaming_service,
 )
 from src.core.container import get_bedrock_model
-from src.tools.contract_analyzer_2call import analyze_contract_2call
+from src.tools.contract_analyzer_2call import analyze_contract_2call, build_para_map
 from src.tools.contract_analyzer_2call import get_key_information_stream as get_2call_stream
 from src.tools.key_information import (
     get_key_information_generate,
@@ -186,7 +186,8 @@ async def contract_analyzer_2call_endpoint(request: ContractAnalyzerRequest, ses
     """Analyze a contract in two calls: sections, then a self-verified risk list."""
 
     document_data = "\n".join(para.text for para in request.textinformation if para.text.strip())
-    result, _timings = await analyze_contract_2call(get_bedrock_model(), document_data, session_id)
+    para_map = build_para_map(request.textinformation)
+    result, _timings = await analyze_contract_2call(get_bedrock_model(), document_data, session_id, para_map)
     return result
 
 
@@ -195,9 +196,10 @@ async def contract_analyzer_2call_stream_endpoint(request: ContractAnalyzerReque
     """Stream sections live, then splice in the self-verified risk list."""
 
     document_data = "\n".join(para.text for para in request.textinformation if para.text.strip())
+    para_map = build_para_map(request.textinformation)
 
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
-    return StreamingResponse(get_2call_stream(get_bedrock_model(), document_data, session_id), media_type="text/event-stream", headers=headers)
+    return StreamingResponse(get_2call_stream(get_bedrock_model(), document_data, session_id, para_map), media_type="text/event-stream", headers=headers)
 
 
 @router.post("/playbook-review", response_model=PlayBookReviewFinalResponse)
