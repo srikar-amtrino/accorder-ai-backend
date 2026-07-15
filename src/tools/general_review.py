@@ -1,452 +1,326 @@
-# import asyncio
-# from pathlib import Path
-# from typing import Any, Dict, List, Optional, Tuple
-
-# import numpy as np
-
-# from src.config.logging import get_logger
-# from src.core.container import (
-#     get_bedrock_model,
-#     get_embedding_service,
-#     get_session_manager,
-# )
-# from src.schemas.general_review import (
-#     ClauseSuggestionsLLMResponse,
-#     GeneralReviewResponse,
-#     PromptSplitLLMResponse,
-#     RelevanceCheckLLMResponse,
-#     Suggestion,
-# )
-# from src.services.clause_extractor import (
-#     ClauseUnit,
-#     extract_all_clauses,
-#     extract_clauses,
-# )
-# from src.services.session_manager import SessionData
-
-# logger = get_logger(__name__)
-
-# MAX_CONCURRENT_EVALS = 5
-
-# MAX_CLAUSE_CHARS = 40_000
-
-# SMALL_DOC_CLAUSE_LIMIT = 8
-
-# MATCH_SIMILARITY_THRESHOLD = 0.20
-
-# MAX_MATCHED_CLAUSES = 3
-
-# _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v1"
-
-# _CLAUSE_REVIEW_SYSTEM = (_PROMPTS_DIR / "general_review_clause_system.mustache").read_text(encoding="utf-8")
-# _CLAUSE_REVIEW_USER = (_PROMPTS_DIR / "general_review_clause_user.mustache").read_text(encoding="utf-8")
-
-# _RELEVANCE_SYSTEM = (_PROMPTS_DIR / "general_review_relevance_system.mustache").read_text(encoding="utf-8")
-# _RELEVANCE_USER = (_PROMPTS_DIR / "general_review_relevance_user.mustache").read_text(encoding="utf-8")
-
-# _SPLITTER_SYSTEM = (_PROMPTS_DIR / "general_review_prompt_splitter_system.mustache").read_text(encoding="utf-8")
-# _SPLITTER_USER = (_PROMPTS_DIR / "general_review_prompt_splitter_user.mustache").read_text(encoding="utf-8")
-
-
-# # --- Session helpers ---------------------------------------------------------
-
-
-# def _get_session(session_id: str) -> SessionData:
-#     """Retrieve session data or raise ``ValueError``."""
-
-#     session_manager = get_session_manager()
-#     session = session_manager.get_session(session_id)
-#     if not session:
-#         raise ValueError(f"Session '{session_id}' not found or expired.")
-#     if len(session.chunk_store) == 0:
-#         raise ValueError("No document ingested in this session.")
-#     return session
-
-
-# # --- LLM call plumbing -------------------------------------------------------
-
-
-# async def _split_prompt_into_subtopics(user_prompt: str, session_id: str) -> List[str]:
-#     """Break a multi-topic user prompt into atomic sub-instructions"""
-#     llm = get_bedrock_model()
-#     try:
-#         parsed: PromptSplitLLMResponse = await llm.generate(
-#             prompt=_SPLITTER_USER,
-#             context={"user_prompt": user_prompt},
-#             response_model=PromptSplitLLMResponse,
-#             session_id=session_id,
-#             system_message=_SPLITTER_SYSTEM,
-#         )
-#     except Exception as exc:
-#         logger.exception("Prompt splitter failed; falling back to full prompt: %s", exc)
-#         return [user_prompt]
-
-#     cleaned = [s.strip() for s in parsed.subtopics if s and s.strip()]
-#     if not cleaned:
-#         logger.warning("Prompt splitter returned no subtopics; falling back to full prompt.")
-#         return [user_prompt]
-#     return cleaned
-
-
-# async def _run_relevance_check(clause_title: str, clause_text: str, user_prompt: str, session_id: str) -> RelevanceCheckLLMResponse:
-#     """Ask the gate LLM whether the user's query applies to the selected clause."""
-#     llm = get_bedrock_model()
-#     response: RelevanceCheckLLMResponse = await llm.generate(
-#         prompt=_RELEVANCE_USER,
-#         context={
-#             "clause_title": clause_title,
-#             "clause_text": clause_text,
-#             "user_prompt": user_prompt,
-#         },
-#         response_model=RelevanceCheckLLMResponse,
-#         session_id=session_id,
-#         system_message=_RELEVANCE_SYSTEM,
-#     )
-#     return response
-
-
-# async def _run_clause_review(clause_title: str, clause_text: str, user_prompt: str, session_id: str) -> List[Suggestion]:
-#     """Run the per-clause review LLM call and return the suggestions it produced."""
-
-#     llm = get_bedrock_model()
-#     parsed: ClauseSuggestionsLLMResponse = await llm.generate(
-#         prompt=_CLAUSE_REVIEW_USER,
-#         context={
-#             "clause_title": clause_title,
-#             "clause_text": clause_text,
-#             "user_prompt": user_prompt,
-#         },
-#         response_model=ClauseSuggestionsLLMResponse,
-#         system_message=_CLAUSE_REVIEW_SYSTEM,
-#         session_id=session_id,
-#     )
-
-#     valid: List[Suggestion] = []
-#     for suggestion in parsed.suggestions:
-#         if not suggestion.original_text or suggestion.original_text not in clause_text:
-#             logger.warning(
-#                 "Dropping suggestion for clause '%s' — original_text is not a " "verbatim substring of the clause (apply would fail).",
-#                 clause_title,
-#             )
-#             continue
-#         # Force the clause_title to the canonical one we passed in — the model
-#         # occasionally rewrites it, and the frontend groups suggestions by title.
-#         valid.append(
-#             Suggestion(
-#                 clause_title=clause_title,
-#                 reason=suggestion.reason,
-#                 original_text=suggestion.original_text,
-#                 suggested_fix=suggestion.suggested_fix,
-#             )
-#         )
-#     return valid
-
-
-# # --- Clause-list preparation for Mode 2 --------------------------------------
-
-
-# def _truncate_for_review(title: str, text: str) -> str:
-#     """Trim an oversized clause body so it fits inside the per-call budget."""
-
-#     if len(text) <= MAX_CLAUSE_CHARS:
-#         return text
-#     logger.warning(
-#         "Clause '%s' is %d chars — truncating to %d for review.",
-#         title,
-#         len(text),
-#         MAX_CLAUSE_CHARS,
-#     )
-#     return text[:MAX_CLAUSE_CHARS]
-
-
-# def _clause_display_title(clause: ClauseUnit) -> str:
-#     """Choose a human-readable title for a clause (falls back to position)."""
-
-#     if clause.heading:
-#         return clause.heading.strip()
-#     return f"Clause at position {clause.doc_order + 1}"
-
-
-# # --- Mode 2: clause matching -------------------------------------------------
-
-
-# async def _ensure_embeddings_for_clauses(clauses: List[ClauseUnit], embedding_service: Any, session_id: str) -> None:
-#     """Backfill embeddings for any clause that doesn't have one yet."""
-
-#     for clause in clauses:
-#         if clause.embedding and len(clause.embedding) > 0:
-#             continue
-#         clause.embedding = await embedding_service.generate_embeddings(text=clause.content, session_id=session_id)
-
-
-# def _cosine_scores(query_vec: List[float], clauses: List[ClauseUnit]) -> np.ndarray:
-#     """Cosine similarity scores between query and every clause."""
-
-#     clause_mat = np.array([c.embedding for c in clauses], dtype=np.float32)
-#     query = np.array(query_vec, dtype=np.float32)
-
-#     clause_norms = np.linalg.norm(clause_mat, axis=1, keepdims=True)
-#     clause_mat = clause_mat / np.maximum(clause_norms, 1e-10)
-
-#     query_norm = np.linalg.norm(query)
-#     query = query / max(query_norm, 1e-10)
-
-#     return clause_mat @ query
-
-
-# def _select_matched_clauses(clauses: List[ClauseUnit], scores: np.ndarray) -> List[Tuple[ClauseUnit, float]]:
-#     """Pick which clauses to review based on similarity scores."""
-
-#     indexed = [(i, s) for i, s in enumerate(scores.tolist()) if s >= MATCH_SIMILARITY_THRESHOLD]
-#     indexed.sort(key=lambda kv: kv[1], reverse=True)
-#     capped = indexed[:MAX_MATCHED_CLAUSES]
-#     return [(clauses[i], score) for i, score in capped]
-
-
-# # --- Public API: clause_review -----------------------------------------------
-
-
-# async def clause_review(session_id: str, clause_text: str, user_prompt: str, clause_title: str = "Selected Clause") -> GeneralReviewResponse:
-#     """Mode 1 — review a single user-selected clause against the user prompt, with a relevance gate."""
-
-#     _get_session(session_id)  # validates session exists and has content
-
-#     # Trim grossly oversized selections before any LLM call.
-#     trimmed_text = _truncate_for_review(clause_title, clause_text)
-
-#     # --- Relevance gate ---
-#     try:
-#         relevance = await _run_relevance_check(clause_title, trimmed_text, user_prompt, session_id)
-#     except Exception as exc:
-#         # If the gate itself fails, we don't want to block the user —
-#         # log loudly and fall through to the review.
-#         logger.exception("Relevance gate failed; proceeding with review: %s", exc)
-#         relevance = RelevanceCheckLLMResponse(relevant=True, reason="gate unavailable")
-
-#     if not relevance.relevant:
-#         return GeneralReviewResponse(
-#             session_id=session_id,
-#             mode="clause",
-#             status="clause_query_mismatch",
-#             alert_message=relevance.reason,
-#             suggestions=[],
-#         )
-
-#     # --- Main review ---
-#     suggestions = await _run_clause_review(clause_title, trimmed_text, user_prompt, session_id)
-
-#     # When the relevance gate passed but the clause produced no suggestions,
-#     # the selected clause does not actually contain content that needs
-#     # changing to satisfy the user's ask. Communicate that via alert_message
-#     # so the user doesn't see a silent empty response and wonder what happened.
-#     alert_message: Optional[str] = None
-#     if not suggestions:
-#         alert_message = "The selected clause does not contain content that needs to change " "to satisfy your query. You may want to check other clauses or " "rephrase your question."
-
-#     return GeneralReviewResponse(
-#         session_id=session_id,
-#         mode="clause",
-#         status="ok",
-#         alert_message=alert_message,
-#         suggestions=suggestions,
-#     )
-
-
-# # --- Public API: full_document_review ---------------------------------------
-
-
-# async def _match_clauses_for_subtopic(subtopic: str, clauses: List[ClauseUnit], embedding_service: Any, small_doc: bool, session_id: str) -> List[Tuple[ClauseUnit, float]]:
-#     """For a given sub-topic, pick which clauses to review. Returns (clause, score) pairs."""
-
-#     if small_doc:
-#         return [(c, 1.0) for c in clauses]
-
-#     query_vec = await embedding_service.generate_embeddings(text=subtopic, session_id=session_id)
-#     scores = _cosine_scores(query_vec, clauses)
-#     matched = _select_matched_clauses(clauses, scores)
-
-#     top_scored = sorted(
-#         [(_clause_display_title(c), float(s)) for c, s in zip(clauses, scores.tolist())],
-#         key=lambda kv: kv[1],
-#         reverse=True,
-#     )[:5]
-#     top_5_str = "; ".join(f"{title!r}={score:.3f}" for title, score in top_scored)
-
-#     logger.info(
-#         "Subtopic '%s': matched %d of %d clauses (threshold=%.2f). Top 5: %s",
-#         subtopic,
-#         len(matched),
-#         len(clauses),
-#         MATCH_SIMILARITY_THRESHOLD,
-#         top_5_str,
-#     )
-#     return matched
-
-
-# async def _run_subtopic_review(
-#     subtopic: str, clauses: List[ClauseUnit], embedding_service: Any, small_doc: bool, semaphore: asyncio.Semaphore, session_id: str
-# ) -> List[Tuple[ClauseUnit, List[Suggestion]]]:
-#     """For a given sub-topic, run review on the matched clauses and return their suggestions. Returns (clause, suggestions) pairs."""
-
-#     matched = await _match_clauses_for_subtopic(subtopic, clauses, embedding_service, small_doc, session_id)
-
-#     async def _review_one(clause: ClauseUnit) -> List[Suggestion]:
-#         title = _clause_display_title(clause)
-#         text = _truncate_for_review(title, clause.content)
-#         async with semaphore:
-#             try:
-#                 return await _run_clause_review(title, text, subtopic, session_id)
-#             except Exception:
-#                 logger.exception(
-#                     "Per-clause review failed for '%s' on subtopic '%s'",
-#                     title,
-#                     subtopic,
-#                 )
-#                 return []
-
-#     results = await asyncio.gather(*[_review_one(c) for c, _ in matched])
-#     return [(clause, suggestions) for (clause, _score), suggestions in zip(matched, results)]
-
-
-# async def full_document_review(session_id: str, user_prompt: str) -> GeneralReviewResponse:
-#     """Mode 2 — review the full document against the user prompt, by splitting the prompt into sub-topics, retrieving relevant clauses for each, and reviewing those clauses. Returns aggregated suggestions across all sub-topics."""
-
-#     session = _get_session(session_id)
-#     embedding_service = get_embedding_service()
-
-#     latest_document_id = session.metadata.get("latest_document_id")
-#     if latest_document_id and latest_document_id in session.documents:
-#         clauses = extract_clauses(session, latest_document_id)
-#         logger.info(
-#             "Scoping full_document_review to latest document '%s' (%d clauses).",
-#             latest_document_id,
-#             len(clauses),
-#         )
-#     else:
-#         # clauses = extract_all_clauses(session)
-
-#         latest_document_id = session.metadata.get("latest_document_id")
-#         if latest_document_id and latest_document_id in session.documents:
-#             clauses = extract_clauses(session, latest_document_id)
-#             logger.info(
-#                 "Scoping full_document_review to latest document '%s' (%d clauses).",
-#                 latest_document_id,
-#                 len(clauses),
-#             )
-#         else:
-#             clauses = extract_all_clauses(session)
-
-#     if not clauses:
-#         raise ValueError("No clauses could be extracted from the ingested document.")
-
-#     small_doc = len(clauses) <= SMALL_DOC_CLAUSE_LIMIT
-#     if small_doc:
-#         logger.info(
-#             "Small document (%d clauses) — reviewing all per sub-topic without matching.",
-#             len(clauses),
-#         )
-#     else:
-#         await _ensure_embeddings_for_clauses(clauses, embedding_service, session_id)
-
-#     subtopics = await _split_prompt_into_subtopics(user_prompt, session_id)
-#     logger.info("Prompt split into %d sub-topic(s): %s", len(subtopics), subtopics)
-
-#     semaphore = asyncio.Semaphore(MAX_CONCURRENT_EVALS)
-
-#     subtopic_outputs = await asyncio.gather(*[_run_subtopic_review(st, clauses, embedding_service, small_doc, semaphore, session_id) for st in subtopics])
-
-#     # or whether something broke.
-#     seen_suggestion_keys: set = set()
-#     suggestions_by_order: Dict[int, List[Suggestion]] = {}
-#     subtopics_with_content: set = set()
-
-#     for subtopic_idx, subtopic_result in enumerate(subtopic_outputs):
-#         for clause, suggestions in subtopic_result:
-#             for suggestion in suggestions:
-#                 suggestion_key = (suggestion.clause_title, suggestion.original_text)
-#                 if suggestion_key in seen_suggestion_keys:
-#                     continue
-#                 seen_suggestion_keys.add(suggestion_key)
-#                 suggestions_by_order.setdefault(clause.doc_order, []).append(suggestion)
-#                 subtopics_with_content.add(subtopic_idx)
-
-#     # Collect sub-topics that produced nothing anywhere in the document.
-#     not_found_subtopics: List[str] = [subtopics[idx] for idx in range(len(subtopics)) if idx not in subtopics_with_content]
-#     for subtopic_text in not_found_subtopics:
-#         logger.info("Sub-topic '%s' produced no content; marked as not found.", subtopic_text)
-
-#     # Build alert_message based on what was / was not found.
-#     alert_message: Optional[str] = None
-#     if not_found_subtopics and suggestions_by_order:
-#         quoted = ", ".join(f'"{s}"' for s in not_found_subtopics)
-#         alert_message = f"The following topic(s) were not found in this document: {quoted}. " "The other topic(s) you asked about produced the suggestions below."
-#     elif not_found_subtopics and not suggestions_by_order:
-#         quoted = ", ".join(f'"{s}"' for s in not_found_subtopics)
-#         alert_message = f"No content matching your request was found in this document. " f"Topic(s) checked: {quoted}."
-
-#     flat_suggestions: List[Suggestion] = []
-#     for doc_order in sorted(suggestions_by_order.keys()):
-#         flat_suggestions.extend(suggestions_by_order[doc_order])
-
-#     return GeneralReviewResponse(
-#         session_id=session_id,
-#         mode="document",
-#         status="ok",
-#         alert_message=alert_message,
-#         suggestions=flat_suggestions,
-#     )
-
-
+import asyncio
+import hashlib
 import json
+import re
+from collections import Counter, OrderedDict
 from pathlib import Path
-from typing import Any
+from typing import AsyncIterator, Dict, List, Optional, Sequence, Set, Tuple
 
 from src.config.logging import get_logger
 from src.core.container import get_bedrock_model
-from src.schemas.general_review import GeneralReviewRequest, GeneralReviewResponse
+from src.schemas.general_review import (
+    GeneralReviewRequest,
+    GeneralReviewResponse,
+    Suggestion,
+    TextInformation,
+)
 
 logger = get_logger(__name__)
+
+# Caps parallel Bedrock calls so large documents don't exhaust the client pool.
+MAX_CONCURRENT_CALLS = 6
+
+# Parallel review votes per batch; a finding needs a majority to survive. Raise to 3 for
+# stronger run-to-run consistency at ~3x the per-review cost.
+CONSENSUS_VOTES = 1
+_MAJORITY = CONSENSUS_VOTES // 2 + 1
+
+# Character budget per review batch; keeps each LLM call focused and well under limits.
+BATCH_CHAR_BUDGET = 6000
+
+# Short paragraphs with few words are treated as headings and kept with their body.
+_HEADING_MAX_CHARS = 80
+_HEADING_MAX_WORDS = 8
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "general_review"
 _GENERAL_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
 _GENERAL_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
 
+# Identical documents always return the identical review (LRU, per process).
+_CACHE_MAX_ENTRIES = 32
+_response_cache: "OrderedDict[str, GeneralReviewResponse]" = OrderedDict()
+
+
+def _request_fingerprint(paragraphs: Sequence[TextInformation]) -> str:
+    payload = json.dumps([[para.paraindetifier, para.text] for para in paragraphs], ensure_ascii=False)
+    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _cache_get(key: str) -> Optional[GeneralReviewResponse]:
+    cached = _response_cache.get(key)
+    if cached is not None:
+        _response_cache.move_to_end(key)
+    return cached
+
+
+def _cache_put(key: str, response: GeneralReviewResponse) -> None:
+    _response_cache[key] = response
+    _response_cache.move_to_end(key)
+    while len(_response_cache) > _CACHE_MAX_ENTRIES:
+        _response_cache.popitem(last=False)
+
+
+# (document position, paragraph) pairs — position drives final ordering.
+_Batch = List[Tuple[int, TextInformation]]
+
+
+def _is_heading(text: str) -> bool:
+    """Heuristic for standalone heading paragraphs (e.g. 'Non-Compete.')."""
+
+    stripped = text.strip()
+    return 0 < len(stripped) <= _HEADING_MAX_CHARS and len(stripped.split()) <= _HEADING_MAX_WORDS
+
+
+def _build_batches(paragraphs: Sequence[TextInformation]) -> List[_Batch]:
+    """Split paragraphs into document-ordered batches under the char budget."""
+
+    indexed = [(idx, para) for idx, para in enumerate(paragraphs) if para.text.strip()]
+
+    batches: List[_Batch] = []
+    current: _Batch = []
+    current_size = 0
+
+    for item in indexed:
+        current.append(item)
+        current_size += len(item[1].text)
+        if current_size >= BATCH_CHAR_BUDGET:
+            # Carry a trailing heading forward so it stays with its body text.
+            carry: _Batch = []
+            if len(current) > 1 and _is_heading(current[-1][1].text):
+                carry = [current.pop()]
+            batches.append(current)
+            current = carry
+            current_size = sum(len(para.text) for _, para in current)
+
+    if current:
+        batches.append(current)
+    return batches
+
+
+def _format_document(batch: _Batch) -> str:
+    """Render a batch as plain paragraphs — identifiers stay out of the prompt."""
+
+    return "\n\n".join(para.text.strip() for _, para in batch)
+
+
+_WS_RE = re.compile(r"\s+")
+
+# Character families the model tends to normalize while copying; each matches all variants.
+_APOSTROPHES = "'’‘"
+_QUOTES = '"“”'
+_DASHES = "-–—"
+
+
+def _tolerant_pattern(needle: str) -> str:
+    """Regex matching needle while tolerating whitespace runs and quote/dash variants."""
+
+    tokens = []
+    for token in needle.split():
+        chars = []
+        for char in token:
+            if char in _APOSTROPHES:
+                chars.append(f"[{_APOSTROPHES}]")
+            elif char in _QUOTES:
+                chars.append(f"[{_QUOTES}]")
+            elif char in _DASHES:
+                chars.append(f"[{re.escape(_DASHES)}]")
+            else:
+                chars.append(re.escape(char))
+        tokens.append("".join(chars))
+    return r"\s+".join(tokens)
+
+
+def _ground(original_text: str, batch: _Batch) -> Optional[Tuple[int, str]]:
+    """Find original_text inside a single paragraph and return (position, exact source text).
+
+    Exact match first; then a whitespace/quote-tolerant match that recovers the
+    true verbatim substring, so the returned text always applies cleanly.
+    """
+
+    needle = original_text.strip()
+    if not needle:
+        return None
+
+    for idx, para in batch:
+        if needle in para.text:
+            return idx, needle
+
+    pattern = _tolerant_pattern(needle)
+    for idx, para in batch:
+        match = re.search(pattern, para.text)
+        if match:
+            return idx, match.group(0)
+    return None
+
+
+def _validate_batch(suggestions: List[Suggestion], batch: _Batch, all_texts: Sequence[str], seen: Set[str]) -> List[Tuple[int, Suggestion]]:
+    """Keep only verbatim-grounded, unambiguous, unseen suggestions, ordered by document position."""
+
+    valid: List[Tuple[int, Suggestion]] = []
+    for suggestion in suggestions:
+        grounded = _ground(suggestion.original_text, batch)
+        if grounded is None:
+            logger.warning("Dropping suggestion for clause '%s' — original_text could not be grounded in a single source paragraph.", suggestion.clause)
+            continue
+        position, exact_text = grounded
+        # An anchor found in more than one paragraph could be applied to the wrong place.
+        if sum(1 for text in all_texts if exact_text in text) > 1:
+            logger.warning("Dropping suggestion for clause '%s' — original_text is ambiguous (appears in multiple paragraphs).", suggestion.clause)
+            continue
+        key = _WS_RE.sub(" ", exact_text).strip()
+        if key in seen:
+            continue
+        seen.add(key)
+        if exact_text != suggestion.original_text:
+            suggestion = suggestion.model_copy(update={"original_text": exact_text})
+        valid.append((position, suggestion))
+
+    valid.sort(key=lambda pair: pair[0])
+    return valid
+
+
+async def _review_batch(batch: _Batch, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
+    """Run the schema-enforced review call for one batch, with a single retry."""
+
+    llm_model = get_bedrock_model()
+    document = _format_document(batch)
+
+    async with semaphore:
+        for attempt in (1, 2):
+            try:
+                return await llm_model.generate(
+                    prompt=_GENERAL_REVIEW_USER,
+                    context={"document": document},
+                    response_model=GeneralReviewResponse,
+                    system_message=_GENERAL_REVIEW_SYSTEM,
+                    session_id=session_id,
+                )
+            except Exception:
+                if attempt == 2:
+                    raise
+                logger.exception("Batch review failed on attempt %d; retrying once.", attempt)
+                await asyncio.sleep(2)
+
+    raise RuntimeError("unreachable")
+
+
+async def _review_batch_consensus(batch: _Batch, all_texts: Sequence[str], semaphore: asyncio.Semaphore, session_id: str) -> List[Tuple[int, Suggestion]]:
+    """Review one batch with parallel votes and keep only majority-backed findings."""
+
+    outcomes = await asyncio.gather(*[_review_batch(batch, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+
+    # A majority of votes must succeed; one lost vote never fails the review.
+    votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewResponse)]
+    if len(votes) < _MAJORITY:
+        raise next(outcome for outcome in outcomes if isinstance(outcome, BaseException))
+    if len(votes) < CONSENSUS_VOTES:
+        logger.warning("Batch consensus proceeding with %d of %d votes.", len(votes), CONSENSUS_VOTES)
+
+    # One grounded finding per paragraph per vote, so vote counts stay honest.
+    per_vote: List[Dict[int, Suggestion]] = []
+    for vote in votes:
+        grounded: Dict[int, Suggestion] = {}
+        for position, suggestion in _validate_batch(vote.suggestions, batch, all_texts, set()):
+            grounded.setdefault(position, suggestion)
+        per_vote.append(grounded)
+
+    counts = Counter(position for grounded in per_vote for position in grounded)
+    picked: Dict[int, Suggestion] = {}
+    for grounded in per_vote:
+        for position, suggestion in grounded.items():
+            if counts[position] >= _MAJORITY and position not in picked:
+                picked[position] = suggestion
+
+    return sorted(picked.items())
+
 
 async def general_review_service(request: GeneralReviewRequest, session_id: str) -> GeneralReviewResponse:
-    """Review the clause or the document that user have given."""
+    """Review the full document or the selected clauses the frontend sent."""
 
-    llm_model = get_bedrock_model()
+    fingerprint = _request_fingerprint(request.textinformation)
+    cached = _cache_get(fingerprint)
+    if cached is not None:
+        logger.info("General review: cache hit — returning the stored review for this document.")
+        return cached
 
-    llm_result: GeneralReviewResponse = await llm_model.generate(
-        prompt=_GENERAL_REVIEW_USER,
-        context={
-            "user_query": request.query,
-            "context": [chunk.model_dump() for chunk in request.textinformation],
-        },
-        response_model=GeneralReviewResponse,
-        system_message=_GENERAL_REVIEW_SYSTEM,
-        session_id=session_id,
-    )
+    batches = _build_batches(request.textinformation)
+    if not batches:
+        return GeneralReviewResponse(suggestions=[])
 
-    return llm_result
+    logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each.", len(request.textinformation), len(batches), CONSENSUS_VOTES)
+
+    all_texts = [para.text for para in request.textinformation]
+    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
+    results = await asyncio.gather(*[_review_batch_consensus(batch, all_texts, semaphore, session_id) for batch in batches])
+
+    seen: Set[str] = set()
+    positioned: List[Tuple[int, Suggestion]] = []
+    for batch_result in results:
+        for position, suggestion in batch_result:
+            key = _WS_RE.sub(" ", suggestion.original_text).strip()
+            if key in seen:
+                continue
+            seen.add(key)
+            positioned.append((position, suggestion))
+
+    positioned.sort(key=lambda pair: pair[0])
+    response = GeneralReviewResponse(suggestions=[suggestion for _, suggestion in positioned])
+    _cache_put(fingerprint, response)
+    return response
 
 
-async def general_review_streaming_service(request: GeneralReviewRequest, session_id: str) -> Any:
-    """Review the clause or the document that user have given in streaming mode."""
+async def general_review_streaming_service(request: GeneralReviewRequest, session_id: str) -> AsyncIterator[str]:
+    """Stream the review as SSE text fragments that concatenate into one valid JSON response.
 
-    llm_model = get_bedrock_model()
+    Batches run in parallel; each batch's validated suggestions are emitted in
+    document order as soon as that batch completes.
+    """
 
-    stream = llm_model.generate_stream(
-        prompt=_GENERAL_REVIEW_USER,
-        context={
-            "user_query": request.query,
-            "context": [chunk.model_dump() for chunk in request.textinformation],
-        },
-        system_message=_GENERAL_REVIEW_SYSTEM,
-        session_id=session_id,
-    )
+    def frame(fragment: str) -> str:
+        return f"data: {json.dumps(fragment)}\n\n"
 
-    async for chunk in stream:
-        yield f"data: {json.dumps(chunk)}\n\n"
+    tasks: List[asyncio.Task] = []
+    try:
+        fingerprint = _request_fingerprint(request.textinformation)
+        cached = _cache_get(fingerprint)
+        if cached is not None:
+            logger.info("General review stream: cache hit — streaming the stored review for this document.")
+            yield frame('{"suggestions": [')
+            for index, suggestion in enumerate(cached.suggestions):
+                separator = "" if index == 0 else ","
+                yield frame(separator + suggestion.model_dump_json())
+            yield frame("]}")
+            yield "data: [DONE]\n\n"
+            return
+
+        batches = _build_batches(request.textinformation)
+        logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each.", len(request.textinformation), len(batches), CONSENSUS_VOTES)
+
+        all_texts = [para.text for para in request.textinformation]
+        semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
+        tasks = [asyncio.create_task(_review_batch_consensus(batch, all_texts, semaphore, session_id)) for batch in batches]
+
+        yield frame('{"suggestions": [')
+
+        emitted: List[Suggestion] = []
+        seen: Set[str] = set()
+        for task in tasks:
+            for _, suggestion in await task:
+                key = _WS_RE.sub(" ", suggestion.original_text).strip()
+                if key in seen:
+                    continue
+                seen.add(key)
+                separator = "" if not emitted else ","
+                yield frame(separator + suggestion.model_dump_json())
+                emitted.append(suggestion)
+
+        yield frame("]}")
+        _cache_put(fingerprint, GeneralReviewResponse(suggestions=emitted))
+
+    except Exception as exc:
+        logger.exception("General review stream failed: %s", exc)
+        for task in tasks:
+            task.cancel()
+        yield f"data: {json.dumps({'error': 'General review failed. Please try again.'})}\n\n"
 
     yield "data: [DONE]\n\n"
