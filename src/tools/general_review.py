@@ -28,6 +28,9 @@ _MAJORITY = CONSENSUS_VOTES // 2 + 1
 # Character budget per review batch; keeps each LLM call focused and well under limits.
 BATCH_CHAR_BUDGET = 6000
 
+# Absolute batch ceiling for documents with no detectable headings.
+BATCH_HARD_LIMIT = BATCH_CHAR_BUDGET * 3
+
 # Short paragraphs with few words are treated as headings and kept with their body.
 _HEADING_MAX_CHARS = 80
 _HEADING_MAX_WORDS = 8
@@ -72,7 +75,12 @@ def _is_heading(text: str) -> bool:
 
 
 def _build_batches(paragraphs: Sequence[TextInformation]) -> List[_Batch]:
-    """Split paragraphs into document-ordered batches under the char budget."""
+    """Split paragraphs into document-ordered batches, breaking only at clause boundaries.
+
+    Once a batch exceeds the char budget it closes at the next heading, so a
+    clause's paragraphs always stay together in one review call. The hard limit
+    guards documents with no detectable headings.
+    """
 
     indexed = [(idx, para) for idx, para in enumerate(paragraphs) if para.text.strip()]
 
@@ -81,16 +89,13 @@ def _build_batches(paragraphs: Sequence[TextInformation]) -> List[_Batch]:
     current_size = 0
 
     for item in indexed:
+        over_budget = current_size >= BATCH_CHAR_BUDGET and _is_heading(item[1].text)
+        if current and (over_budget or current_size >= BATCH_HARD_LIMIT):
+            batches.append(current)
+            current = []
+            current_size = 0
         current.append(item)
         current_size += len(item[1].text)
-        if current_size >= BATCH_CHAR_BUDGET:
-            # Carry a trailing heading forward so it stays with its body text.
-            carry: _Batch = []
-            if len(current) > 1 and _is_heading(current[-1][1].text):
-                carry = [current.pop()]
-            batches.append(current)
-            current = carry
-            current_size = sum(len(para.text) for _, para in current)
 
     if current:
         batches.append(current)
