@@ -2,7 +2,7 @@ import io
 from typing import Any
 
 from docx import Document
-from fastapi import APIRouter, Depends, UploadFile, status
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
 
 # from src.api.session_utils import get_session_id
@@ -118,16 +118,19 @@ async def compare_documents_stream_endpoint(file_a: UploadFile, file_b: UploadFi
 
 @router.post("/general-review", response_model=GeneralReviewResponse)
 async def general_review_endpoint(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> GeneralReviewResponse:
-    "Review the user query to the document or the clause."
+    """Review the full document, or only the selected clauses the frontend sent."""
 
-    review_result = await general_review_service(request=request, session_id=session_id)
-
-    return review_result
+    try:
+        return await general_review_service(request=request, session_id=session_id)
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"General review error: {str(err)}")
 
 
 @router.post("/general-review/stream", response_class=StreamingResponse, status_code=status.HTTP_200_OK)
 async def general_review_stream_endpoint(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> StreamingResponse:
-    "Review the user query to the document or the clause."
+    """Stream the general review as SSE fragments that concatenate into one JSON response."""
 
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
     return StreamingResponse(general_review_streaming_service(request=request, session_id=session_id), media_type="text/event-stream", headers=headers)
