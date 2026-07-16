@@ -323,7 +323,6 @@ async def _classify_changes(diff_digest: str, llm_client: BaseLLMModel, session_
             context={"diff_digest": diff_digest},
             session_id=session_id,
             system_message=_COMPARISON_SYSTEM,
-            cache_system=True,
             max_tokens=_DIFF_MAX_TOKENS,
         ):
             chunks.append(chunk)
@@ -462,7 +461,6 @@ async def compare_documents_stream_service(session_id: str, document_a: Document
             context={"diff_digest": digest},
             session_id=session_id,
             system_message=_COMPARISON_SYSTEM,
-            cache_system=True,
             max_tokens=_DIFF_MAX_TOKENS,
         )
 
