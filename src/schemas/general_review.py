@@ -27,8 +27,9 @@ class Suggestion(BaseModel):
 
     clause: str = Field(description="Title/heading of the clause this suggestion applies to")
     reason: str = Field(description="Plain-language justification for the change, grounded in the clause text")
-    original_text: str = Field(description="Exact verbatim substring of the clause text to be replaced")
-    suggested_fix: str = Field(description="Proposed replacement text for original_text")
+    original_text: str = Field(description="Complete paragraph to be replaced, copied verbatim from the document")
+    suggested_fix: str = Field(description="Complete revised replacement for original_text")
+    para_identifier: str = Field(default="", description="Leave empty; the server fills in the paragraph identifier")
 
 
 class GeneralReviewResponse(BaseModel):

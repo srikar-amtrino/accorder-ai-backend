@@ -35,6 +35,12 @@ BATCH_HARD_LIMIT = BATCH_CHAR_BUDGET * 3
 _HEADING_MAX_CHARS = 80
 _HEADING_MAX_WORDS = 8
 
+# Read-only context carried into the next batch when a forced cut is unavoidable.
+CONTEXT_TAIL_CHARS = 1200
+
+# Numbered clause starts ("5. Confidentiality...", "Section 3 ...") count as cut points too.
+_NUMBERED_START_RE = re.compile(r"^\s*(?:(?:section|article|clause)\s+)?\d+(?:\.\d+)*[.)]\s+\S", re.IGNORECASE)
+
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "general_review"
 _GENERAL_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
 _GENERAL_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
@@ -74,31 +80,57 @@ def _is_heading(text: str) -> bool:
     return 0 < len(stripped) <= _HEADING_MAX_CHARS and len(stripped.split()) <= _HEADING_MAX_WORDS
 
 
-def _build_batches(paragraphs: Sequence[TextInformation]) -> List[_Batch]:
-    """Split paragraphs into document-ordered batches, breaking only at clause boundaries.
+def _is_clause_start(text: str) -> bool:
+    """A paragraph where a new clause begins — the only safe place to cut a batch."""
 
-    Once a batch exceeds the char budget it closes at the next heading, so a
-    clause's paragraphs always stay together in one review call. The hard limit
-    guards documents with no detectable headings.
+    stripped = text.strip()
+    return _is_heading(stripped) or bool(_NUMBERED_START_RE.match(stripped))
+
+
+def _context_tail(batch: _Batch) -> str:
+    """Trailing paragraphs of a batch, carried as read-only context after a forced cut."""
+
+    tail: List[str] = []
+    size = 0
+    for _, para in reversed(batch):
+        text = para.text.strip()
+        if size + len(text) > CONTEXT_TAIL_CHARS and tail:
+            break
+        tail.insert(0, text)
+        size += len(text)
+    return "\n\n".join(tail)
+
+
+def _build_batches(paragraphs: Sequence[TextInformation]) -> List[Tuple[_Batch, str]]:
+    """Split paragraphs into document-ordered (batch, context) pairs, cutting only at clause starts.
+
+    Once a batch exceeds the char budget it closes at the next clause start
+    (heading or numbered paragraph), so a clause's paragraphs always stay
+    together. If a document has no detectable clause starts, the hard limit
+    forces a cut and the next batch carries the previous tail as read-only
+    context so nothing is judged without its surroundings.
     """
 
     indexed = [(idx, para) for idx, para in enumerate(paragraphs) if para.text.strip()]
 
-    batches: List[_Batch] = []
+    batches: List[Tuple[_Batch, str]] = []
     current: _Batch = []
     current_size = 0
+    pending_context = ""
 
     for item in indexed:
-        over_budget = current_size >= BATCH_CHAR_BUDGET and _is_heading(item[1].text)
-        if current and (over_budget or current_size >= BATCH_HARD_LIMIT):
-            batches.append(current)
+        clean_cut = current_size >= BATCH_CHAR_BUDGET and _is_clause_start(item[1].text)
+        forced_cut = current_size >= BATCH_HARD_LIMIT
+        if current and (clean_cut or forced_cut):
+            batches.append((current, pending_context))
+            pending_context = _context_tail(current) if forced_cut else ""
             current = []
             current_size = 0
         current.append(item)
         current_size += len(item[1].text)
 
     if current:
-        batches.append(current)
+        batches.append((current, pending_context))
     return batches
 
 
@@ -107,8 +139,6 @@ def _format_document(batch: _Batch) -> str:
 
     return "\n\n".join(para.text.strip() for _, para in batch)
 
-
-_WS_RE = re.compile(r"\s+")
 
 # Character families the model tends to normalize while copying; each matches all variants.
 _APOSTROPHES = "'’‘"
@@ -135,8 +165,8 @@ def _tolerant_pattern(needle: str) -> str:
     return r"\s+".join(tokens)
 
 
-def _ground(original_text: str, batch: _Batch) -> Optional[Tuple[int, str]]:
-    """Find original_text inside a single paragraph and return (position, exact source text).
+def _ground(original_text: str, batch: _Batch) -> Optional[Tuple[int, TextInformation, str]]:
+    """Find original_text inside a single paragraph and return (position, paragraph, exact source text).
 
     Exact match first; then a whitespace/quote-tolerant match that recovers the
     true verbatim substring, so the returned text always applies cleanly.
@@ -148,18 +178,35 @@ def _ground(original_text: str, batch: _Batch) -> Optional[Tuple[int, str]]:
 
     for idx, para in batch:
         if needle in para.text:
-            return idx, needle
+            return idx, para, needle
 
     pattern = _tolerant_pattern(needle)
     for idx, para in batch:
         match = re.search(pattern, para.text)
         if match:
-            return idx, match.group(0)
+            return idx, para, match.group(0)
     return None
 
 
-def _validate_batch(suggestions: List[Suggestion], batch: _Batch, all_texts: Sequence[str], seen: Set[str]) -> List[Tuple[int, Suggestion]]:
-    """Keep only verbatim-grounded, unambiguous, unseen suggestions, ordered by document position."""
+def _expand_to_paragraph(suggestion: Suggestion, para: TextInformation, exact_text: str) -> Tuple[str, str]:
+    """Return (original, fix) covering the complete paragraph, splicing a partial fix if needed."""
+
+    if exact_text.strip() == para.text.strip():
+        return para.text, suggestion.suggested_fix
+
+    span = para.text.find(exact_text)
+    prefix = para.text[:span]
+    suffix = para.text[span + len(exact_text):]
+
+    # If the model already returned a full-paragraph rewrite, splicing would duplicate text.
+    fix = suggestion.suggested_fix
+    already_full = (len(prefix.strip()) < 20 or prefix.strip()[:30] in fix) and (len(suffix.strip()) < 20 or suffix.strip()[-30:] in fix)
+    full_fix = fix if already_full else prefix + fix + suffix
+    return para.text, full_fix
+
+
+def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions: Set[int]) -> List[Tuple[int, Suggestion]]:
+    """Ground each suggestion to one paragraph, expand it to the full paragraph, and attach its id."""
 
     valid: List[Tuple[int, Suggestion]] = []
     for suggestion in suggestions:
@@ -167,28 +214,24 @@ def _validate_batch(suggestions: List[Suggestion], batch: _Batch, all_texts: Seq
         if grounded is None:
             logger.warning("Dropping suggestion for clause '%s' — original_text could not be grounded in a single source paragraph.", suggestion.clause)
             continue
-        position, exact_text = grounded
-        # An anchor found in more than one paragraph could be applied to the wrong place.
-        if sum(1 for text in all_texts if exact_text in text) > 1:
-            logger.warning("Dropping suggestion for clause '%s' — original_text is ambiguous (appears in multiple paragraphs).", suggestion.clause)
+        position, para, exact_text = grounded
+        if position in seen_positions:
             continue
-        key = _WS_RE.sub(" ", exact_text).strip()
-        if key in seen:
-            continue
-        seen.add(key)
-        if exact_text != suggestion.original_text:
-            suggestion = suggestion.model_copy(update={"original_text": exact_text})
-        valid.append((position, suggestion))
+        seen_positions.add(position)
+        original, full_fix = _expand_to_paragraph(suggestion, para, exact_text)
+        valid.append((position, suggestion.model_copy(update={"original_text": original, "suggested_fix": full_fix, "para_identifier": para.paraindetifier})))
 
     valid.sort(key=lambda pair: pair[0])
     return valid
 
 
-async def _review_batch(batch: _Batch, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
+async def _review_batch(batch: _Batch, context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
     """Run the schema-enforced review call for one batch, with a single retry."""
 
     llm_model = get_bedrock_model()
     document = _format_document(batch)
+    if context:
+        document = f"Preceding portion of the document (read-only context — never raise suggestions for it):\n\n{context}\n\n--- TEXT TO REVIEW ---\n\n{document}"
 
     async with semaphore:
         for attempt in (1, 2):
@@ -209,10 +252,10 @@ async def _review_batch(batch: _Batch, semaphore: asyncio.Semaphore, session_id:
     raise RuntimeError("unreachable")
 
 
-async def _review_batch_consensus(batch: _Batch, all_texts: Sequence[str], semaphore: asyncio.Semaphore, session_id: str) -> List[Tuple[int, Suggestion]]:
+async def _review_batch_consensus(batch: _Batch, context: str, semaphore: asyncio.Semaphore, session_id: str) -> List[Tuple[int, Suggestion]]:
     """Review one batch with parallel votes and keep only majority-backed findings."""
 
-    outcomes = await asyncio.gather(*[_review_batch(batch, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+    outcomes = await asyncio.gather(*[_review_batch(batch, context, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
 
     # A majority of votes must succeed; one lost vote never fails the review.
     votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewResponse)]
@@ -225,7 +268,7 @@ async def _review_batch_consensus(batch: _Batch, all_texts: Sequence[str], semap
     per_vote: List[Dict[int, Suggestion]] = []
     for vote in votes:
         grounded: Dict[int, Suggestion] = {}
-        for position, suggestion in _validate_batch(vote.suggestions, batch, all_texts, set()):
+        for position, suggestion in _validate_batch(vote.suggestions, batch, set()):
             grounded.setdefault(position, suggestion)
         per_vote.append(grounded)
 
@@ -254,18 +297,16 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
 
     logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each.", len(request.textinformation), len(batches), CONSENSUS_VOTES)
 
-    all_texts = [para.text for para in request.textinformation]
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    results = await asyncio.gather(*[_review_batch_consensus(batch, all_texts, semaphore, session_id) for batch in batches])
+    results = await asyncio.gather(*[_review_batch_consensus(batch, context, semaphore, session_id) for batch, context in batches])
 
-    seen: Set[str] = set()
+    seen_positions: Set[int] = set()
     positioned: List[Tuple[int, Suggestion]] = []
     for batch_result in results:
         for position, suggestion in batch_result:
-            key = _WS_RE.sub(" ", suggestion.original_text).strip()
-            if key in seen:
+            if position in seen_positions:
                 continue
-            seen.add(key)
+            seen_positions.add(position)
             positioned.append((position, suggestion))
 
     positioned.sort(key=lambda pair: pair[0])
@@ -301,20 +342,18 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         batches = _build_batches(request.textinformation)
         logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each.", len(request.textinformation), len(batches), CONSENSUS_VOTES)
 
-        all_texts = [para.text for para in request.textinformation]
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-        tasks = [asyncio.create_task(_review_batch_consensus(batch, all_texts, semaphore, session_id)) for batch in batches]
+        tasks = [asyncio.create_task(_review_batch_consensus(batch, context, semaphore, session_id)) for batch, context in batches]
 
         yield frame('{"suggestions": [')
 
         emitted: List[Suggestion] = []
-        seen: Set[str] = set()
+        seen_positions: Set[int] = set()
         for task in tasks:
-            for _, suggestion in await task:
-                key = _WS_RE.sub(" ", suggestion.original_text).strip()
-                if key in seen:
+            for position, suggestion in await task:
+                if position in seen_positions:
                     continue
-                seen.add(key)
+                seen_positions.add(position)
                 separator = "" if not emitted else ","
                 yield frame(separator + suggestion.model_dump_json())
                 emitted.append(suggestion)
