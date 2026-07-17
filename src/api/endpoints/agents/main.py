@@ -4,6 +4,7 @@ from typing import Any
 from docx import Document
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
+from pydantic import ValidationError
 
 # from src.api.session_utils import get_session_id
 from src.core.auth import get_session_id
@@ -122,6 +123,9 @@ async def general_review_endpoint(request: GeneralReviewRequest, session_id: str
 
     try:
         return await general_review_service(request=request, session_id=session_id)
+    except ValidationError:
+        # A malformed LLM response is a server-side failure — never expose pydantic internals as a 400.
+        raise HTTPException(status_code=500, detail="General review error: the model returned an invalid response. Please try again.")
     except ValueError as err:
         raise HTTPException(status_code=400, detail=str(err))
     except Exception as err:

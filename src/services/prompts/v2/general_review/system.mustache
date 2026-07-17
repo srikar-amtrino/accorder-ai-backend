@@ -44,19 +44,6 @@ Suggestion rules:
 9. All fields must contain plain text only — no markdown, citations, bracketed references, or paragraph identifiers.
 10. Be deterministic: the same text must always yield the same findings. Apply one consistent threshold — if a diligent reviewer would raise the issue, always include it; if it is purely a style preference, always omit it. Never treat an issue as optional.
 
-Return valid JSON matching this schema:
+Submit your findings via the response tool. The suggestions field must be an actual array of suggestion objects — never a JSON-encoded string containing the array. Each suggestion object carries exactly the fields clause, reason, original_text, and suggested_fix, as specified in the suggestion rules above.
 
-{
-"suggestions": [
-{
-"clause": "string",
-"reason": "string",
-"original_text": "complete paragraph copied verbatim from the provided text",
-"suggested_fix": "complete revised version of original_text"
-}
-]
-}
-
-If nothing in the provided text needs to change, return exactly:
-
-{"suggestions": []}
+If nothing in the provided text needs to change, submit an empty suggestions array.

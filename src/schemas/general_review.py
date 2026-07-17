@@ -1,4 +1,5 @@
-from typing import List, Optional
+import json
+from typing import Any, List, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
@@ -52,3 +53,19 @@ class GeneralReviewResponse(BaseModel):
     """Response from the general review endpoint."""
 
     suggestions: List[Suggestion] = Field(default_factory=list, description="Flat list of apply/dismiss suggestions. Empty when nothing to flag.")
+
+    @field_validator("suggestions", mode="before")
+    @classmethod
+    def _parse_string_array(cls, value: Any) -> Any:
+        """Tolerate the array arriving as a JSON-encoded string.
+
+        Bedrock tool-use intermittently serializes long arrays as a JSON string
+        instead of a real array; parse it back so validation succeeds.
+        """
+
+        if not isinstance(value, str):
+            return value
+        stripped = value.strip()
+        if stripped.startswith("```"):
+            stripped = stripped.strip("`").removeprefix("json").strip()
+        return json.loads(stripped)

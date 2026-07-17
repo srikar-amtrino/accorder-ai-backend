@@ -265,7 +265,10 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, sema
         document = f"Preceding portion of the document (read-only context — never raise suggestions for it):\n\n{context}\n\n--- TEXT TO REVIEW ---\n\n{document}"
 
     async with semaphore:
-        for attempt in (1, 2):
+        # The retry resamples at a higher temperature: at temp 0 a malformed
+        # response (e.g. the array serialized as a broken JSON string) would
+        # just be reproduced verbatim.
+        for attempt, temperature in ((1, 0.0), (2, 0.4)):
             try:
                 return await llm_model.generate(
                     prompt=_GENERAL_REVIEW_USER,
@@ -273,6 +276,7 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, sema
                     response_model=GeneralReviewResponse,
                     system_message=_GENERAL_REVIEW_SYSTEM,
                     session_id=session_id,
+                    temperature=temperature,
                 )
             except Exception:
                 if attempt == 2:
