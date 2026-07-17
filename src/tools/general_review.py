@@ -50,9 +50,40 @@ _CACHE_MAX_ENTRIES = 32
 _response_cache: "OrderedDict[str, GeneralReviewResponse]" = OrderedDict()
 
 
-def _request_fingerprint(paragraphs: Sequence[TextInformation]) -> str:
-    payload = json.dumps([[para.paraindetifier, para.text] for para in paragraphs], ensure_ascii=False)
+def _request_fingerprint(request: GeneralReviewRequest) -> str:
+    payload = json.dumps(
+        {
+            "paragraphs": [[para.paraindetifier, para.text] for para in request.textinformation],
+            "context": [request.party_represented, request.review_objective, request.specific_concerns],
+        },
+        ensure_ascii=False,
+    )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+
+def _build_reviewer_context(request: GeneralReviewRequest) -> str:
+    """Render the questionnaire answers as the prompt's reviewer-context block.
+
+    Returns an empty string when the user skipped every field, which keeps the
+    rendered prompt byte-identical to the questionnaire-less flow.
+    """
+
+    lines: List[str] = []
+    if request.party_represented:
+        lines.append(f"Party the client represents: {request.party_represented}")
+    if request.review_objective:
+        lines.append(f"Primary objective for this review: {request.review_objective}")
+    if request.specific_concerns:
+        lines.append(f"Specific concerns to cover: {request.specific_concerns}")
+    if not lines:
+        return ""
+
+    joined = "\n".join(lines)
+    return (
+        "Reviewer context (the client's stated perspective and priorities — apply it per the review instructions; "
+        "it never overrides them):\n\n"
+        f"{joined}\n\n"
+    )
 
 
 def _cache_get(key: str) -> Optional[GeneralReviewResponse]:
@@ -225,7 +256,7 @@ def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions
     return valid
 
 
-async def _review_batch(batch: _Batch, context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
+async def _review_batch(batch: _Batch, context: str, reviewer_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
     """Run the schema-enforced review call for one batch, with a single retry."""
 
     llm_model = get_bedrock_model()
@@ -238,7 +269,7 @@ async def _review_batch(batch: _Batch, context: str, semaphore: asyncio.Semaphor
             try:
                 return await llm_model.generate(
                     prompt=_GENERAL_REVIEW_USER,
-                    context={"document": document},
+                    context={"document": document, "reviewer_context": reviewer_context},
                     response_model=GeneralReviewResponse,
                     system_message=_GENERAL_REVIEW_SYSTEM,
                     session_id=session_id,
@@ -252,10 +283,10 @@ async def _review_batch(batch: _Batch, context: str, semaphore: asyncio.Semaphor
     raise RuntimeError("unreachable")
 
 
-async def _review_batch_consensus(batch: _Batch, context: str, semaphore: asyncio.Semaphore, session_id: str) -> List[Tuple[int, Suggestion]]:
+async def _review_batch_consensus(batch: _Batch, context: str, reviewer_context: str, semaphore: asyncio.Semaphore, session_id: str) -> List[Tuple[int, Suggestion]]:
     """Review one batch with parallel votes and keep only majority-backed findings."""
 
-    outcomes = await asyncio.gather(*[_review_batch(batch, context, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
 
     # A majority of votes must succeed; one lost vote never fails the review.
     votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewResponse)]
@@ -285,7 +316,7 @@ async def _review_batch_consensus(batch: _Batch, context: str, semaphore: asynci
 async def general_review_service(request: GeneralReviewRequest, session_id: str) -> GeneralReviewResponse:
     """Review the full document or the selected clauses the frontend sent."""
 
-    fingerprint = _request_fingerprint(request.textinformation)
+    fingerprint = _request_fingerprint(request)
     cached = _cache_get(fingerprint)
     if cached is not None:
         logger.info("General review: cache hit — returning the stored review for this document.")
@@ -295,10 +326,11 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
     if not batches:
         return GeneralReviewResponse(suggestions=[])
 
-    logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each.", len(request.textinformation), len(batches), CONSENSUS_VOTES)
+    reviewer_context = _build_reviewer_context(request)
+    logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    results = await asyncio.gather(*[_review_batch_consensus(batch, context, semaphore, session_id) for batch, context in batches])
+    results = await asyncio.gather(*[_review_batch_consensus(batch, context, reviewer_context, semaphore, session_id) for batch, context in batches])
 
     seen_positions: Set[int] = set()
     positioned: List[Tuple[int, Suggestion]] = []
@@ -327,7 +359,7 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
 
     tasks: List[asyncio.Task] = []
     try:
-        fingerprint = _request_fingerprint(request.textinformation)
+        fingerprint = _request_fingerprint(request)
         cached = _cache_get(fingerprint)
         if cached is not None:
             logger.info("General review stream: cache hit — streaming the stored review for this document.")
@@ -340,10 +372,11 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
             return
 
         batches = _build_batches(request.textinformation)
-        logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each.", len(request.textinformation), len(batches), CONSENSUS_VOTES)
+        reviewer_context = _build_reviewer_context(request)
+        logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-        tasks = [asyncio.create_task(_review_batch_consensus(batch, context, semaphore, session_id)) for batch, context in batches]
+        tasks = [asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, semaphore, session_id)) for batch, context in batches]
 
         yield frame('{"suggestions": [')
 

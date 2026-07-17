@@ -1,6 +1,6 @@
-from typing import List
+from typing import List, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 
 class TextInformation(BaseModel):
@@ -17,9 +17,25 @@ class GeneralReviewRequest(BaseModel):
     the selected paragraphs when the user has a selection. Unknown extra
     fields (e.g. the retired ``query``) are ignored by pydantic, so older
     clients keep working.
+
+    The three optional reviewer-context fields come from the pre-review
+    questionnaire (v3). Skip sends none of them, which keeps the request —
+    and the resulting review — identical to the questionnaire-less flow.
     """
 
     textinformation: List[TextInformation] = Field(..., description="Paragraphs to review, in document order")
+    party_represented: Optional[str] = Field(default=None, description="Which party to the contract the user represents (e.g. Buyer, Seller, Customer)")
+    review_objective: Optional[str] = Field(default=None, description="The user's primary objective for this review")
+    specific_concerns: Optional[str] = Field(default=None, description="Specific concerns the user wants covered in addition to the full review")
+
+    @field_validator("party_represented", "review_objective", "specific_concerns", mode="before")
+    @classmethod
+    def _blank_to_none(cls, value: Optional[str]) -> Optional[str]:
+        """Treat empty or whitespace-only questionnaire fields the same as absent ones."""
+
+        if not isinstance(value, str):
+            return value
+        return value.strip() or None
 
 
 class Suggestion(BaseModel):
