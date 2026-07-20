@@ -41,6 +41,18 @@ CONTEXT_TAIL_CHARS = 1200
 # Numbered clause starts ("5. Confidentiality...", "Section 3 ...") count as cut points too.
 _NUMBERED_START_RE = re.compile(r"^\s*(?:(?:section|article|clause)\s+)?\d+(?:\.\d+)*[.)]\s+\S", re.IGNORECASE)
 
+# Clause-title extraction: a leading "5.2 " / "Section 3." style prefix (at most
+# two leading digits, so street numbers stay put), and the short "Title.  Body..."
+# lead-in many contracts open their clauses with.
+_TITLE_NUMBER_PREFIX_RE = re.compile(r"^(?:(?:section|article|clause)\s+)?\d{1,2}(?:\.\d+)*[.)]?\s+", re.IGNORECASE)
+_INLINE_TITLE_RE = re.compile(r"^([^.:]{1,70})[.:](?:\s|$)")
+
+# Lowercase connectors allowed inside an otherwise capitalized clause title.
+_TITLE_STOP_WORDS = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "the", "to", "with"}
+
+# Trailing company suffixes mark a party-name line, not a clause heading.
+_TITLE_COMPANY_SUFFIXES = {"inc", "llc", "ltd", "corp", "co"}
+
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "general_review"
 _GENERAL_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
 _GENERAL_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
@@ -109,6 +121,72 @@ def _is_heading(text: str) -> bool:
 
     stripped = text.strip()
     return 0 < len(stripped) <= _HEADING_MAX_CHARS and len(stripped.split()) <= _HEADING_MAX_WORDS
+
+
+def _looks_like_title(segment: str) -> bool:
+    """True when a segment reads as a clause title: short, capitalized words plus connectors.
+
+    Address and party-name lines ("San Ramon, CA 94583", "XYZInc Inc.",
+    "To Amtrino:") also look short and capitalized, so digits, internal
+    punctuation, a leading connector, and company suffixes all disqualify.
+    """
+
+    if "." in segment or ":" in segment:
+        return False
+    if re.search(r",\s*[A-Z]{2}$", segment):
+        return False
+    words = [word.strip(",;()'\"‘’“”") for word in segment.split()]
+    words = [word for word in words if word]
+    if not words or len(words) > _HEADING_MAX_WORDS:
+        return False
+    if words[0].lower() in _TITLE_STOP_WORDS:
+        return False
+    if words[-1].lower() in _TITLE_COMPANY_SUFFIXES:
+        return False
+    if any(any(char.isdigit() for char in word) for word in words):
+        return False
+    return all(word[0].isupper() or word.lower() in _TITLE_STOP_WORDS for word in words)
+
+
+def _clause_title(text: str) -> Optional[str]:
+    """Extract this paragraph's own clause title, or None when it has none.
+
+    Handles both a standalone heading paragraph ('Non-Compete.') and an inline
+    lead-in ('Return of Advances.  In the event...', '7.3 Security Measures. ...').
+    """
+
+    stripped = _TITLE_NUMBER_PREFIX_RE.sub("", text.strip(), count=1)
+    if _is_heading(stripped):
+        candidate = stripped.rstrip(".:").strip()
+        if _looks_like_title(candidate):
+            return candidate
+        return None
+    match = _INLINE_TITLE_RE.match(stripped)
+    if match and _looks_like_title(match.group(1).strip()):
+        return match.group(1).strip()
+    return None
+
+
+def _build_clause_titles(paragraphs: Sequence[TextInformation]) -> Dict[str, str]:
+    """Map each paragraph id to its clause title, extracted from the document itself.
+
+    A paragraph's title is its own heading/lead-in when it has one, otherwise
+    the most recent titled paragraph above it. Paragraphs with no determinable
+    title (e.g. a lone selected body paragraph whose heading was not sent) are
+    omitted so the model's own label stays as the fallback.
+    """
+
+    titles: Dict[str, str] = {}
+    current = ""
+    for para in paragraphs:
+        if not para.text.strip():
+            continue
+        own = _clause_title(para.text)
+        if own:
+            current = own
+        if current:
+            titles[para.paraindetifier] = current
+    return titles
 
 
 def _is_clause_start(text: str) -> bool:
@@ -236,8 +314,8 @@ def _expand_to_paragraph(suggestion: Suggestion, para: TextInformation, exact_te
     return para.text, full_fix
 
 
-def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions: Set[int]) -> List[Tuple[int, Suggestion]]:
-    """Ground each suggestion to one paragraph, expand it to the full paragraph, and attach its id."""
+def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions: Set[int], titles: Dict[str, str]) -> List[Tuple[int, Suggestion]]:
+    """Ground each suggestion to one paragraph, expand it to the full paragraph, and attach its id and clause title."""
 
     valid: List[Tuple[int, Suggestion]] = []
     for suggestion in suggestions:
@@ -250,7 +328,11 @@ def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions
             continue
         seen_positions.add(position)
         original, full_fix = _expand_to_paragraph(suggestion, para, exact_text)
-        valid.append((position, suggestion.model_copy(update={"original_text": original, "suggested_fix": full_fix, "para_identifier": para.paraindetifier})))
+        # The document's own clause title keeps names identical across whole-doc
+        # and selection runs; the model's label only fills in when the payload
+        # carries no heading for this paragraph.
+        clause = titles.get(para.paraindetifier, suggestion.clause)
+        valid.append((position, suggestion.model_copy(update={"clause": clause, "original_text": original, "suggested_fix": full_fix, "para_identifier": para.paraindetifier})))
 
     valid.sort(key=lambda pair: pair[0])
     return valid
@@ -287,7 +369,7 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, sema
     raise RuntimeError("unreachable")
 
 
-async def _review_batch_consensus(batch: _Batch, context: str, reviewer_context: str, semaphore: asyncio.Semaphore, session_id: str) -> List[Tuple[int, Suggestion]]:
+async def _review_batch_consensus(batch: _Batch, context: str, reviewer_context: str, semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]) -> List[Tuple[int, Suggestion]]:
     """Review one batch with parallel votes and keep only majority-backed findings."""
 
     outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
@@ -303,7 +385,7 @@ async def _review_batch_consensus(batch: _Batch, context: str, reviewer_context:
     per_vote: List[Dict[int, Suggestion]] = []
     for vote in votes:
         grounded: Dict[int, Suggestion] = {}
-        for position, suggestion in _validate_batch(vote.suggestions, batch, set()):
+        for position, suggestion in _validate_batch(vote.suggestions, batch, set(), titles):
             grounded.setdefault(position, suggestion)
         per_vote.append(grounded)
 
@@ -331,10 +413,11 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
         return GeneralReviewResponse(suggestions=[])
 
     reviewer_context = _build_reviewer_context(request)
+    titles = _build_clause_titles(request.textinformation)
     logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    results = await asyncio.gather(*[_review_batch_consensus(batch, context, reviewer_context, semaphore, session_id) for batch, context in batches])
+    results = await asyncio.gather(*[_review_batch_consensus(batch, context, reviewer_context, semaphore, session_id, titles) for batch, context in batches])
 
     seen_positions: Set[int] = set()
     positioned: List[Tuple[int, Suggestion]] = []
@@ -377,10 +460,11 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
 
         batches = _build_batches(request.textinformation)
         reviewer_context = _build_reviewer_context(request)
+        titles = _build_clause_titles(request.textinformation)
         logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-        tasks = [asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, semaphore, session_id)) for batch, context in batches]
+        tasks = [asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, semaphore, session_id, titles)) for batch, context in batches]
 
         yield frame('{"suggestions": [')
 
