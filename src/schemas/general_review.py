@@ -4,6 +4,42 @@ from typing import Any, List, Literal, Optional
 from pydantic import BaseModel, Field, field_validator
 
 
+def _escape_inner_quotes(malformed: str) -> str:
+    """Escape unescaped double quotes inside JSON string values.
+
+    When the model serializes the suggestions array as a string, quotes it
+    copies from the document (e.g. ("Agreement")) land unescaped inside the
+    embedded JSON and break parsing. A quote inside a string is treated as
+    the closing delimiter only when the next non-space character is a JSON
+    structural character; every other quote is content and gets escaped.
+    """
+
+    out: list = []
+    in_string = False
+    i = 0
+    while i < len(malformed):
+        char = malformed[i]
+        if not in_string:
+            if char == '"':
+                in_string = True
+            out.append(char)
+        elif char == "\\":
+            out.append(malformed[i:i + 2])
+            i += 2
+            continue
+        elif char == '"':
+            tail = malformed[i + 1:].lstrip()
+            if not tail or tail[0] in ",:]}":
+                in_string = False
+                out.append(char)
+            else:
+                out.append('\\"')
+        else:
+            out.append(char)
+        i += 1
+    return "".join(out)
+
+
 class TextInformation(BaseModel):
     """A single document paragraph sent by the frontend."""
 
@@ -79,4 +115,10 @@ class GeneralReviewResponse(BaseModel):
         stripped = value.strip()
         if stripped.startswith("```"):
             stripped = stripped.strip("`").removeprefix("json").strip()
-        return json.loads(stripped)
+        try:
+            return json.loads(stripped)
+        except json.JSONDecodeError:
+            # Document quotes copied into the embedded JSON arrive unescaped
+            # and break parsing; repair them before giving up. If the repaired
+            # text still fails, the error propagates into the retry path.
+            return json.loads(_escape_inner_quotes(stripped))
