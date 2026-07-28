@@ -115,10 +115,15 @@ class GeneralReviewResponse(BaseModel):
         stripped = value.strip()
         if stripped.startswith("```"):
             stripped = stripped.strip("`").removeprefix("json").strip()
+        # strict=False accepts the raw tabs and newlines the model copies out of
+        # the document into the embedded JSON. Contracts are full of them —
+        # tabbed signature blocks, indented lists — and strict parsing rejects a
+        # control character inside a string, which would fail an otherwise
+        # perfectly recoverable response.
         try:
-            return json.loads(stripped)
+            return json.loads(stripped, strict=False)
         except json.JSONDecodeError:
             # Document quotes copied into the embedded JSON arrive unescaped
             # and break parsing; repair them before giving up. If the repaired
             # text still fails, the error propagates into the retry path.
-            return json.loads(_escape_inner_quotes(stripped))
+            return json.loads(_escape_inner_quotes(stripped), strict=False)
