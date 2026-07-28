@@ -29,6 +29,7 @@ from src.tools.doc_chat import (
     document_chat_service,
     document_chat_stream_service,
 )
+from src.tools.document_map import build_document_map_from_paragraphs, recall_session_map
 from src.tools.general_review import (
     general_review_service,
     general_review_streaming_service,
@@ -138,6 +139,30 @@ async def general_review_stream_endpoint(request: GeneralReviewRequest, session_
 
     headers = {"Access-Control-Allow-Origin": "*", "Cache-Control": "no-cache", "Connection": "keep-alive"}
     return StreamingResponse(general_review_streaming_service(request=request, session_id=session_id), media_type="text/event-stream", headers=headers)
+
+
+@router.post("/general-review/mapped", response_model=GeneralReviewResponse)
+async def general_review_mapped_endpoint(request: GeneralReviewRequest, session_id: str = Depends(get_session_id)) -> GeneralReviewResponse:
+    """A/B variant of general review: build the shared document map first, then
+    review grounded in it. Same request body as /general-review, so the two can
+    be compared directly on the identical document."""
+
+    try:
+        # Prefer the map built for this session when the document was opened.
+        # That is the only correct source in SELECTION mode, where the request
+        # carries just the selected paragraphs and could never produce a
+        # whole-document map — and it keeps the map's cost out of the review.
+        paragraphs = [para.text for para in request.textinformation if para.text and para.text.strip()]
+        document_map = recall_session_map(session_id, paragraphs)
+        if document_map is None:
+            document_map = await build_document_map_from_paragraphs(paragraphs, session_id)
+        return await general_review_service(request=request, session_id=session_id, document_map=document_map)
+    except ValidationError:
+        raise HTTPException(status_code=500, detail="General review error: the model returned an invalid response. Please try again.")
+    except ValueError as err:
+        raise HTTPException(status_code=400, detail=str(err))
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"General review error: {str(err)}")
 
 
 @router.post("/contract-analyzer", response_model=ContractAnalyzerResponse, status_code=status.HTTP_200_OK)
