@@ -1,12 +1,20 @@
 from io import BytesIO
 
-from fastapi import APIRouter, Depends, UploadFile
+from fastapi import APIRouter, Depends, HTTPException, UploadFile
 
 from src.api.session_utils import get_session_id
 from src.core.container import get_ingestion_service, get_session_manager
+from src.schemas.document_map import DocumentMap, DocumentMapRequest
 from src.schemas.registry import ParseResult
+from src.tools.document_map import build_document_map_from_paragraphs
 
 router = APIRouter()
+
+
+def _paragraphs(request: DocumentMapRequest) -> list[str]:
+    """Non-empty paragraph texts from the JSON request, in document order."""
+
+    return [para.text for para in request.textinformation if para.text and para.text.strip()]
 
 
 @router.post("/ingest/")
@@ -31,6 +39,24 @@ async def ingest_data(file: UploadFile, session_id: str = Depends(get_session_id
         data=file_like,
         session_data=session_data,
     )
+
+
+@router.post("/document-map/", response_model=DocumentMap)
+async def build_document_map_endpoint(request: DocumentMapRequest, session_id: str = Depends(get_session_id)) -> DocumentMap:
+    """Build the grounded document-understanding map from the document JSON.
+
+    This is the comprehension pre-pass — a document-processing step, not a
+    review agent. It reads the whole document once and returns the parties,
+    defined terms, clauses (each grounded to verbatim source, combined clauses
+    split apart), and flagged ambiguities that the review agents share as one
+    consistent understanding of the document. Takes the same paragraph JSON the
+    review agents already receive.
+    """
+
+    try:
+        return await build_document_map_from_paragraphs(_paragraphs(request), session_id)
+    except Exception as err:
+        raise HTTPException(status_code=500, detail=f"Document map error: {str(err)}")
 
 
 # @router.post("/ingest-json/")
