@@ -24,11 +24,11 @@ def _escape_inner_quotes(malformed: str) -> str:
                 in_string = True
             out.append(char)
         elif char == "\\":
-            out.append(malformed[i:i + 2])
+            out.append(malformed[i : i + 2])
             i += 2
             continue
         elif char == '"':
-            tail = malformed[i + 1:].lstrip()
+            tail = malformed[i + 1 :].lstrip()
             if not tail or tail[0] in ",:]}":
                 in_string = False
                 out.append(char)

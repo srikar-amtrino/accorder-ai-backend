@@ -9,6 +9,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 # from src.api.endpoints.admin.router import router as admin_router
 from src.api.endpoints.agents.main import router as agents_router
+from src.api.endpoints.clause_extractor.router import router as clause_extraction_router
 
 # from src.api.endpoints.clause_extraction.router import (
 #     router as clause_extraction_router,
@@ -52,7 +53,7 @@ app.add_middleware(
 
 # Add request timing middleware
 @app.middleware("http")
-async def add_process_time_header(request: Request, call_next: typing.Callable) -> Request:
+async def add_process_time_header(request: Request, call_next: typing.Callable) -> typing.Any:
     start_time = time.time()
     response = await call_next(request)
     process_time = time.time() - start_time
@@ -63,6 +64,7 @@ async def add_process_time_header(request: Request, call_next: typing.Callable) 
 app.include_router(ingestion_router, prefix="/ingestion")
 # app.include_router(admin_router, prefix="/admin")
 app.include_router(agents_router, prefix="/Accorder/agents")
+app.include_router(clause_extraction_router, prefix="/extract")
 
 
 def main_entry() -> None:
