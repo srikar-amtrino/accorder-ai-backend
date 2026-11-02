@@ -58,17 +58,21 @@ class GeneralReviewRequest(BaseModel):
     The three optional reviewer-context fields come from the pre-review
     questionnaire (v3). Skip sends none of them, which keeps the request —
     and the resulting review — identical to the questionnaire-less flow.
+
+    agreement_type, when known, narrows clause-type mapping and policy lookup
+    to that kind of agreement.
     """
 
     textinformation: List[TextInformation] = Field(..., description="Paragraphs to review, in document order")
     party_represented: Optional[str] = Field(default=None, description="Which party to the contract the user represents (e.g. Buyer, Seller, Customer)")
     review_objective: Optional[str] = Field(default=None, description="The user's primary objective for this review")
     specific_concerns: Optional[str] = Field(default=None, description="Specific concerns the user wants covered in addition to the full review")
+    agreement_type: Optional[str] = Field(default=None, description="Kind of agreement under review (e.g. MSA, NDA), when known")
 
-    @field_validator("party_represented", "review_objective", "specific_concerns", mode="before")
+    @field_validator("party_represented", "review_objective", "specific_concerns", "agreement_type", mode="before")
     @classmethod
     def _blank_to_none(cls, value: Optional[str]) -> Optional[str]:
-        """Treat empty or whitespace-only questionnaire fields the same as absent ones."""
+        """Treat empty or whitespace-only optional fields the same as absent ones."""
 
         if not isinstance(value, str):
             return value

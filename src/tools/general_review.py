@@ -7,13 +7,16 @@ from pathlib import Path
 from typing import AsyncIterator, Dict, List, Optional, Sequence, Set, Tuple
 
 from src.config.logging import get_logger
-from src.core.container import get_bedrock_model
+from src.core.container import get_bedrock_model, get_clause_search
+from src.schemas.clause_mapping import ClassificationStatus, ClausePolicy
 from src.schemas.general_review import (
     GeneralReviewRequest,
     GeneralReviewResponse,
     Suggestion,
     TextInformation,
 )
+from src.services.clause_mapping.classifier import classify_clause
+from src.services.clause_mapping.policy_store import get_clause_policy_store
 
 logger = get_logger(__name__)
 
@@ -53,6 +56,10 @@ _TITLE_STOP_WORDS = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "the
 # Trailing company suffixes mark a party-name line, not a clause heading.
 _TITLE_COMPANY_SUFFIXES = {"inc", "llc", "ltd", "corp", "co"}
 
+# Leading words of a clause quoted in its policy entry, so the model can tell
+# which clause each legal-team policy belongs to.
+_POLICY_ANCHOR_WORDS = 15
+
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "general_review"
 _GENERAL_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
 _GENERAL_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
@@ -66,7 +73,7 @@ def _request_fingerprint(request: GeneralReviewRequest) -> str:
     payload = json.dumps(
         {
             "paragraphs": [[para.paraindetifier, para.text] for para in request.textinformation],
-            "context": [request.party_represented, request.review_objective, request.specific_concerns],
+            "context": [request.party_represented, request.review_objective, request.specific_concerns, request.agreement_type],
         },
         ensure_ascii=False,
     )
@@ -249,6 +256,123 @@ def _format_document(batch: _Batch) -> str:
     return "\n\n".join(para.text.strip() for _, para in batch)
 
 
+# A mapped clause: how confidently it was typed, and the policies that came with it.
+_MappedClause = Tuple[ClassificationStatus, List[ClausePolicy]]
+
+
+def _build_clause_units(paragraphs: Sequence[TextInformation], titles: Dict[str, str]) -> List[List[int]]:
+    """Group paragraph positions into clauses for vector mapping.
+
+    Consecutive paragraphs under the same clause title form one clause; a
+    paragraph with no title stands alone.
+    """
+
+    units: List[List[int]] = []
+    previous: Optional[str] = None
+    for idx, para in enumerate(paragraphs):
+        if not para.text.strip():
+            continue
+        title = titles.get(para.paraindetifier)
+        if units and title is not None and title == previous:
+            units[-1].append(idx)
+        else:
+            units.append([idx])
+        previous = title
+    return units
+
+
+def _describe_policy(policy: ClausePolicy) -> List[str]:
+    """Render one policy as prompt lines, leaving out fields the legal team has not filled in yet."""
+
+    label = f"{policy.canonical_type} — {policy.sub_type}" if policy.sub_type else policy.canonical_type
+    lines = [f"{label} (inherent risk tier: {policy.inherent_risk_tier})"]
+    if policy.acceptable_standard:
+        lines.append(f"Acceptable standard: {policy.acceptable_standard}")
+    if policy.unacceptable_triggers:
+        lines.append("Unacceptable triggers: " + "; ".join(policy.unacceptable_triggers))
+    if policy.fallback_guidelines:
+        lines.append(f"Fallback position: {policy.fallback_guidelines}")
+    return lines
+
+
+def _render_policy_block(batch: _Batch, mapped: Dict[int, _MappedClause], unit_of: Dict[int, int]) -> str:
+    """Render the policy entries for the clauses in one batch, in document order."""
+
+    entries: List[str] = []
+    rendered: Set[int] = set()
+    for idx, para in batch:
+        unit = unit_of.get(idx)
+        if unit is None or unit in rendered:
+            continue
+        rendered.add(unit)
+        status, policies = mapped[unit]
+
+        words = para.text.split()
+        anchor = " ".join(words[:_POLICY_ANCHOR_WORDS]) + ("..." if len(words) > _POLICY_ANCHOR_WORDS else "")
+        lines = [f'Clause beginning "{anchor}"']
+        if status is ClassificationStatus.NEEDS_CONFIRMATION:
+            lines.append("Possible clause types (apply only the one that fits this clause; if none fits, review it without a policy):")
+        elif len(policies) > 1:
+            lines.append("Clause types (the clause covers several topics; apply every policy below):")
+        else:
+            lines.append("Clause type:")
+        for policy in policies:
+            first, *rest = _describe_policy(policy)
+            lines.append(f"- {first}")
+            lines.extend(f"  {line}" for line in rest)
+        entries.append("\n".join(lines))
+
+    if not entries:
+        return ""
+    return "Legal team policies for clauses in the text below (apply each only to the clause it names):\n\n" + "\n\n".join(entries) + "\n\n"
+
+
+async def _build_policy_contexts(request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str) -> List[str]:
+    """Map each clause to the legal team's policies and render one policy block per batch.
+
+    Clauses go to the shared vector DB, classify_clause applies the score
+    thresholds, and each accepted or candidate clause type brings its policy.
+    Returns empty blocks — the policy-free review — when no clause search is
+    configured or the search fails, so the vector DB never blocks a review.
+    """
+
+    empty = [""] * len(batches)
+    search = get_clause_search()
+    if search is None:
+        return empty
+
+    units = _build_clause_units(request.textinformation, titles)
+    texts = ["\n\n".join(request.textinformation[idx].text.strip() for idx in unit) for unit in units]
+    try:
+        hits = await search.search(texts, request.agreement_type, session_id)
+    except Exception:
+        logger.exception("Clause search failed; reviewing without clause policies.")
+        return empty
+    if len(hits) != len(texts):
+        logger.warning("Clause search returned %d result list(s) for %d clause(s); reviewing without clause policies.", len(hits), len(texts))
+        return empty
+
+    store = get_clause_policy_store()
+    mapped: Dict[int, _MappedClause] = {}
+    unit_of: Dict[int, int] = {}
+    for unit, unit_hits in zip(units, hits):
+        classification = classify_clause(unit_hits)
+        policies: List[ClausePolicy] = []
+        for match in classification.matches:
+            policy = store.get(match.canonical_type, match.sub_type, request.agreement_type)
+            if policy is not None:
+                policies.append(policy)
+        if not policies:
+            continue
+        # A clause is keyed by its first paragraph position.
+        mapped[unit[0]] = (classification.status, policies)
+        for idx in unit:
+            unit_of[idx] = unit[0]
+
+    logger.info("Clause mapping: %d of %d clause(s) mapped to legal-team policies.", len(mapped), len(units))
+    return [_render_policy_block(batch, mapped, unit_of) for batch, _ in batches]
+
+
 # Character families the model tends to normalize while copying; each matches all variants.
 _APOSTROPHES = "'’‘"
 _QUOTES = '"“”'
@@ -338,7 +462,7 @@ def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions
     return valid
 
 
-async def _review_batch(batch: _Batch, context: str, reviewer_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
+async def _review_batch(batch: _Batch, context: str, reviewer_context: str, policy_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
     """Run the schema-enforced review call for one batch, with a single retry."""
 
     llm_model = get_bedrock_model()
@@ -354,7 +478,7 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, sema
             try:
                 return await llm_model.generate(
                     prompt=_GENERAL_REVIEW_USER,
-                    context={"document": document, "reviewer_context": reviewer_context},
+                    context={"document": document, "reviewer_context": reviewer_context, "policy_context": policy_context},
                     response_model=GeneralReviewResponse,
                     system_message=_GENERAL_REVIEW_SYSTEM,
                     session_id=session_id,
@@ -369,10 +493,12 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, sema
     raise RuntimeError("unreachable")
 
 
-async def _review_batch_consensus(batch: _Batch, context: str, reviewer_context: str, semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]) -> List[Tuple[int, Suggestion]]:
+async def _review_batch_consensus(
+    batch: _Batch, context: str, reviewer_context: str, policy_context: str, semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]
+) -> List[Tuple[int, Suggestion]]:
     """Review one batch with parallel votes and keep only majority-backed findings."""
 
-    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, policy_context, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
 
     # A majority of votes must succeed; one lost vote never fails the review.
     votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewResponse)]
@@ -414,10 +540,13 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
 
     reviewer_context = _build_reviewer_context(request)
     titles = _build_clause_titles(request.textinformation)
+    policy_contexts = await _build_policy_contexts(request, batches, titles, session_id)
     logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    results = await asyncio.gather(*[_review_batch_consensus(batch, context, reviewer_context, semaphore, session_id, titles) for batch, context in batches])
+    results = await asyncio.gather(
+        *[_review_batch_consensus(batch, context, reviewer_context, policy_context, semaphore, session_id, titles) for (batch, context), policy_context in zip(batches, policy_contexts)]
+    )
 
     seen_positions: Set[int] = set()
     positioned: List[Tuple[int, Suggestion]] = []
@@ -461,10 +590,14 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         batches = _build_batches(request.textinformation)
         reviewer_context = _build_reviewer_context(request)
         titles = _build_clause_titles(request.textinformation)
+        policy_contexts = await _build_policy_contexts(request, batches, titles, session_id)
         logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-        tasks = [asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, semaphore, session_id, titles)) for batch, context in batches]
+        tasks = [
+            asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, policy_context, semaphore, session_id, titles))
+            for (batch, context), policy_context in zip(batches, policy_contexts)
+        ]
 
         yield frame('{"suggestions": [')
 
