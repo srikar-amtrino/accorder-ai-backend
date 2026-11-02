@@ -1,0 +1,198 @@
+[
+  {
+    "canonical_type": "Definitions & Interpretation",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Purpose",
+    "inherent_risk_tier": "Low",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Scope of Services",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Statements of Work & Work Orders",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Customer Obligations",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Service Provider Obligations",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Term & Termination",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Deliverables & Acceptance",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Service Levels",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Support & Maintenance",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Change Control",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Fees & Payment",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Confidentiality",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Data Protection & Privacy",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Intellectual Property",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Representations & Warranties",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Indemnification",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Limitation of Liability",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Insurance",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Compliance",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Audit & Records",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Subcontractors",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Assignment",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Force Majeure",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Governing Law & Dispute Resolution",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Notices",
+    "inherent_risk_tier": "Low",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "Independent Contractor",
+    "inherent_risk_tier": "Low",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "General Provisions",
+    "inherent_risk_tier": "Low",
+    "acceptable_standard": "",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  }
+]

@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+from src.services.clause_mapping.search import BaseClauseSearch
 from src.services.ingestion.ingestion import IngestionService
 from src.services.llm.bedrock_model import BedrockModel
 from src.services.retrieval.retrieval import RetrievalService
@@ -21,6 +22,9 @@ class AppContainer:
     retrieval_service: Optional[RetrievalService] = field(default=None)
     ingestion_service: Optional[IngestionService] = field(default=None)
     faiss_store: Optional[FAISSVectorStore] = field(default=None)
+    # Shared clause vector DB (Qdrant, via the data pipeline's API). Stays None —
+    # general review then runs without clause policies — until a client is wired in.
+    clause_search: Optional[BaseClauseSearch] = field(default=None)
 
     def initialize(self) -> None:
         """Initialization of components"""
@@ -79,3 +83,9 @@ def get_faiss_store() -> FAISSVectorStore:
         raise RuntimeError("FAISSVectorStore has not been initialized. Call container.initialize() before using it.")
 
     return container.faiss_store
+
+
+def get_clause_search() -> Optional[BaseClauseSearch]:
+    """Get the clause vector search client, or None when none is configured."""
+
+    return container.clause_search
