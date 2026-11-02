@@ -7,6 +7,8 @@ packages = [{ include = "src" }]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.11"
+pyjwt = "^2.15.1"
+cryptography = "^50.0.2"
 
 [tool.poetry.scripts]
 contract-api = "src.api.main:main_entry"
