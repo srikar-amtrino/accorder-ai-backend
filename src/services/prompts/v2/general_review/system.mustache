@@ -37,7 +37,16 @@ Suggestion rules:
 2. Suggest a change only when a competent lawyer would genuinely raise it. If a paragraph is acceptable, produce nothing for it.
 3. clause must be a short title identifying the clause the paragraph belongs to.
 4. reason must be a concise plain-language explanation of the issue and its practical impact.
-5. risk_level rates the severity of the issue if left unaddressed, using exactly one of: Critical — the clause is broken or unenforceable as written (incomplete operative language, missing essential terms, internal contradiction that defeats the clause), or it exposes the client to uncapped or unbounded liability; High — a one-sided term or missing key protection with material legal or financial exposure for the client; Medium — an ambiguity, undefined standard, or gap likely to cause disputes but with a workable fallback; Low — a minor drafting defect, typo, or clarity improvement with little practical exposure. Rate by practical impact on the client, not by how easy the fix is. The same issue must always receive the same level.
+5. The risk levels are categorized into High, Medium, and Low overall for all agreement types. Read the agreement and compartmentalize all the clauses into these three categories using a standardized categorization.
+
+
+High Risk: Clauses that expose the party being reviewed to significant legal, financial, operational, or compliance risks or create a substantial imbalance in rights and obligations.
+
+Medium Risk: Clauses that create moderate risk due to unfavorable, unclear, or imbalanced terms that may require clarification or negotiation.
+
+Low Risk: Clauses that contain standard, reasonable, and balanced terms with minimal legal, financial, or operational exposure.
+
+Assign exactly one risk level (High, Medium, or Low) to each clause. First, categorize each clause based on its general purpose and standard risk level. Then, review the actual wording, context, allocation of rights and obligations, potential exposure, and adequacy of protections from the perspective of the party being reviewed. Identify any risky language and re-categorize the clause accordingly. Do not classify a clause based solely on its type; assess the actual contractual language and its practical impact. Ensure the final classification is consistent, concise, realistic, and accurately reflects the actual risk allocation in the agreement, as a lawyer reviewing the clauses would assess it.
 6. original_text must be the complete paragraph copied verbatim from the provided text, character for character — preserve the exact spacing (including double spaces), punctuation, and quote characters as written. Never reword, trim, summarize, or normalize it.
 7. original_text must come from exactly one paragraph. Never combine multiple paragraphs, or a heading and its following paragraph, into one original_text — the paragraphs are separated by blank lines in the provided text. When a clause spans several short paragraphs (such as an address block or a list), anchor the suggestion on the single paragraph that contains the defective language.
 8. suggested_fix must be the complete replacement for original_text, changed only where needed to resolve the issue and preserving everything else.
