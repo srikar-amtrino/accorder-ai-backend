@@ -84,7 +84,7 @@ class Suggestion(BaseModel):
 
     clause: str = Field(description="Title/heading of the clause this suggestion applies to")
     reason: str = Field(description="Plain-language justification for the change, grounded in the clause text")
-    risk_level: Literal["Low", "Medium", "High", "Critical"] = Field(description="Severity of the issue if left unaddressed: Low, Medium, High, or Critical")
+    risk_level: Literal["Low", "Medium", "High"] = Field(description="Risk level of the clause for the client if left unaddressed: Low, Medium, or High")
     original_text: str = Field(description="Complete paragraph to be replaced, copied verbatim from the document")
     suggested_fix: str = Field(description="Complete revised replacement for original_text")
     para_identifier: str = Field(default="", description="Leave empty; the server fills in the paragraph identifier")
@@ -92,12 +92,12 @@ class Suggestion(BaseModel):
     @field_validator("risk_level", mode="before")
     @classmethod
     def _normalize_risk_level(cls, value: Any) -> Any:
-        """Fold casing and common synonyms into the four canonical levels."""
+        """Fold casing and common synonyms into the three canonical levels."""
 
         if not isinstance(value, str):
             return value
         canonical = value.strip().capitalize()
-        return {"Minor": "Low", "Moderate": "Medium", "Severe": "High", "Major": "High"}.get(canonical, canonical)
+        return {"Minor": "Low", "Moderate": "Medium", "Severe": "High", "Major": "High", "Critical": "High"}.get(canonical, canonical)
 
 
 class GeneralReviewResponse(BaseModel):

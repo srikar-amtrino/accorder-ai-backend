@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import Any, Dict, Optional, Type, cast
+from typing import Any, Dict, Optional, Type, TypeVar
 
 import boto3
 import pystache
@@ -16,6 +16,9 @@ from src.exceptions.llm_exceptions import (
 from src.services.llm.base_model import BaseLLMModel
 
 logger = get_logger(__name__)
+
+# The structured response type a caller asks for is the type it gets back.
+ResponseModelT = TypeVar("ResponseModelT", bound=BaseModel)
 
 
 class BedrockModel(BaseLLMModel):
@@ -220,7 +223,7 @@ class BedrockModel(BaseLLMModel):
 
     #     return cast(response_model, response_model.model_validate(normalized_input))  # type: ignore
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None, temperature: float = 0.0) -> BaseModel:
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[ResponseModelT], session_id: str, system_message: Optional[str] = None, temperature: float = 0.0) -> ResponseModelT:
 
         prompt = self.render_prompt_template(
             prompt=prompt,
@@ -283,4 +286,4 @@ class BedrockModel(BaseLLMModel):
 
         normalized_input = self._normalize_tool_response(tool_use_block["input"])
 
-        return cast(response_model, response_model.model_validate(normalized_input))  # type: ignore
+        return response_model.model_validate(normalized_input)

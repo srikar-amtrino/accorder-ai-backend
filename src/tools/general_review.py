@@ -101,6 +101,9 @@ def _build_reviewer_context(request: GeneralReviewRequest) -> str:
     lines: List[str] = []
     if request.party_represented:
         lines.append(f"Party the client represents: {request.party_represented}")
+        document_text = " ".join(para.text for para in request.textinformation).casefold()
+        if request.party_represented.casefold() not in document_text:
+            logger.warning("Party represented %r does not appear in the document; the model will have to infer which party is the client.", request.party_represented)
     if request.review_objective:
         lines.append(f"Primary objective for this review: {request.review_objective}")
     if request.specific_concerns:
@@ -114,6 +117,32 @@ def _build_reviewer_context(request: GeneralReviewRequest) -> str:
         "it never overrides them):\n\n"
         f"{joined}\n\n"
     )
+
+
+# Clause headings listed with every batch of a multi-batch review, so a batch
+# never calls a provision missing that another batch contains.
+_OUTLINE_MAX_ENTRIES = 120
+
+
+def _build_outline_context(paragraphs: Sequence[TextInformation], titles: Dict[str, str], batch_count: int) -> str:
+    """Render the document's clause headings, in order, as the prompt's outline block.
+
+    Empty for a single-batch review, where the model already sees the whole text.
+    """
+
+    if batch_count < 2:
+        return ""
+    seen: Set[str] = set()
+    headings: List[str] = []
+    for para in paragraphs:
+        title = titles.get(para.paraindetifier)
+        if title and title not in seen:
+            seen.add(title)
+            headings.append(title)
+    if not headings:
+        return ""
+    listed = "\n".join(f"- {heading}" for heading in headings[:_OUTLINE_MAX_ENTRIES])
+    return "Document outline (headings of every clause in the whole document, in order — for orientation only; review only the text below):\n\n" f"{listed}\n\n"
 
 
 def _cache_get(key: str) -> Optional[GeneralReviewResponse]:
@@ -179,6 +208,9 @@ def _clause_title(text: str) -> Optional[str]:
     lead-in ('Return of Advances.  In the event...', '7.3 Security Measures. ...').
     """
 
+    # Signature-block lines ("Name: ______") are never clause titles.
+    if "___" in text:
+        return None
     stripped = _TITLE_NUMBER_PREFIX_RE.sub("", text.strip(), count=1)
     if _is_heading(stripped):
         candidate = stripped.rstrip(".:").strip()
@@ -549,7 +581,7 @@ def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions
     return valid
 
 
-async def _review_batch(batch: _Batch, context: str, reviewer_context: str, policy_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
+async def _review_batch(batch: _Batch, context: str, reviewer_context: str, outline_context: str, policy_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
     """Run the schema-enforced review call for one batch, with a single retry."""
 
     llm_model = get_bedrock_model()
@@ -565,7 +597,7 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, poli
             try:
                 return await llm_model.generate(
                     prompt=_GENERAL_REVIEW_USER,
-                    context={"document": document, "reviewer_context": reviewer_context, "policy_context": policy_context},
+                    context={"document": document, "reviewer_context": reviewer_context, "outline_context": outline_context, "policy_context": policy_context},
                     response_model=GeneralReviewResponse,
                     system_message=_GENERAL_REVIEW_SYSTEM,
                     session_id=session_id,
@@ -581,13 +613,13 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, poli
 
 
 async def _review_batch_consensus(
-    batch: _Batch, context: str, reviewer_context: str, policy_context: "asyncio.Future[str]", semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]
+    batch: _Batch, context: str, reviewer_context: str, outline_context: str, policy_context: "asyncio.Future[str]", semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]
 ) -> List[Tuple[int, Suggestion]]:
     """Review one batch with parallel votes and keep only majority-backed findings."""
 
     # Wait for this batch's clauses to be mapped before taking a model slot.
     policies = await policy_context
-    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, policies, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, outline_context, policies, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
 
     # A majority of votes must succeed; one lost vote never fails the review.
     votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewResponse)]
@@ -629,13 +661,14 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
 
     reviewer_context = _build_reviewer_context(request)
     titles = _build_clause_titles(request.textinformation)
+    outline_context = _build_outline_context(request.textinformation, titles, len(batches))
     policy_contexts, mapping = _start_policy_mapping(request, batches, titles, session_id)
     logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
     try:
         results = await asyncio.gather(
-            *[_review_batch_consensus(batch, context, reviewer_context, policy_context, semaphore, session_id, titles) for (batch, context), policy_context in zip(batches, policy_contexts)]
+            *[_review_batch_consensus(batch, context, reviewer_context, outline_context, policy_context, semaphore, session_id, titles) for (batch, context), policy_context in zip(batches, policy_contexts)]
         )
     finally:
         if mapping is not None:
@@ -684,12 +717,13 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         batches = _build_batches(request.textinformation)
         reviewer_context = _build_reviewer_context(request)
         titles = _build_clause_titles(request.textinformation)
+        outline_context = _build_outline_context(request.textinformation, titles, len(batches))
         policy_contexts, mapping = _start_policy_mapping(request, batches, titles, session_id)
         logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
         tasks = [
-            asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, policy_context, semaphore, session_id, titles))
+            asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, outline_context, policy_context, semaphore, session_id, titles))
             for (batch, context), policy_context in zip(batches, policy_contexts)
         ]
 

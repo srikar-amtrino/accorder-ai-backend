@@ -3,11 +3,13 @@ from typing import Dict, List, Sequence
 from src.schemas.clause_mapping import ClassificationStatus, ClauseClassification, ClauseMatch
 
 # Cosine-similarity cut-offs for bge-m3 against the shared collection, where a
-# whole clause is matched to sentence-level chunks: the right type lands around
-# 0.79–0.90 and unrelated types stay below ~0.73. Re-tune if the embedding
+# clause's opening is matched to sentence-level chunks. On documents unlike the
+# collection's sources the right type still ranks first but scores 0.70–0.80,
+# so the candidate band is wide and the model picks the type that fits; above
+# 0.80 the match is reliable enough to apply outright. Re-tune if the embedding
 # model or the chunking changes.
 AUTO_ACCEPT_SCORE = 0.80
-CANDIDATE_SCORE = 0.75
+CANDIDATE_SCORE = 0.70
 
 # Distinct clause types considered per clause, both for compound-clause
 # detection and as the candidate list for LLM confirmation.

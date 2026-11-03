@@ -219,3 +219,6 @@ __marimo__/
 # extra files
 *.drawio.bkp 
 *.drawio
+# Postman workspace saved into the project folder
+postman/
+.postman/
