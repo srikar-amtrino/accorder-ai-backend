@@ -357,9 +357,11 @@ def _render_policy_block(batch: _Batch, mapped: Dict[int, _MappedClause], unit_o
 # past this budget the remaining batches are reviewed without policies.
 POLICY_MAPPING_BUDGET_SECONDS = 240.0
 
-# A clause unit shorter than this is a bare article heading ("CONFIDENTIALITY")
-# or a fragment: it never classifies, so it is not worth an embedding call.
-MIN_CLAUSE_WORDS = 6
+# A clause unit shorter than this is a bare article heading ("CONFIDENTIALITY"),
+# a list item ("Business line margin and performance review"), or a fragment: it
+# never classifies, so it is not worth an embedding call. A real clause — heading
+# plus at least one sentence of body — is always longer.
+MIN_CLAUSE_WORDS = 10
 
 # One policy block per batch, resolved as that batch's clauses are mapped.
 _PolicyContexts = List["asyncio.Future[str]"]
