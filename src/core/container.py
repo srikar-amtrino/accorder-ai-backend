@@ -1,6 +1,8 @@
 from dataclasses import dataclass, field
 from typing import Optional
 
+from src.config.settings import get_settings
+from src.services.clause_mapping.qdrant_search import QdrantClauseSearch
 from src.services.clause_mapping.search import BaseClauseSearch
 from src.services.ingestion.ingestion import IngestionService
 from src.services.llm.bedrock_model import BedrockModel
@@ -22,8 +24,8 @@ class AppContainer:
     retrieval_service: Optional[RetrievalService] = field(default=None)
     ingestion_service: Optional[IngestionService] = field(default=None)
     faiss_store: Optional[FAISSVectorStore] = field(default=None)
-    # Shared clause vector DB (Qdrant, via the data pipeline's API). Stays None —
-    # general review then runs without clause policies — until a client is wired in.
+    # Shared clause vector DB (Qdrant). None — general review then runs without
+    # clause policies — when clause search is disabled in settings.
     clause_search: Optional[BaseClauseSearch] = field(default=None)
 
     def initialize(self) -> None:
@@ -35,6 +37,7 @@ class AppContainer:
         self.retrieval_service = RetrievalService()
         self.ingestion_service = IngestionService()
         self.faiss_store = FAISSVectorStore(embedding_dimension=self.embedding_service.get_embedding_dimensions())
+        self.clause_search = QdrantClauseSearch() if get_settings().clause_search_enabled else None
 
 
 container = AppContainer()

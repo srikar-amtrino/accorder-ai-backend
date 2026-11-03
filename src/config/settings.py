@@ -58,6 +58,11 @@ class Settings(BaseSettings):
     aws_access_key_id: Union[str, None] = Field(default=None, description="AWS Access Key ID for Bedrock authentication. Optional if using IAM roles or other credential providers.")
     aws_secret_access_key: Union[str, None] = Field(default=None, description="AWS Secret Access Key for Bedrock authentication. Optional if using IAM roles or other credential providers.")
 
+    # Clause mapping — maps general-review clauses to legal-team policies through the shared Qdrant
+    # collection. Qdrant and the embedding service are configured by QDRANT_URL, QDRANT_COLLECTION,
+    # QDRANT_API_KEY, and EMBEDDING_SERVICE_URL (read by their clients).
+    clause_search_enabled: bool = Field(default=True, description="Map clauses to legal-team policies via the clause vector DB during general review. Off reviews without policies.")
+
     # Session management settings
     session_ttl_minutes: int = Field(default=120, description="Session TTL in minutes (default: 2 hours).")
     session_cleanup_interval_minutes: float = Field(default=10.0, description="How often to check for expired sessions, in minutes.")

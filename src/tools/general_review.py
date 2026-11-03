@@ -355,8 +355,10 @@ async def _build_policy_contexts(request: GeneralReviewRequest, batches: List[Tu
     store = get_clause_policy_store()
     mapped: Dict[int, _MappedClause] = {}
     unit_of: Dict[int, int] = {}
+    status_counts: Dict[str, int] = {status.value: 0 for status in ClassificationStatus}
     for unit, unit_hits in zip(units, hits):
         classification = classify_clause(unit_hits)
+        status_counts[classification.status.value] += 1
         policies: List[ClausePolicy] = []
         for match in classification.matches:
             policy = store.get(match.canonical_type, match.sub_type, request.agreement_type)
@@ -369,7 +371,7 @@ async def _build_policy_contexts(request: GeneralReviewRequest, batches: List[Tu
         for idx in unit:
             unit_of[idx] = unit[0]
 
-    logger.info("Clause mapping: %d of %d clause(s) mapped to legal-team policies.", len(mapped), len(units))
+    logger.info("Clause mapping: %d of %d clause(s) mapped to legal-team policies (%s).", len(mapped), len(units), ", ".join(f"{status}={count}" for status, count in status_counts.items()))
     return [_render_policy_block(batch, mapped, unit_of) for batch, _ in batches]
 
 
