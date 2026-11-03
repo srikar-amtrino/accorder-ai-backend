@@ -184,7 +184,7 @@ def _clause_title(text: str) -> Optional[str]:
         candidate = stripped.rstrip(".:").strip()
         if _looks_like_title(candidate):
             return candidate
-        return None
+    # A short paragraph may still open with a lead-in ("Liability cap. See Clause 13.").
     match = _INLINE_TITLE_RE.match(stripped)
     if match and _looks_like_title(match.group(1).strip()):
         return match.group(1).strip()
@@ -298,10 +298,18 @@ def _build_clause_units(paragraphs: Sequence[TextInformation], titles: Dict[str,
     return units
 
 
+def _clause_type_label(canonical_type: str) -> str:
+    """Readable name for a clause type slug: 'fees-and-payment' -> 'Fees and Payment'."""
+
+    words = canonical_type.replace("-", " ").replace("_", " ").split()
+    return " ".join(word if word in _TITLE_STOP_WORDS else word.capitalize() for word in words)
+
+
 def _describe_policy(policy: ClausePolicy) -> List[str]:
     """Render one policy as prompt lines, leaving out fields the legal team has not filled in yet."""
 
-    label = f"{policy.canonical_type} — {policy.sub_type}" if policy.sub_type else policy.canonical_type
+    type_label = _clause_type_label(policy.canonical_type)
+    label = f"{type_label} — {policy.sub_type}" if policy.sub_type else type_label
     lines = [f"{label} (inherent risk tier: {policy.inherent_risk_tier})"]
     if policy.acceptable_standard:
         lines.append(f"Acceptable standard: {policy.acceptable_standard}")
@@ -348,6 +356,10 @@ def _render_policy_block(batch: _Batch, mapped: Dict[int, _MappedClause], unit_o
 # serial (about a second per clause), so a long document can take minutes;
 # past this budget the remaining batches are reviewed without policies.
 POLICY_MAPPING_BUDGET_SECONDS = 240.0
+
+# A clause unit shorter than this is a bare article heading ("CONFIDENTIALITY")
+# or a fragment: it never classifies, so it is not worth an embedding call.
+MIN_CLAUSE_WORDS = 6
 
 # One policy block per batch, resolved as that batch's clauses are mapped.
 _PolicyContexts = List["asyncio.Future[str]"]
@@ -406,11 +418,13 @@ async def _map_policies(search: BaseClauseSearch, request: GeneralReviewRequest,
                 break
 
             texts = ["\n\n".join(paragraphs[idx].text.strip() for idx in unit) for unit in units_here]
-            hits = await search.search(texts, request.agreement_type, session_id) if texts else []
-            if len(hits) != len(texts):
-                raise RuntimeError(f"clause search returned {len(hits)} result list(s) for {len(texts)} clause(s)")
+            searchable = [(unit, text) for unit, text in zip(units_here, texts) if len(text.split()) >= MIN_CLAUSE_WORDS]
+            status_counts[ClassificationStatus.UNCLASSIFIED.value] += len(units_here) - len(searchable)
+            hits = await search.search([text for _, text in searchable], request.agreement_type, session_id) if searchable else []
+            if len(hits) != len(searchable):
+                raise RuntimeError(f"clause search returned {len(hits)} result list(s) for {len(searchable)} clause(s)")
 
-            for unit, unit_hits in zip(units_here, hits):
+            for (unit, _), unit_hits in zip(searchable, hits):
                 classification = classify_clause(unit_hits)
                 status_counts[classification.status.value] += 1
                 policies: List[ClausePolicy] = []
