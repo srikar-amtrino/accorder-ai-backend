@@ -216,3 +216,60 @@ def search_points(
         raise QdrantError("Qdrant returned an invalid point search result.")
 
     return result
+
+
+def search_points_batch(
+    vectors: list[list[float]],
+    limit: int = 5,
+    score_threshold: float | None = None,
+    query_filter: dict[str, Any] | None = None,
+) -> list[list[dict[str, Any]]]:
+    """Run one similarity search per vector in a single request.
+
+    Returns one list of points per input vector, in input order. All searches
+    share the same limit, threshold, and optional Qdrant payload filter.
+    """
+
+    if not vectors:
+        return []
+    if any(not vector for vector in vectors):
+        raise ValueError("Query vectors cannot be empty.")
+    if limit <= 0:
+        raise ValueError("Limit must be greater than zero.")
+
+    searches: list[dict[str, Any]] = []
+    for vector in vectors:
+        search: dict[str, Any] = {
+            "vector": {"name": "dense", "vector": vector},
+            "limit": limit,
+            "with_payload": True,
+            "with_vector": False,
+        }
+        if score_threshold is not None:
+            search["score_threshold"] = score_threshold
+        if query_filter is not None:
+            search["filter"] = query_filter
+        searches.append(search)
+
+    response = _request(
+        "POST",
+        f"/collections/{QDRANT_COLLECTION}/points/search/batch",
+        json={"searches": searches},
+    )
+
+    try:
+        body = response.json()
+    except ValueError as exc:
+        logger.exception("Qdrant returned an invalid JSON response while batch searching points.")
+        raise QdrantError("Qdrant returned an invalid response.") from exc
+
+    result = body.get("result") if isinstance(body, dict) else None
+    if (
+        not isinstance(result, list)
+        or len(result) != len(vectors)
+        or not all(isinstance(points, list) and all(isinstance(point, dict) for point in points) for points in result)
+    ):
+        logger.error("Qdrant returned an invalid batch search result.")
+        raise QdrantError("Qdrant returned an invalid batch search result.")
+
+    return result
