@@ -17,6 +17,7 @@ from src.schemas.general_review import (
 )
 from src.services.clause_mapping.classifier import classify_clause
 from src.services.clause_mapping.policy_store import get_clause_policy_store
+from src.services.clause_mapping.search import BaseClauseSearch
 
 logger = get_logger(__name__)
 
@@ -327,52 +328,104 @@ def _render_policy_block(batch: _Batch, mapped: Dict[int, _MappedClause], unit_o
     return "Legal team policies for clauses in the text below (apply each only to the clause it names):\n\n" + "\n\n".join(entries) + "\n\n"
 
 
-async def _build_policy_contexts(request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str) -> List[str]:
-    """Map each clause to the legal team's policies and render one policy block per batch.
+# Total time the clause mapping may spend per review. Embedding is slow and
+# serial (about a second per clause), so a long document can take minutes;
+# past this budget the remaining batches are reviewed without policies.
+POLICY_MAPPING_BUDGET_SECONDS = 240.0
+
+# One policy block per batch, resolved as that batch's clauses are mapped.
+_PolicyContexts = List["asyncio.Future[str]"]
+
+
+def _start_policy_mapping(request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str) -> Tuple[_PolicyContexts, Optional["asyncio.Task[None]"]]:
+    """Begin mapping clauses to the legal team's policies, one batch at a time, ahead of the review.
+
+    Returns a future per batch that resolves to that batch's policy block, and
+    the background task doing the mapping (None when no clause search is
+    configured). Each batch's review awaits only its own block, so the first
+    LLM call starts after the first batch's clauses are mapped rather than
+    after the whole document is. The mapping never blocks or fails a review:
+    a search failure or an exhausted budget resolves the remaining blocks
+    empty — the policy-free review.
+    """
+
+    loop = asyncio.get_running_loop()
+    contexts: _PolicyContexts = [loop.create_future() for _ in batches]
+    search = get_clause_search()
+    if search is None or not batches:
+        for context in contexts:
+            context.set_result("")
+        return contexts, None
+    task = asyncio.create_task(_map_policies(search, request, batches, titles, session_id, contexts))
+    return contexts, task
+
+
+async def _map_policies(search: BaseClauseSearch, request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str, contexts: _PolicyContexts) -> None:
+    """Map each batch's clauses in document order and resolve its policy block.
 
     Clauses go to the shared vector DB, classify_clause applies the score
     thresholds, and each accepted or candidate clause type brings its policy.
-    Returns empty blocks — the policy-free review — when no clause search is
-    configured or the search fails, so the vector DB never blocks a review.
     """
 
-    empty = [""] * len(batches)
-    search = get_clause_search()
-    if search is None:
-        return empty
-
-    units = _build_clause_units(request.textinformation, titles)
-    texts = ["\n\n".join(request.textinformation[idx].text.strip() for idx in unit) for unit in units]
-    try:
-        hits = await search.search(texts, request.agreement_type, session_id)
-    except Exception:
-        logger.exception("Clause search failed; reviewing without clause policies.")
-        return empty
-    if len(hits) != len(texts):
-        logger.warning("Clause search returned %d result list(s) for %d clause(s); reviewing without clause policies.", len(hits), len(texts))
-        return empty
+    paragraphs = request.textinformation
+    units = _build_clause_units(paragraphs, titles)
+    # A clause belongs to the batch holding its first paragraph.
+    batch_of: Dict[int, int] = {idx: number for number, (batch, _) in enumerate(batches) for idx, _ in batch}
+    batch_units: List[List[List[int]]] = [[] for _ in batches]
+    for unit in units:
+        number = batch_of.get(unit[0])
+        if number is not None:
+            batch_units[number].append(unit)
 
     store = get_clause_policy_store()
     mapped: Dict[int, _MappedClause] = {}
     unit_of: Dict[int, int] = {}
     status_counts: Dict[str, int] = {status.value: 0 for status in ClassificationStatus}
-    for unit, unit_hits in zip(units, hits):
-        classification = classify_clause(unit_hits)
-        status_counts[classification.status.value] += 1
-        policies: List[ClausePolicy] = []
-        for match in classification.matches:
-            policy = store.get(match.canonical_type, match.sub_type, request.agreement_type)
-            if policy is not None:
-                policies.append(policy)
-        if not policies:
-            continue
-        # A clause is keyed by its first paragraph position.
-        mapped[unit[0]] = (classification.status, policies)
-        for idx in unit:
-            unit_of[idx] = unit[0]
+    started = asyncio.get_running_loop().time()
+    completed = 0
+    try:
+        for number, ((batch, _), units_here) in enumerate(zip(batches, batch_units)):
+            if asyncio.get_running_loop().time() - started > POLICY_MAPPING_BUDGET_SECONDS:
+                logger.warning("Clause mapping budget of %.0fs spent after %d of %d batch(es); reviewing the rest without clause policies.", POLICY_MAPPING_BUDGET_SECONDS, number, len(batches))
+                break
 
-    logger.info("Clause mapping: %d of %d clause(s) mapped to legal-team policies (%s).", len(mapped), len(units), ", ".join(f"{status}={count}" for status, count in status_counts.items()))
-    return [_render_policy_block(batch, mapped, unit_of) for batch, _ in batches]
+            texts = ["\n\n".join(paragraphs[idx].text.strip() for idx in unit) for unit in units_here]
+            hits = await search.search(texts, request.agreement_type, session_id) if texts else []
+            if len(hits) != len(texts):
+                raise RuntimeError(f"clause search returned {len(hits)} result list(s) for {len(texts)} clause(s)")
+
+            for unit, unit_hits in zip(units_here, hits):
+                classification = classify_clause(unit_hits)
+                status_counts[classification.status.value] += 1
+                policies: List[ClausePolicy] = []
+                for match in classification.matches:
+                    policy = store.get(match.canonical_type, match.sub_type, request.agreement_type)
+                    if policy is not None:
+                        policies.append(policy)
+                if not policies:
+                    continue
+                # A clause is keyed by its first paragraph position.
+                mapped[unit[0]] = (classification.status, policies)
+                for idx in unit:
+                    unit_of[idx] = unit[0]
+
+            contexts[number].set_result(_render_policy_block(batch, mapped, unit_of))
+            completed = number + 1
+    except Exception:
+        logger.exception("Clause search failed after %d of %d batch(es); reviewing the rest without clause policies.", completed, len(batches))
+    finally:
+        for context in contexts:
+            if not context.done():
+                context.set_result("")
+        logger.info(
+            "Clause mapping: %d of %d clause(s) mapped to legal-team policies across %d of %d batch(es) in %.1fs (%s).",
+            len(mapped),
+            sum(status_counts.values()),
+            completed,
+            len(batches),
+            asyncio.get_running_loop().time() - started,
+            ", ".join(f"{status}={count}" for status, count in status_counts.items()),
+        )
 
 
 # Character families the model tends to normalize while copying; each matches all variants.
@@ -496,11 +549,13 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, poli
 
 
 async def _review_batch_consensus(
-    batch: _Batch, context: str, reviewer_context: str, policy_context: str, semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]
+    batch: _Batch, context: str, reviewer_context: str, policy_context: "asyncio.Future[str]", semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]
 ) -> List[Tuple[int, Suggestion]]:
     """Review one batch with parallel votes and keep only majority-backed findings."""
 
-    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, policy_context, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+    # Wait for this batch's clauses to be mapped before taking a model slot.
+    policies = await policy_context
+    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, policies, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
 
     # A majority of votes must succeed; one lost vote never fails the review.
     votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewResponse)]
@@ -542,13 +597,17 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
 
     reviewer_context = _build_reviewer_context(request)
     titles = _build_clause_titles(request.textinformation)
-    policy_contexts = await _build_policy_contexts(request, batches, titles, session_id)
+    policy_contexts, mapping = _start_policy_mapping(request, batches, titles, session_id)
     logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    results = await asyncio.gather(
-        *[_review_batch_consensus(batch, context, reviewer_context, policy_context, semaphore, session_id, titles) for (batch, context), policy_context in zip(batches, policy_contexts)]
-    )
+    try:
+        results = await asyncio.gather(
+            *[_review_batch_consensus(batch, context, reviewer_context, policy_context, semaphore, session_id, titles) for (batch, context), policy_context in zip(batches, policy_contexts)]
+        )
+    finally:
+        if mapping is not None:
+            mapping.cancel()
 
     seen_positions: Set[int] = set()
     positioned: List[Tuple[int, Suggestion]] = []
@@ -576,6 +635,7 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         return f"data: {json.dumps(fragment)}\n\n"
 
     tasks: List[asyncio.Task] = []
+    mapping: Optional["asyncio.Task[None]"] = None
     try:
         fingerprint = _request_fingerprint(request)
         cached = _cache_get(fingerprint)
@@ -592,7 +652,7 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         batches = _build_batches(request.textinformation)
         reviewer_context = _build_reviewer_context(request)
         titles = _build_clause_titles(request.textinformation)
-        policy_contexts = await _build_policy_contexts(request, batches, titles, session_id)
+        policy_contexts, mapping = _start_policy_mapping(request, batches, titles, session_id)
         logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
@@ -621,6 +681,8 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         logger.exception("General review stream failed: %s", exc)
         for task in tasks:
             task.cancel()
+        if mapping is not None:
+            mapping.cancel()
         yield f"data: {json.dumps({'error': 'General review failed. Please try again.'})}\n\n"
 
     yield "data: [DONE]\n\n"
