@@ -54,6 +54,16 @@ _INLINE_TITLE_RE = re.compile(r"^([^.:]{1,70})[.:](?:\s|$)")
 # Lowercase connectors allowed inside an otherwise capitalized clause title.
 _TITLE_STOP_WORDS = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "the", "to", "with"}
 
+# Sentence-case lead-ins ("Overdue charges.", "Termination for cause.") count as
+# titles only when short and free of words that mark a sentence ("Provider shall
+# pay.", "Each Party bears its own costs.", "“Annex” means an annex.").
+_SENTENCE_TITLE_MAX_WORDS = 6
+_TITLE_VERB_WORDS = {
+    "shall", "will", "may", "must", "should", "can", "cannot", "is", "are", "was", "were", "be", "been", "has", "have", "had", "does", "do", "did", "not", "hereby",
+    "means", "agrees", "agree", "includes", "include", "bears", "pays", "provides", "grants", "retains", "acknowledges", "represents", "warrants", "covenants",
+    "undertakes", "desire", "desires", "intends", "applies", "apply", "governs", "survives", "survive", "terminates", "indemnifies", "indemnify",
+}
+
 # Trailing company suffixes mark a party-name line, not a clause heading.
 _TITLE_COMPANY_SUFFIXES = {"inc", "llc", "ltd", "corp", "co"}
 
@@ -132,7 +142,11 @@ def _is_heading(text: str) -> bool:
 
 
 def _looks_like_title(segment: str) -> bool:
-    """True when a segment reads as a clause title: short, capitalized words plus connectors.
+    """True when a segment reads as a clause title: short capitalized words, or a short sentence-case phrase.
+
+    Title Case ("Limitation of Liability") always qualifies. Sentence case
+    ("Overdue charges", "Termination for cause") qualifies when nothing in it
+    reads as a verb, so a short opening sentence ("Provider shall pay") does not.
 
     Address and party-name lines ("San Ramon, CA 94583", "XYZInc Inc.",
     "To Amtrino:") also look short and capitalized, so digits, internal
@@ -144,16 +158,18 @@ def _looks_like_title(segment: str) -> bool:
     if re.search(r",\s*[A-Z]{2}$", segment):
         return False
     words = [word.strip(",;()'\"‘’“”") for word in segment.split()]
-    words = [word for word in words if word]
+    words = [word for word in words if any(char.isalnum() for char in word)]
     if not words or len(words) > _HEADING_MAX_WORDS:
         return False
-    if words[0].lower() in _TITLE_STOP_WORDS:
+    if words[0].lower() in _TITLE_STOP_WORDS or not words[0][0].isupper():
         return False
     if words[-1].lower() in _TITLE_COMPANY_SUFFIXES:
         return False
     if any(any(char.isdigit() for char in word) for word in words):
         return False
-    return all(word[0].isupper() or word.lower() in _TITLE_STOP_WORDS for word in words)
+    if all(word[0].isupper() or word.lower() in _TITLE_STOP_WORDS for word in words):
+        return True
+    return len(words) <= _SENTENCE_TITLE_MAX_WORDS and not any(word.lower() in _TITLE_VERB_WORDS for word in words)
 
 
 def _clause_title(text: str) -> Optional[str]:
