@@ -9,11 +9,11 @@ from src.services.vector_store.qdrant_db import search_points_batch
 
 logger = get_logger(__name__)
 
-# Clause texts sent to the embedding service per request. The service handles
-# requests one at a time, so one request per review batch of clauses saves the
-# round trips; callers pass already-trimmed queries (heading plus the first
-# operative words), so even a full batch stays small.
-EMBED_BATCH_SIZE = 32
+# Clause texts sent to the embedding service per request. The service rejects
+# more than 16 texts per call (HTTP 422 "List should have at most 16 items"),
+# so this is a hard ceiling, not a tuning knob; larger inputs are sent in
+# consecutive calls by EmbeddingClient.
+EMBED_BATCH_SIZE = 16
 
 # The service may be slow, but a batch of short texts takes seconds; a call
 # taking longer than this means the service is unhealthy and the review should

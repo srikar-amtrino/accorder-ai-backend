@@ -117,6 +117,12 @@ def test_smart_query_keeps_definitions_inside_a_definitions_clause():
     assert '"Services" means' in query
 
 
+def test_embedding_batch_size_respects_service_limit():
+    from src.services.clause_mapping.qdrant_search import EMBED_BATCH_SIZE
+
+    assert 1 <= EMBED_BATCH_SIZE <= 16  # the embedding service rejects more than 16 texts per request
+
+
 # --- classifier --------------------------------------------------------------
 
 
