@@ -13,16 +13,23 @@
   {
     "canonical_type": "purpose",
     "inherent_risk_tier": "Low",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Clearly defines the background, commercial context, and overarching objective of the Agreement without creating binding substantive obligations, exclusivity, or minimum spend commitments that conflict with the operative sections.",
+    "unacceptable_triggers": [
+      "binding exclusivity or minimum volume commitment hidden in the purpose or recitals clause",
+      "language stating recitals override operative provisions of the agreement"
+    ],
+    "fallback_guidelines": "Clarify that the Purpose/Background section is for context only and does not create binding obligations beyond those expressly set forth in the operative sections of the Agreement."
   },
   {
     "canonical_type": "scope-of-services",
-    "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "Services and Deliverables are clearly defined in the Agreement or an executed Statement of Work (SOW) with objective specifications, timelines, and deliverables; any material scope changes require a mutually executed written Change Order; no unilateral right for Service Provider to reduce or materially alter the scope of Services.",
+    "unacceptable_triggers": [
+      "unilateral right for service provider to modify, deprecate, or reduce scope of services without client consent",
+      "vague 'best efforts' or undefined scope that allows billing for out-of-scope work without a signed change order",
+      "client bound to minimum purchase commitments or exclusivity not reflected in an order form"
+    ],
+    "fallback_guidelines": "Specify that Service Provider shall perform the Services set forth in each mutually executed SOW in accordance with the agreed specifications and timelines, and that no changes to scope or fees shall be binding unless set forth in a written Change Order signed by both Parties."
   },
   {
     "canonical_type": "statements-of-work-and-work-orders",
@@ -46,9 +53,13 @@
   {
     "canonical_type": "service-provider-obligations",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Service Provider performs all Services in a professional, workmanlike, and timely manner using qualified personnel in compliance with all applicable laws, industry standards, and Client's security and safety policies while on Client premises or accessing Client systems.",
+    "unacceptable_triggers": [
+      "disclaimer of duty to comply with client security policies or applicable laws",
+      "service provider obligations conditioned entirely on subjective discretion without objective performance standards",
+      "excuse of vendor performance for minor client delays without prompt written notice"
+    ],
+    "fallback_guidelines": "Require Service Provider to perform the Services with due care, skill, and diligence in accordance with industry standards, comply with all applicable laws and Client's reasonable security and access policies, and promptly notify Client of any circumstances likely to delay delivery."
   },
   {
     "canonical_type": "suspension-and-termination",
@@ -88,9 +99,13 @@
   {
     "canonical_type": "support-and-maintenance",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Service Provider provides ongoing technical support, bug fixes, patches, and updates included in the baseline fees; defined severity tiers (Severity 1 critical response within 1–2 hours, 24x7) with clear escalation paths; no discontinuation (End-of-Life) of supported software/services during an active paid term without at least 12 months' prior written notice and migration assistance.",
+    "unacceptable_triggers": [
+      "support, bug fixes, or security patches require additional unscheduled fees during the active subscription term",
+      "right to discontinue or sunset support during a paid term without refund or notice",
+      "no defined response times for critical production-down (Severity 1) issues"
+    ],
+    "fallback_guidelines": "Include standard maintenance, security patches, and updates at no additional charge during the Term; establish a <2 hour response time for critical Severity 1 issues; and prohibit discontinuing support during any paid Term."
   },
   {
     "canonical_type": "change-control",

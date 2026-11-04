@@ -8,7 +8,7 @@ import pytest
 from src.schemas.clause_mapping import ClauseMatch, ClausePolicy
 from src.schemas.general_review import GeneralReviewFindings, GeneralReviewRequest, Suggestion, TextInformation
 from src.services.clause_mapping.policy_store import get_clause_policy_store
-from src.services.clause_mapping.resilient_classifier import HEADING_TO_CANONICAL_TYPE, resolve_qdrant_weighted_knn
+from src.services.clause_mapping.resilient_classifier import HEADING_TO_CANONICAL_TYPE, classify_clause_resilient, resolve_qdrant_weighted_knn
 from src.services.general_review.clause_cache import ZDRClauseHashCache
 from src.services.general_review.risk_matrix import compute_deterministic_risk_level, tier_for_unmapped
 from src.services.general_review.segmentation import build_smart_embedding_query, detect_clause_start
@@ -137,6 +137,20 @@ def test_weighted_knn_prefers_supported_type_and_is_deterministic():
     assert resolve_qdrant_weighted_knn(hits)[0] == "confidentiality"
     assert resolve_qdrant_weighted_knn(hits, heading_boost_slug="general-provisions")[0] == "general-provisions"
     assert resolve_qdrant_weighted_knn([ClauseMatch(canonical_type="notices", score=0.5)]) == (None, 0.0)
+
+
+def test_generic_heading_does_not_lock_and_yields_to_vector_vote():
+    body = ["Miscellaneous. Each party shall keep the other's non-public information secret, use it only for this engagement, and return it on request; these duties last five years."]
+    query = build_smart_embedding_query("Miscellaneous", body)
+    words = len(" ".join(body).split())
+    with_hits = classify_clause_resilient("Miscellaneous", query, words, [ClauseMatch(canonical_type="confidentiality", score=0.79)])
+    assert (with_hits.canonical_type, with_hits.source) == ("confidentiality", "layer2_qdrant")
+    without = classify_clause_resilient("Miscellaneous", query, words, None)
+    assert (without.canonical_type, without.source) == ("general-provisions", "layer3_fallback")
+    specific = classify_clause_resilient(
+        "Severability", "Severability. If any provision is held invalid, the remainder continues in force and effect.", 16, [ClauseMatch(canonical_type="confidentiality", score=0.79)]
+    )
+    assert (specific.canonical_type, specific.source) == ("general-provisions", "layer1_heading")
 
 
 # --- risk matrix -------------------------------------------------------------

@@ -75,6 +75,11 @@ HEADING_TO_CANONICAL_TYPE: List[Tuple[Pattern[str], str]] = [
     ),
 ]
 
+# Catch-all headings ("Miscellaneous", "Additional Terms", "General") name no
+# topic, so they never lock a type: the vector vote may override them, and only
+# when it has nothing does the clause fall back to general-provisions.
+GENERIC_HEADING_RE = re.compile(r"^\s*(miscellaneous|general(\s+(provisions|terms))?|additional\s+(terms|provisions)|other(\s+(terms|provisions|matters))?|further\s+provisions|boilerplate)\s*$", re.I)
+
 # Confidence attached to each layer's verdicts.
 HEADING_MATCH_CONFIDENCE = 0.99
 OPENING_MATCH_CONFIDENCE = 0.85
@@ -116,7 +121,8 @@ def classify_layer1_heading(heading: str, opening_text: str = "") -> Optional[Tu
     if heading:
         for pattern, slug in HEADING_TO_CANONICAL_TYPE:
             if pattern.search(heading):
-                return slug, HEADING_MATCH_CONFIDENCE
+                confidence = OPENING_MATCH_CONFIDENCE if GENERIC_HEADING_RE.match(heading) else HEADING_MATCH_CONFIDENCE
+                return slug, confidence
     opening = (opening_text or "")[:OPENING_TEXT_CHARS]
     if opening:
         for pattern, slug in HEADING_TO_CANONICAL_TYPE:
