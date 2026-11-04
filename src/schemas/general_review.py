@@ -3,6 +3,8 @@ from typing import Any, List, Literal, Optional
 
 from pydantic import BaseModel, Field, field_validator
 
+from src.services.general_review.risk_matrix import MATERIAL_DEVIATION, SEVERITY_CATEGORIES
+
 
 def _escape_inner_quotes(malformed: str) -> str:
     """Escape unescaped double quotes inside JSON string values.
@@ -38,6 +40,27 @@ def _escape_inner_quotes(malformed: str) -> str:
             out.append(char)
         i += 1
     return "".join(out)
+
+
+def parse_string_array(value: Any) -> Any:
+    """Tolerate a JSON array arriving as a JSON-encoded string.
+
+    Bedrock tool-use intermittently serializes long arrays as a JSON string
+    instead of a real array; parse it back so validation succeeds.
+    """
+
+    if not isinstance(value, str):
+        return value
+    stripped = value.strip()
+    if stripped.startswith("```"):
+        stripped = stripped.strip("`").removeprefix("json").strip()
+    try:
+        return json.loads(stripped)
+    except json.JSONDecodeError:
+        # Document quotes copied into the embedded JSON arrive unescaped
+        # and break parsing; repair them before giving up. If the repaired
+        # text still fails, the error propagates into the retry path.
+        return json.loads(_escape_inner_quotes(stripped))
 
 
 class TextInformation(BaseModel):
@@ -80,7 +103,7 @@ class GeneralReviewRequest(BaseModel):
 
 
 class Suggestion(BaseModel):
-    """A single apply/dismiss-able review suggestion."""
+    """A single apply/dismiss-able review suggestion — the shape the Word add-in receives."""
 
     clause: str = Field(description="Title/heading of the clause this suggestion applies to")
     reason: str = Field(description="Plain-language justification for the change, grounded in the clause text")
@@ -108,21 +131,82 @@ class GeneralReviewResponse(BaseModel):
     @field_validator("suggestions", mode="before")
     @classmethod
     def _parse_string_array(cls, value: Any) -> Any:
-        """Tolerate the array arriving as a JSON-encoded string.
+        return parse_string_array(value)
 
-        Bedrock tool-use intermittently serializes long arrays as a JSON string
-        instead of a real array; parse it back so validation succeeds.
-        """
+
+# --- Model-facing schema -----------------------------------------------------
+#
+# The model never chooses a risk level. It reports the facts below for each
+# paragraph it flags; the server computes risk_level from them and the clause
+# type's inherent risk tier (see src/services/general_review/risk_matrix.py)
+# and converts each finding into a Suggestion. These types are internal and
+# never leave the server.
+
+SeverityCategory = Literal["uncapped_or_severe_exposure", "material_commercial_deviation", "minor_drafting_hygiene"]
+
+
+class ReviewFinding(BaseModel):
+    """One flagged paragraph as the model reports it: the fix plus structured facts about the clause."""
+
+    clause: str = Field(description="Short title of the clause the paragraph belongs to")
+    reason: str = Field(description="Concise plain-language explanation of the issue and its practical impact for the client, written as counsel's own assessment")
+    original_text: str = Field(description="The complete paragraph copied verbatim from the provided text, character for character")
+    suggested_fix: str = Field(description="The complete replacement for original_text, changed only where needed")
+    triggered_unacceptable_flags: List[str] = Field(
+        default_factory=list,
+        description=(
+            "Every unacceptable trigger listed in this clause's legal team policy that the paragraph's wording actually triggers, each copied exactly as written in the policy. "
+            "Empty when none applies or the clause has no policy."
+        ),
+    )
+    falls_short_of_acceptable_standard: bool = Field(
+        description=(
+            "True when the clause omits a protection, carve-out, right, or term that the clause's acceptable standard "
+            "(or, without a policy, market standard for the client's position) requires for the client"
+        ),
+    )
+    is_materially_one_sided_against_client: bool = Field(
+        description="True when an obligation, cap, indemnity, remedy, or termination right disproportionately burdens the client where market practice expects mutuality",
+    )
+    severity_category: SeverityCategory = Field(
+        description=(
+            "uncapped_or_severe_exposure: unlimited liability, loss of core IP, missing IP indemnity, termination without refund, missing data/confidentiality protection. "
+            "material_commercial_deviation: sub-standard cap, one-sided burden, unfavourable payment terms, missing cure period, restrictive covenants. "
+            "minor_drafting_hygiene: ambiguity, mechanics, or clarification with no material shift in exposure."
+        ),
+    )
+
+    @field_validator("triggered_unacceptable_flags", mode="before")
+    @classmethod
+    def _flags_as_list(cls, value: Any) -> Any:
+        """Accept a JSON-encoded list or a single string in place of a list."""
+
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped.startswith("["):
+                return parse_string_array(stripped)
+            return [stripped] if stripped else []
+        if value is None:
+            return []
+        return value
+
+    @field_validator("severity_category", mode="before")
+    @classmethod
+    def _normalize_severity(cls, value: Any) -> Any:
+        """Fold casing/spacing; an unknown label counts as a material deviation rather than failing the batch."""
 
         if not isinstance(value, str):
             return value
-        stripped = value.strip()
-        if stripped.startswith("```"):
-            stripped = stripped.strip("`").removeprefix("json").strip()
-        try:
-            return json.loads(stripped)
-        except json.JSONDecodeError:
-            # Document quotes copied into the embedded JSON arrive unescaped
-            # and break parsing; repair them before giving up. If the repaired
-            # text still fails, the error propagates into the retry path.
-            return json.loads(_escape_inner_quotes(stripped))
+        folded = "_".join(value.strip().lower().replace("-", " ").split())
+        return folded if folded in SEVERITY_CATEGORIES else MATERIAL_DEVIATION
+
+
+class GeneralReviewFindings(BaseModel):
+    """The model's structured output for one review batch."""
+
+    findings: List[ReviewFinding] = Field(default_factory=list, description="One finding per paragraph that needs a change, in document order. Empty when nothing needs to change.")
+
+    @field_validator("findings", mode="before")
+    @classmethod
+    def _parse_string_array(cls, value: Any) -> Any:
+        return parse_string_array(value)

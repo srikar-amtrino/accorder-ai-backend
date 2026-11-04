@@ -3,21 +3,44 @@ import hashlib
 import json
 import re
 from collections import Counter, OrderedDict
+from dataclasses import dataclass, field
 from pathlib import Path
-from typing import AsyncIterator, Dict, List, Optional, Sequence, Set, Tuple
+from typing import AsyncIterator, Dict, List, Optional, Sequence, Set, Tuple, cast
 
 from src.config.logging import get_logger
 from src.core.container import get_bedrock_model, get_clause_search
-from src.schemas.clause_mapping import ClassificationStatus, ClausePolicy
+from src.schemas.clause_mapping import ClauseMatch, ClausePolicy
 from src.schemas.general_review import (
+    GeneralReviewFindings,
     GeneralReviewRequest,
     GeneralReviewResponse,
+    ReviewFinding,
     Suggestion,
     TextInformation,
 )
-from src.services.clause_mapping.classifier import classify_clause
 from src.services.clause_mapping.policy_store import get_clause_policy_store
+from src.services.clause_mapping.resilient_classifier import (
+    HEADING_MATCH_CONFIDENCE,
+    LAYER1_HEADING,
+    LAYER2_QDRANT,
+    LAYER3_FALLBACK,
+    MIN_CLAUSE_WORDS,
+    SKIPPED_SHORT,
+    UNCLASSIFIED,
+    ResolvedClause,
+    classify_clause_resilient,
+    classify_layer1_heading,
+)
 from src.services.clause_mapping.search import BaseClauseSearch
+from src.services.general_review.clause_cache import NO_FINDING, ClauseAssessment, ZDRClauseHashCache, clause_cache
+from src.services.general_review.risk_matrix import RiskLevel, compute_deterministic_risk_level, tier_for_unmapped
+from src.services.general_review.segmentation import (
+    TITLE_STOP_WORDS,
+    build_clause_titles,
+    build_smart_embedding_query,
+    detect_clause_start,
+    extract_defined_terms,
+)
 
 logger = get_logger(__name__)
 
@@ -35,37 +58,8 @@ BATCH_CHAR_BUDGET = 6000
 # Absolute batch ceiling for documents with no detectable headings.
 BATCH_HARD_LIMIT = BATCH_CHAR_BUDGET * 3
 
-# Short paragraphs with few words are treated as headings and kept with their body.
-_HEADING_MAX_CHARS = 80
-_HEADING_MAX_WORDS = 8
-
 # Read-only context carried into the next batch when a forced cut is unavoidable.
 CONTEXT_TAIL_CHARS = 1200
-
-# Numbered clause starts ("5. Confidentiality...", "Section 3 ...") count as cut points too.
-_NUMBERED_START_RE = re.compile(r"^\s*(?:(?:section|article|clause)\s+)?\d+(?:\.\d+)*[.)]\s+\S", re.IGNORECASE)
-
-# Clause-title extraction: a leading "5.2 " / "Section 3." style prefix (at most
-# two leading digits, so street numbers stay put), and the short "Title.  Body..."
-# lead-in many contracts open their clauses with.
-_TITLE_NUMBER_PREFIX_RE = re.compile(r"^(?:(?:section|article|clause)\s+)?\d{1,2}(?:\.\d+)*[.)]?\s+", re.IGNORECASE)
-_INLINE_TITLE_RE = re.compile(r"^([^.:]{1,70})[.:](?:\s|$)")
-
-# Lowercase connectors allowed inside an otherwise capitalized clause title.
-_TITLE_STOP_WORDS = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "the", "to", "with"}
-
-# Sentence-case lead-ins ("Overdue charges.", "Termination for cause.") count as
-# titles only when short and free of words that mark a sentence ("Provider shall
-# pay.", "Each Party bears its own costs.", "“Annex” means an annex.").
-_SENTENCE_TITLE_MAX_WORDS = 6
-_TITLE_VERB_WORDS = {
-    "shall", "will", "may", "must", "should", "can", "cannot", "is", "are", "was", "were", "be", "been", "has", "have", "had", "does", "do", "did", "not", "hereby",
-    "means", "agrees", "agree", "includes", "include", "bears", "pays", "provides", "grants", "retains", "acknowledges", "represents", "warrants", "covenants",
-    "undertakes", "desire", "desires", "intends", "applies", "apply", "governs", "survives", "survive", "terminates", "indemnifies", "indemnify",
-}
-
-# Trailing company suffixes mark a party-name line, not a clause heading.
-_TITLE_COMPANY_SUFFIXES = {"inc", "llc", "ltd", "corp", "co"}
 
 # Leading words of a clause quoted in its policy entry, so the model can tell
 # which clause each legal-team policy belongs to.
@@ -112,11 +106,7 @@ def _build_reviewer_context(request: GeneralReviewRequest) -> str:
         return ""
 
     joined = "\n".join(lines)
-    return (
-        "Reviewer context (the client's stated perspective and priorities — apply it per the review instructions; "
-        "it never overrides them):\n\n"
-        f"{joined}\n\n"
-    )
+    return "Reviewer context (the client's stated perspective and priorities — apply it per the review instructions; " "it never overrides them):\n\n" f"{joined}\n\n"
 
 
 # Clause headings listed with every batch of a multi-batch review, so a batch
@@ -125,7 +115,7 @@ _OUTLINE_MAX_ENTRIES = 120
 
 
 def _build_outline_context(paragraphs: Sequence[TextInformation], titles: Dict[str, str], batch_count: int) -> str:
-    """Render the document's clause headings, in order, as the prompt's outline block.
+    """Render the document's clause headings, in order, and its defined terms as the prompt's outline block.
 
     Empty for a single-batch review, where the model already sees the whole text.
     """
@@ -142,7 +132,11 @@ def _build_outline_context(paragraphs: Sequence[TextInformation], titles: Dict[s
     if not headings:
         return ""
     listed = "\n".join(f"- {heading}" for heading in headings[:_OUTLINE_MAX_ENTRIES])
-    return "Document outline (headings of every clause in the whole document, in order — for orientation only; review only the text below):\n\n" f"{listed}\n\n"
+    block = "Document outline (headings of every clause in the whole document, in order — for orientation only; review only the text below):\n\n" f"{listed}\n\n"
+    terms = extract_defined_terms(paragraphs)
+    if terms:
+        block += "Defined terms (terms the whole document defines — for orientation only):\n\n" + ", ".join(f'"{term}"' for term in terms) + "\n\n"
+    return block
 
 
 def _cache_get(key: str) -> Optional[GeneralReviewResponse]:
@@ -163,93 +157,10 @@ def _cache_put(key: str, response: GeneralReviewResponse) -> None:
 _Batch = List[Tuple[int, TextInformation]]
 
 
-def _is_heading(text: str) -> bool:
-    """Heuristic for standalone heading paragraphs (e.g. 'Non-Compete.')."""
-
-    stripped = text.strip()
-    return 0 < len(stripped) <= _HEADING_MAX_CHARS and len(stripped.split()) <= _HEADING_MAX_WORDS
-
-
-def _looks_like_title(segment: str) -> bool:
-    """True when a segment reads as a clause title: short capitalized words, or a short sentence-case phrase.
-
-    Title Case ("Limitation of Liability") always qualifies. Sentence case
-    ("Overdue charges", "Termination for cause") qualifies when nothing in it
-    reads as a verb, so a short opening sentence ("Provider shall pay") does not.
-
-    Address and party-name lines ("San Ramon, CA 94583", "XYZInc Inc.",
-    "To Amtrino:") also look short and capitalized, so digits, internal
-    punctuation, a leading connector, and company suffixes all disqualify.
-    """
-
-    if "." in segment or ":" in segment:
-        return False
-    if re.search(r",\s*[A-Z]{2}$", segment):
-        return False
-    words = [word.strip(",;()'\"‘’“”") for word in segment.split()]
-    words = [word for word in words if any(char.isalnum() for char in word)]
-    if not words or len(words) > _HEADING_MAX_WORDS:
-        return False
-    if words[0].lower() in _TITLE_STOP_WORDS or not words[0][0].isupper():
-        return False
-    if words[-1].lower() in _TITLE_COMPANY_SUFFIXES:
-        return False
-    if any(any(char.isdigit() for char in word) for word in words):
-        return False
-    if all(word[0].isupper() or word.lower() in _TITLE_STOP_WORDS for word in words):
-        return True
-    return len(words) <= _SENTENCE_TITLE_MAX_WORDS and not any(word.lower() in _TITLE_VERB_WORDS for word in words)
-
-
-def _clause_title(text: str) -> Optional[str]:
-    """Extract this paragraph's own clause title, or None when it has none.
-
-    Handles both a standalone heading paragraph ('Non-Compete.') and an inline
-    lead-in ('Return of Advances.  In the event...', '7.3 Security Measures. ...').
-    """
-
-    # Signature-block lines ("Name: ______") are never clause titles.
-    if "___" in text:
-        return None
-    stripped = _TITLE_NUMBER_PREFIX_RE.sub("", text.strip(), count=1)
-    if _is_heading(stripped):
-        candidate = stripped.rstrip(".:").strip()
-        if _looks_like_title(candidate):
-            return candidate
-    # A short paragraph may still open with a lead-in ("Liability cap. See Clause 13.").
-    match = _INLINE_TITLE_RE.match(stripped)
-    if match and _looks_like_title(match.group(1).strip()):
-        return match.group(1).strip()
-    return None
-
-
-def _build_clause_titles(paragraphs: Sequence[TextInformation]) -> Dict[str, str]:
-    """Map each paragraph id to its clause title, extracted from the document itself.
-
-    A paragraph's title is its own heading/lead-in when it has one, otherwise
-    the most recent titled paragraph above it. Paragraphs with no determinable
-    title (e.g. a lone selected body paragraph whose heading was not sent) are
-    omitted so the model's own label stays as the fallback.
-    """
-
-    titles: Dict[str, str] = {}
-    current = ""
-    for para in paragraphs:
-        if not para.text.strip():
-            continue
-        own = _clause_title(para.text)
-        if own:
-            current = own
-        if current:
-            titles[para.paraindetifier] = current
-    return titles
-
-
 def _is_clause_start(text: str) -> bool:
     """A paragraph where a new clause begins — the only safe place to cut a batch."""
 
-    stripped = text.strip()
-    return _is_heading(stripped) or bool(_NUMBERED_START_RE.match(stripped))
+    return detect_clause_start(text)[0]
 
 
 def _context_tail(batch: _Batch) -> str:
@@ -270,10 +181,10 @@ def _build_batches(paragraphs: Sequence[TextInformation]) -> List[Tuple[_Batch, 
     """Split paragraphs into document-ordered (batch, context) pairs, cutting only at clause starts.
 
     Once a batch exceeds the char budget it closes at the next clause start
-    (heading or numbered paragraph), so a clause's paragraphs always stay
-    together. If a document has no detectable clause starts, the hard limit
-    forces a cut and the next batch carries the previous tail as read-only
-    context so nothing is judged without its surroundings.
+    (heading, inline lead-in, or numbered paragraph), so a clause's paragraphs
+    always stay together. If a document has no detectable clause starts, the
+    hard limit forces a cut and the next batch carries the previous tail as
+    read-only context so nothing is judged without its surroundings.
     """
 
     indexed = [(idx, para) for idx, para in enumerate(paragraphs) if para.text.strip()]
@@ -305,12 +216,19 @@ def _format_document(batch: _Batch) -> str:
     return "\n\n".join(para.text.strip() for _, para in batch)
 
 
-# A mapped clause: how confidently it was typed, and the policies that came with it.
-_MappedClause = Tuple[ClassificationStatus, List[ClausePolicy]]
+@dataclass
+class BatchPolicies:
+    """One batch's legal-team policies: the prompt block, and the policy behind each paragraph position."""
+
+    block: str = ""
+    policy_of: Dict[int, ClausePolicy] = field(default_factory=dict)
+
+
+_NO_POLICIES = BatchPolicies()
 
 
 def _build_clause_units(paragraphs: Sequence[TextInformation], titles: Dict[str, str]) -> List[List[int]]:
-    """Group paragraph positions into clauses for vector mapping.
+    """Group paragraph positions into clauses for clause-type mapping.
 
     Consecutive paragraphs under the same clause title form one clause; a
     paragraph with no title stands alone.
@@ -334,7 +252,7 @@ def _clause_type_label(canonical_type: str) -> str:
     """Readable name for a clause type slug: 'fees-and-payment' -> 'Fees and Payment'."""
 
     words = canonical_type.replace("-", " ").replace("_", " ").split()
-    return " ".join(word if word in _TITLE_STOP_WORDS else word.capitalize() for word in words)
+    return " ".join(word if word in TITLE_STOP_WORDS else word.capitalize() for word in words)
 
 
 def _describe_policy(policy: ClausePolicy) -> List[str]:
@@ -346,37 +264,29 @@ def _describe_policy(policy: ClausePolicy) -> List[str]:
     if policy.acceptable_standard:
         lines.append(f"Acceptable standard: {policy.acceptable_standard}")
     if policy.unacceptable_triggers:
-        lines.append("Unacceptable triggers: " + "; ".join(policy.unacceptable_triggers))
+        lines.append("Unacceptable triggers (copy any that the clause's wording triggers, verbatim, into triggered_unacceptable_flags):")
+        lines.extend(f"  * {trigger}" for trigger in policy.unacceptable_triggers)
     if policy.fallback_guidelines:
         lines.append(f"Fallback position: {policy.fallback_guidelines}")
     return lines
 
 
-def _render_policy_block(batch: _Batch, mapped: Dict[int, _MappedClause], unit_of: Dict[int, int]) -> str:
-    """Render the policy entries for the clauses in one batch, in document order."""
+def _render_policy_block(batch: _Batch, mapped: Dict[int, ClausePolicy]) -> str:
+    """Render the policy entries for the clauses in one batch, in document order.
+
+    mapped is keyed by a clause's first paragraph position.
+    """
 
     entries: List[str] = []
-    rendered: Set[int] = set()
     for idx, para in batch:
-        unit = unit_of.get(idx)
-        if unit is None or unit in rendered:
+        policy = mapped.get(idx)
+        if policy is None:
             continue
-        rendered.add(unit)
-        status, policies = mapped[unit]
-
         words = para.text.split()
         anchor = " ".join(words[:_POLICY_ANCHOR_WORDS]) + ("..." if len(words) > _POLICY_ANCHOR_WORDS else "")
-        lines = [f'Clause beginning "{anchor}"']
-        if status is ClassificationStatus.NEEDS_CONFIRMATION:
-            lines.append("Possible clause types (apply only the one that fits this clause; if none fits, review it without a policy):")
-        elif len(policies) > 1:
-            lines.append("Clause types (the clause covers several topics; apply every policy below):")
-        else:
-            lines.append("Clause type:")
-        for policy in policies:
-            first, *rest = _describe_policy(policy)
-            lines.append(f"- {first}")
-            lines.extend(f"  {line}" for line in rest)
+        first, *rest = _describe_policy(policy)
+        lines = [f'Clause beginning "{anchor}"', "Clause type:", f"- {first}"]
+        lines.extend(f"  {line}" for line in rest)
         entries.append("\n".join(lines))
 
     if not entries:
@@ -384,49 +294,51 @@ def _render_policy_block(batch: _Batch, mapped: Dict[int, _MappedClause], unit_o
     return "Legal team policies for clauses in the text below (apply each only to the clause it names):\n\n" + "\n\n".join(entries) + "\n\n"
 
 
-# Total time the clause mapping may spend per review. Embedding is slow and
-# serial (about a second per clause), so a long document can take minutes;
-# past this budget the remaining batches are reviewed without policies.
+# Total time the vector path (embedding + Qdrant) may spend per review. Past
+# this budget the remaining clauses are classified offline (layers 1 and 3).
 POLICY_MAPPING_BUDGET_SECONDS = 240.0
 
-# A clause unit shorter than this is a bare article heading ("CONFIDENTIALITY"),
-# a list item ("Business line margin and performance review"), or a fragment: it
-# never classifies, so it is not worth an embedding call. A real clause — heading
-# plus at least one sentence of body — is always longer.
-MIN_CLAUSE_WORDS = 10
-
-# One policy block per batch, resolved as that batch's clauses are mapped.
-_PolicyContexts = List["asyncio.Future[str]"]
+# One policy set per batch, resolved as that batch's clauses are mapped.
+_PolicyContexts = List["asyncio.Future[BatchPolicies]"]
 
 
-def _start_policy_mapping(request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str) -> Tuple[_PolicyContexts, Optional["asyncio.Task[None]"]]:
+def _start_policy_mapping(request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str) -> Tuple[_PolicyContexts, "asyncio.Task[None]"]:
     """Begin mapping clauses to the legal team's policies, one batch at a time, ahead of the review.
 
-    Returns a future per batch that resolves to that batch's policy block, and
-    the background task doing the mapping (None when no clause search is
-    configured). Each batch's review awaits only its own block, so the first
-    LLM call starts after the first batch's clauses are mapped rather than
-    after the whole document is. The mapping never blocks or fails a review:
-    a search failure or an exhausted budget resolves the remaining blocks
-    empty — the policy-free review.
+    Returns a future per batch that resolves to that batch's policies, and
+    the background task doing the mapping. Each batch's review awaits only
+    its own policies, so the first LLM call starts after the first batch's
+    clauses are mapped rather than after the whole document is. The mapping
+    never blocks or fails a review: when the vector path is unavailable the
+    offline classifier still supplies every clause it can name a type for.
     """
 
     loop = asyncio.get_running_loop()
     contexts: _PolicyContexts = [loop.create_future() for _ in batches]
-    search = get_clause_search()
-    if search is None or not batches:
-        for context in contexts:
-            context.set_result("")
-        return contexts, None
-    task = asyncio.create_task(_map_policies(search, request, batches, titles, session_id, contexts))
+    task = asyncio.create_task(_map_policies(get_clause_search(), request, batches, titles, session_id, contexts))
     return contexts, task
 
 
-async def _map_policies(search: BaseClauseSearch, request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str, contexts: _PolicyContexts) -> None:
-    """Map each batch's clauses in document order and resolve its policy block.
+@dataclass
+class _ClauseQuery:
+    """A clause unit prepared for classification."""
 
-    Clauses go to the shared vector DB, classify_clause applies the score
-    thresholds, and each accepted or candidate clause type brings its policy.
+    unit: List[int]
+    heading: str
+    query: str
+    word_count: int
+    needs_vector: bool
+
+
+async def _map_policies(
+    search: Optional[BaseClauseSearch], request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str, contexts: _PolicyContexts
+) -> None:
+    """Map each batch's clauses to one clause type each, in document order, and resolve its policies.
+
+    Layer 1 locks clauses whose heading names their type without any network
+    call. The rest of a batch's clauses go to the vector DB in one request;
+    if that path is disabled, fails, or exhausts its budget, every remaining
+    clause is classified offline instead, so a policy block is still rendered.
     """
 
     paragraphs = request.textinformation
@@ -440,56 +352,80 @@ async def _map_policies(search: BaseClauseSearch, request: GeneralReviewRequest,
             batch_units[number].append(unit)
 
     store = get_clause_policy_store()
-    mapped: Dict[int, _MappedClause] = {}
-    unit_of: Dict[int, int] = {}
-    status_counts: Dict[str, int] = {status.value: 0 for status in ClassificationStatus}
+    mapped: Dict[int, ClausePolicy] = {}
+    source_counts: Counter = Counter()
+    vector_available = search is not None
     started = asyncio.get_running_loop().time()
     completed = 0
     try:
         for number, ((batch, _), units_here) in enumerate(zip(batches, batch_units)):
-            if asyncio.get_running_loop().time() - started > POLICY_MAPPING_BUDGET_SECONDS:
-                logger.warning("Clause mapping budget of %.0fs spent after %d of %d batch(es); reviewing the rest without clause policies.", POLICY_MAPPING_BUDGET_SECONDS, number, len(batches))
-                break
+            prepared: List[_ClauseQuery] = []
+            for unit in units_here:
+                texts = [paragraphs[idx].text.strip() for idx in unit]
+                heading = titles.get(paragraphs[unit[0]].paraindetifier, "")
+                query = build_smart_embedding_query(heading, texts)
+                word_count = len(" ".join(texts).split())
+                layer1 = classify_layer1_heading(heading, query)
+                locked = bool(layer1 and layer1[1] >= HEADING_MATCH_CONFIDENCE)
+                prepared.append(_ClauseQuery(unit, heading, query, word_count, needs_vector=word_count >= MIN_CLAUSE_WORDS and not locked))
 
-            texts = ["\n\n".join(paragraphs[idx].text.strip() for idx in unit) for unit in units_here]
-            searchable = [(unit, text) for unit, text in zip(units_here, texts) if len(text.split()) >= MIN_CLAUSE_WORDS]
-            status_counts[ClassificationStatus.UNCLASSIFIED.value] += len(units_here) - len(searchable)
-            hits = await search.search([text for _, text in searchable], request.agreement_type, session_id) if searchable else []
-            if len(hits) != len(searchable):
-                raise RuntimeError(f"clause search returned {len(hits)} result list(s) for {len(searchable)} clause(s)")
+            hits_of: Dict[int, List[ClauseMatch]] = {}
+            to_search = [clause for clause in prepared if clause.needs_vector]
+            if to_search and vector_available and search is not None:
+                if asyncio.get_running_loop().time() - started > POLICY_MAPPING_BUDGET_SECONDS:
+                    vector_available = False
+                    logger.warning("Clause mapping budget of %.0fs spent after %d of %d batch(es); classifying the remaining clauses offline.", POLICY_MAPPING_BUDGET_SECONDS, number, len(batches))
+                else:
+                    try:
+                        hits = await search.search([clause.query for clause in to_search], request.agreement_type, session_id)
+                        if len(hits) != len(to_search):
+                            raise RuntimeError(f"clause search returned {len(hits)} result list(s) for {len(to_search)} clause(s)")
+                        for clause, clause_hits in zip(to_search, hits):
+                            hits_of[clause.unit[0]] = clause_hits
+                    except Exception:
+                        vector_available = False
+                        logger.exception("Clause search failed on batch %d of %d; classifying the remaining clauses offline.", number + 1, len(batches))
 
-            for (unit, _), unit_hits in zip(searchable, hits):
-                classification = classify_clause(unit_hits)
-                status_counts[classification.status.value] += 1
-                policies: List[ClausePolicy] = []
-                for match in classification.matches:
-                    policy = store.get(match.canonical_type, match.sub_type, request.agreement_type)
-                    if policy is not None:
-                        policies.append(policy)
-                if not policies:
+            policy_of: Dict[int, ClausePolicy] = {}
+            for clause in prepared:
+                resolved = classify_clause_resilient(clause.heading, clause.query, clause.word_count, hits_of.get(clause.unit[0]) if vector_available else None)
+                source_counts[resolved.source] += 1
+                policy = store.get(resolved.canonical_type, None, request.agreement_type) if resolved.canonical_type else None
+                if policy is None:
                     continue
-                # A clause is keyed by its first paragraph position.
-                mapped[unit[0]] = (classification.status, policies)
-                for idx in unit:
-                    unit_of[idx] = unit[0]
+                _log_resolution(session_id, clause, resolved)
+                mapped[clause.unit[0]] = policy
+                for idx in clause.unit:
+                    policy_of[idx] = policy
 
-            contexts[number].set_result(_render_policy_block(batch, mapped, unit_of))
+            contexts[number].set_result(BatchPolicies(_render_policy_block(batch, mapped), policy_of))
             completed = number + 1
     except Exception:
-        logger.exception("Clause search failed after %d of %d batch(es); reviewing the rest without clause policies.", completed, len(batches))
+        logger.exception("Clause mapping failed after %d of %d batch(es); reviewing the rest without clause policies.", completed, len(batches))
     finally:
         for context in contexts:
             if not context.done():
-                context.set_result("")
+                context.set_result(_NO_POLICIES)
         logger.info(
             "Clause mapping: %d of %d clause(s) mapped to legal-team policies across %d of %d batch(es) in %.1fs (%s).",
             len(mapped),
-            sum(status_counts.values()),
+            sum(source_counts.values()),
             completed,
             len(batches),
             asyncio.get_running_loop().time() - started,
-            ", ".join(f"{status}={count}" for status, count in status_counts.items()),
+            ", ".join(f"{source}={source_counts[source]}" for source in (LAYER1_HEADING, LAYER2_QDRANT, LAYER3_FALLBACK, SKIPPED_SHORT, UNCLASSIFIED)),
         )
+
+
+def _log_resolution(session_id: str, clause: _ClauseQuery, resolved: ResolvedClause) -> None:
+    logger.debug(
+        "Clause resolved.",
+        session_id=session_id,
+        clause=" ".join(clause.query.split()[:8]),
+        canonical_type=resolved.canonical_type,
+        confidence=resolved.confidence,
+        source=resolved.source,
+    )
 
 
 # Character families the model tends to normalize while copying; each matches all variants.
@@ -540,48 +476,84 @@ def _ground(original_text: str, batch: _Batch) -> Optional[Tuple[int, TextInform
     return None
 
 
-def _expand_to_paragraph(suggestion: Suggestion, para: TextInformation, exact_text: str) -> Tuple[str, str]:
+def _expand_to_paragraph(suggested_fix: str, para: TextInformation, exact_text: str) -> Tuple[str, str]:
     """Return (original, fix) covering the complete paragraph, splicing a partial fix if needed."""
 
     if exact_text.strip() == para.text.strip():
-        return para.text, suggestion.suggested_fix
+        return para.text, suggested_fix
 
     span = para.text.find(exact_text)
     prefix = para.text[:span]
-    suffix = para.text[span + len(exact_text):]
+    suffix = para.text[span + len(exact_text) :]
 
     # If the model already returned a full-paragraph rewrite, splicing would duplicate text.
-    fix = suggestion.suggested_fix
-    already_full = (len(prefix.strip()) < 20 or prefix.strip()[:30] in fix) and (len(suffix.strip()) < 20 or suffix.strip()[-30:] in fix)
-    full_fix = fix if already_full else prefix + fix + suffix
+    already_full = (len(prefix.strip()) < 20 or prefix.strip()[:30] in suggested_fix) and (len(suffix.strip()) < 20 or suffix.strip()[-30:] in suggested_fix)
+    full_fix = suggested_fix if already_full else prefix + suggested_fix + suffix
     return para.text, full_fix
 
 
-def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions: Set[int], titles: Dict[str, str]) -> List[Tuple[int, Suggestion]]:
-    """Ground each suggestion to one paragraph, expand it to the full paragraph, and attach its id and clause title."""
+def _fold_trigger(text: str) -> str:
+    return " ".join(text.split()).casefold().rstrip(".")
+
+
+def _matching_triggers(reported: Sequence[str], policy: Optional[ClausePolicy], clause: str) -> List[str]:
+    """Keep only the reported triggers that exist, verbatim, in the clause's policy.
+
+    The model is asked to copy triggers exactly; anything else (a paraphrase,
+    or a trigger for a clause with no policy) carries no weight in the risk
+    computation, so the same wording cannot score differently run to run.
+    """
+
+    if not reported:
+        return []
+    if policy is None:
+        logger.warning("Dropping %d trigger flag(s) for clause '%s' — the clause has no legal-team policy.", len(reported), clause)
+        return []
+    known = {_fold_trigger(trigger): trigger for trigger in policy.unacceptable_triggers}
+    kept: List[str] = []
+    for flag in reported:
+        trigger = known.get(_fold_trigger(flag))
+        if trigger is None:
+            logger.warning("Dropping trigger flag %r for clause '%s' — not a trigger of its %s policy.", flag, clause, policy.canonical_type)
+        elif trigger not in kept:
+            kept.append(trigger)
+    return kept
+
+
+def _risk_level(finding: ReviewFinding, policy: Optional[ClausePolicy]) -> RiskLevel:
+    """Compute the finding's risk level in code from its structured facts and the clause type's inherent tier."""
+
+    flags = _matching_triggers(finding.triggered_unacceptable_flags, policy, finding.clause)
+    tier = policy.inherent_risk_tier if policy is not None else tier_for_unmapped(finding.severity_category)
+    return compute_deterministic_risk_level(tier, flags, finding.falls_short_of_acceptable_standard, finding.is_materially_one_sided_against_client, finding.severity_category)
+
+
+def _validate_batch(findings: List[ReviewFinding], batch: _Batch, seen_positions: Set[int], titles: Dict[str, str], policies: BatchPolicies) -> List[Tuple[int, Suggestion]]:
+    """Ground each finding to one paragraph, expand it to the full paragraph, compute its risk level, and build the suggestion."""
 
     valid: List[Tuple[int, Suggestion]] = []
-    for suggestion in suggestions:
-        grounded = _ground(suggestion.original_text, batch)
+    for finding in findings:
+        grounded = _ground(finding.original_text, batch)
         if grounded is None:
-            logger.warning("Dropping suggestion for clause '%s' — original_text could not be grounded in a single source paragraph.", suggestion.clause)
+            logger.warning("Dropping finding for clause '%s' — original_text could not be grounded in a single source paragraph.", finding.clause)
             continue
         position, para, exact_text = grounded
         if position in seen_positions:
             continue
         seen_positions.add(position)
-        original, full_fix = _expand_to_paragraph(suggestion, para, exact_text)
+        original, full_fix = _expand_to_paragraph(finding.suggested_fix, para, exact_text)
         # The document's own clause title keeps names identical across whole-doc
         # and selection runs; the model's label only fills in when the payload
         # carries no heading for this paragraph.
-        clause = titles.get(para.paraindetifier, suggestion.clause)
-        valid.append((position, suggestion.model_copy(update={"clause": clause, "original_text": original, "suggested_fix": full_fix, "para_identifier": para.paraindetifier})))
+        clause = titles.get(para.paraindetifier, finding.clause)
+        risk_level = _risk_level(finding, policies.policy_of.get(position))
+        valid.append((position, Suggestion(clause=clause, reason=finding.reason, risk_level=risk_level, original_text=original, suggested_fix=full_fix, para_identifier=para.paraindetifier)))
 
     valid.sort(key=lambda pair: pair[0])
     return valid
 
 
-async def _review_batch(batch: _Batch, context: str, reviewer_context: str, outline_context: str, policy_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
+async def _review_batch(batch: _Batch, context: str, reviewer_context: str, outline_context: str, policy_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewFindings:
     """Run the schema-enforced review call for one batch, with a single retry."""
 
     llm_model = get_bedrock_model()
@@ -598,7 +570,7 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, outl
                 return await llm_model.generate(
                     prompt=_GENERAL_REVIEW_USER,
                     context={"document": document, "reviewer_context": reviewer_context, "outline_context": outline_context, "policy_context": policy_context},
-                    response_model=GeneralReviewResponse,
+                    response_model=GeneralReviewFindings,
                     system_message=_GENERAL_REVIEW_SYSTEM,
                     session_id=session_id,
                     temperature=temperature,
@@ -612,17 +584,57 @@ async def _review_batch(batch: _Batch, context: str, reviewer_context: str, outl
     raise RuntimeError("unreachable")
 
 
+# Paragraph position -> clause-cache key, computed once per review.
+_CacheKeys = Dict[int, str]
+
+
+def _cache_keys(request: GeneralReviewRequest, titles: Dict[str, str], reviewer_context: str, cache: ZDRClauseHashCache) -> _CacheKeys:
+    """Key every paragraph by its own text, clause title, and the reviewer's context."""
+
+    return {
+        idx: cache.compute_key(para.text, titles.get(para.paraindetifier, ""), request.party_represented, request.agreement_type, reviewer_context)
+        for idx, para in enumerate(request.textinformation)
+        if para.text.strip()
+    }
+
+
+def _replay(para: TextInformation, cached: ClauseAssessment) -> Suggestion:
+    return Suggestion(
+        clause=cached.clause, reason=cached.reason, risk_level=cast(RiskLevel, cached.risk_level), original_text=para.text, suggested_fix=cached.suggested_fix, para_identifier=para.paraindetifier
+    )
+
+
 async def _review_batch_consensus(
-    batch: _Batch, context: str, reviewer_context: str, outline_context: str, policy_context: "asyncio.Future[str]", semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]
+    batch: _Batch,
+    context: str,
+    reviewer_context: str,
+    outline_context: str,
+    policy_context: "asyncio.Future[BatchPolicies]",
+    semaphore: asyncio.Semaphore,
+    session_id: str,
+    titles: Dict[str, str],
+    cache_keys: _CacheKeys,
+    cache: ZDRClauseHashCache = clause_cache,
 ) -> List[Tuple[int, Suggestion]]:
-    """Review one batch with parallel votes and keep only majority-backed findings."""
+    """Review one batch, replaying cached outcomes for unchanged paragraphs and keeping only majority-backed findings.
+
+    A paragraph reviewed before (same text, clause title, and reviewer
+    context, under the same policies and prompts) keeps its earlier outcome,
+    so an unchanged clause never changes its suggestion or risk level between
+    runs. When every paragraph of the batch is cached, no model call is made.
+    """
+
+    cached: Dict[int, Optional[ClauseAssessment]] = {position: cache.get(cache_keys[position]) for position, _ in batch}
+    if all(assessment is not None for assessment in cached.values()):
+        logger.info("Batch of %d paragraph(s) replayed from the clause cache.", len(batch))
+        return [(position, _replay(para, assessment)) for position, para in batch for assessment in (cached[position],) if assessment is not None and assessment.flagged]
 
     # Wait for this batch's clauses to be mapped before taking a model slot.
     policies = await policy_context
-    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, outline_context, policies, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, outline_context, policies.block, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
 
     # A majority of votes must succeed; one lost vote never fails the review.
-    votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewResponse)]
+    votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewFindings)]
     if len(votes) < _MAJORITY:
         raise next(outcome for outcome in outcomes if isinstance(outcome, BaseException))
     if len(votes) < CONSENSUS_VOTES:
@@ -632,7 +644,7 @@ async def _review_batch_consensus(
     per_vote: List[Dict[int, Suggestion]] = []
     for vote in votes:
         grounded: Dict[int, Suggestion] = {}
-        for position, suggestion in _validate_batch(vote.suggestions, batch, set(), titles):
+        for position, suggestion in _validate_batch(vote.findings, batch, set(), titles, policies):
             grounded.setdefault(position, suggestion)
         per_vote.append(grounded)
 
@@ -643,7 +655,26 @@ async def _review_batch_consensus(
             if counts[position] >= _MAJORITY and position not in picked:
                 picked[position] = suggestion
 
-    return sorted(picked.items())
+    # Cached outcomes win for paragraphs reviewed before; fresh ones are remembered.
+    result: Dict[int, Suggestion] = {}
+    replayed = 0
+    for position, para in batch:
+        assessment = cached[position]
+        if assessment is not None:
+            replayed += 1
+            if assessment.flagged:
+                result[position] = _replay(para, assessment)
+            continue
+        fresh = picked.get(position)
+        if fresh is None:
+            cache.set(cache_keys[position], NO_FINDING)
+        else:
+            cache.set(cache_keys[position], ClauseAssessment(True, fresh.clause, fresh.risk_level, fresh.reason, fresh.suggested_fix))
+            result[position] = fresh
+    if replayed:
+        logger.info("Batch: %d of %d paragraph(s) replayed from the clause cache.", replayed, len(batch))
+
+    return sorted(result.items())
 
 
 async def general_review_service(request: GeneralReviewRequest, session_id: str) -> GeneralReviewResponse:
@@ -660,19 +691,24 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
         return GeneralReviewResponse(suggestions=[])
 
     reviewer_context = _build_reviewer_context(request)
-    titles = _build_clause_titles(request.textinformation)
+    titles = build_clause_titles(request.textinformation)
     outline_context = _build_outline_context(request.textinformation, titles, len(batches))
+    cache_keys = _cache_keys(request, titles, reviewer_context, clause_cache)
     policy_contexts, mapping = _start_policy_mapping(request, batches, titles, session_id)
-    logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
+    logger.info(
+        "General review: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else ""
+    )
 
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
     try:
         results = await asyncio.gather(
-            *[_review_batch_consensus(batch, context, reviewer_context, outline_context, policy_context, semaphore, session_id, titles) for (batch, context), policy_context in zip(batches, policy_contexts)]
+            *[
+                _review_batch_consensus(batch, context, reviewer_context, outline_context, policy_context, semaphore, session_id, titles, cache_keys)
+                for (batch, context), policy_context in zip(batches, policy_contexts)
+            ]
         )
     finally:
-        if mapping is not None:
-            mapping.cancel()
+        mapping.cancel()
 
     seen_positions: Set[int] = set()
     positioned: List[Tuple[int, Suggestion]] = []
@@ -716,14 +752,21 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
 
         batches = _build_batches(request.textinformation)
         reviewer_context = _build_reviewer_context(request)
-        titles = _build_clause_titles(request.textinformation)
+        titles = build_clause_titles(request.textinformation)
         outline_context = _build_outline_context(request.textinformation, titles, len(batches))
+        cache_keys = _cache_keys(request, titles, reviewer_context, clause_cache)
         policy_contexts, mapping = _start_policy_mapping(request, batches, titles, session_id)
-        logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
+        logger.info(
+            "General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.",
+            len(request.textinformation),
+            len(batches),
+            CONSENSUS_VOTES,
+            ", with reviewer context" if reviewer_context else "",
+        )
 
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
         tasks = [
-            asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, outline_context, policy_context, semaphore, session_id, titles))
+            asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, outline_context, policy_context, semaphore, session_id, titles, cache_keys))
             for (batch, context), policy_context in zip(batches, policy_contexts)
         ]
 

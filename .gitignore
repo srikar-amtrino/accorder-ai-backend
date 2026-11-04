@@ -222,3 +222,7 @@ __marimo__/
 # Postman workspace saved into the project folder
 postman/
 .postman/
+
+# General review output samples (contain client contract text) and the v3 upgrade package.
+GR_output_*.json
+_v3_upgrade_pack/

@@ -2,9 +2,13 @@
   {
     "canonical_type": "definitions-and-interpretation",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Clear, unambiguous, and balanced definitions of Confidential Information, Deliverables, Intellectual Property, Services, and Affiliates; no hidden substantive obligations, risk-shifting carve-outs, or unilateral scope reductions buried inside defined terms.",
+    "unacceptable_triggers": [
+      "definition of 'Confidential Information' requires strict physical marking ('CONFIDENTIAL') and excludes information that a reasonable person would understand to be confidential",
+      "definition of 'Deliverables' excludes source code, documentation, or configurations paid for by client",
+      "substantive assignment or power-of-attorney obligations buried inside a definitions clause"
+    ],
+    "fallback_guidelines": "Ensure 'Confidential Information' includes both marked information and information that reasonably should be understood to be confidential given the nature of the information and circumstances of disclosure, and keep substantive covenants in their respective operative sections."
   },
   {
     "canonical_type": "purpose",
@@ -22,17 +26,22 @@
   },
   {
     "canonical_type": "statements-of-work-and-work-orders",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "Services performed pursuant to mutually executed Statements of Work (SOWs) specifying scope, milestones, acceptance criteria, personnel, and fees; each SOW incorporates the MSA; MSA terms prevail over conflicting SOW terms unless the SOW expressly identifies the specific MSA section being overridden for that SOW only.",
+    "unacceptable_triggers": [
+      "SOW automatically overrides MSA liability or IP protections without explicit reference"
+    ],
+    "fallback_guidelines": "Add a 15-business-day acceptance period during which Client may review Deliverables and notify Service Provider of any non-conformities, which Service Provider shall correct at no additional cost within 10 business days; clarify that MSA terms take precedence over any SOW unless the SOW explicitly states an intent to supersede a named MSA section."
   },
   {
     "canonical_type": "customer-obligations",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "Client provides reasonable cooperation, timely access to necessary information, and designated points of contact; Service Provider's relief for Client delay is limited to an equitable day-for-day extension of affected milestones after prompt written notice of the delay.",
+    "unacceptable_triggers": [
+      "broad excuse of all vendor performance or SLA obligations for any minor delay by client without prior notice",
+      "automatic idle-time or standby penalty fees charged to client without prior written warning"
+    ],
+    "fallback_guidelines": "Limit Client's obligations to reasonable cooperation and access to information necessary for the Services, and provide that Service Provider is excused from delays only to the extent directly caused by Client's failure and only if Service Provider gives prompt written notice."
   },
   {
     "canonical_type": "service-provider-obligations",
@@ -44,23 +53,37 @@
   {
     "canonical_type": "suspension-and-termination",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Mutual termination for material breach after 30 days' written notice and opportunity to cure; immediate termination for insolvency/bankruptcy; Client right to terminate for convenience upon 15–30 days' written notice with pro-rata refund of prepaid unearned fees and payment only for work performed up to termination effective date.",
+    "unacceptable_triggers": [
+      "no termination for convenience right for client, or early termination triggers a 100% remaining contract value penalty",
+      "counterparty can terminate for convenience immediately without notice, stranding client operations",
+      "counterparty can suspend services immediately for any disputed invoice without a cure period",
+      "no pro-rata refund of prepaid unused fees upon termination for cause by client or convenience by vendor"
+    ],
+    "fallback_guidelines": "Grant Client the right to terminate the Agreement or any SOW for convenience upon 30 days' prior written notice without penalty (paying only for accepted work performed through the effective date); require a 30-day cure period for material breach; require a pro-rata refund of any prepaid, unused fees upon termination by Client for cause."
   },
   {
     "canonical_type": "deliverables-and-acceptance",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Clear acceptance testing procedure: Client has 15 to 30 business days to test each Deliverable against the acceptance criteria in the SOW, may reject with a written list of deficiencies, and Service Provider re-performs promptly at no extra cost; after a second failed re-performance Client may terminate the affected SOW and receive a refund of fees paid for the non-conforming Deliverable; silence never constitutes acceptance in fewer than 10 business days.",
+    "unacceptable_triggers": [
+      "deemed acceptance of deliverables in fewer than 5 business days of silence",
+      "no formal acceptance testing or rejection/cure workflow for deliverables",
+      "acceptance occurs upon delivery or upon payment rather than upon successful testing",
+      "no refund or termination remedy when a deliverable repeatedly fails acceptance"
+    ],
+    "fallback_guidelines": "Add a 15-business-day acceptance period during which Client may review Deliverables and notify Service Provider of any non-conformities, which Service Provider shall correct at no additional cost within 10 business days; provide that if a Deliverable fails acceptance twice Client may terminate the affected SOW and recover the fees paid for that Deliverable."
   },
   {
     "canonical_type": "service-levels",
-    "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "Minimum 99.9% monthly uptime commitment; defined severity response and resolution times; service credits applied automatically against next invoice; right to terminate for cause and receive a pro-rata refund in the event of chronic SLA failures (e.g., uptime < 99.0% in any month or 3 consecutive months of missed SLAs).",
+    "unacceptable_triggers": [
+      "service credits are stated as the 'sole and exclusive remedy' even for catastrophic or chronic multi-month outages",
+      "scheduled maintenance windows are uncapped or occur during core business hours without notice",
+      "uptime commitment below 99.5% for production enterprise software"
+    ],
+    "fallback_guidelines": "Ensure service credits do not preclude Client from terminating the Agreement for cause and receiving a pro-rata refund of prepaid fees if availability drops below 99.0% in any single month or fails to meet the SLA for three (3) consecutive months."
   },
   {
     "canonical_type": "support-and-maintenance",
@@ -72,176 +95,298 @@
   {
     "canonical_type": "change-control",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Structured change control procedure: either Party may request a change in writing; Service Provider provides a written impact assessment (scope, schedule, fees) within a fixed period at no charge; no change to scope, timeline, or fees takes effect until a Change Order is signed by authorized representatives of both Parties; Service Provider continues performing the unchanged work meanwhile.",
+    "unacceptable_triggers": [
+      "vendor can bill for out-of-scope work without a mutually signed written change order",
+      "vendor may unilaterally change scope, deliverables, or fees by notice",
+      "client is charged for preparing change impact assessments or estimates"
+    ],
+    "fallback_guidelines": "Require all changes to scope, timeline, or fees to be documented in a written Change Order signed by authorized representatives of both Parties prior to implementation, with Service Provider providing impact assessments at no charge and continuing performance of the unchanged Services in the meantime."
   },
   {
     "canonical_type": "fees-and-payment",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Net 30 to Net 45 payment terms from receipt of an undisputed, valid invoice; right to withhold payment on good-faith disputed amounts without late interest or service suspension; travel and out-of-pocket expenses reimbursable only if pre-approved in writing by Client and billed at actual cost with receipts; taxes limited to sales/use taxes excluding Vendor's income/payroll taxes.",
+    "unacceptable_triggers": [
+      "payment due in less than Net 15 days or automatic ACH/credit card debit without invoice review",
+      "late payment interest rate exceeds 1.0% per month (12% per annum) or triggers immediate termination",
+      "no right to withhold payment for good-faith disputed invoice amounts",
+      "reimbursement of travel or out-of-pocket expenses without prior written approval by client",
+      "unilateral fee increases during the initial term or without at least 60 days' prior notice before renewal"
+    ],
+    "fallback_guidelines": "Set payment terms to Net 30 days from receipt of an undisputed invoice; permit Client to withhold disputed amounts in good faith while parties work to resolve the dispute; cap late interest at the lesser of 1.0% per month or the maximum rate permitted by law; require prior written approval from Client for all reimbursable expenses."
   },
   {
     "canonical_type": "confidentiality",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Mutual protection of Confidential Information using at least reasonable care; restricted use solely for performing the Agreement; standard five (5) exclusions (public domain, prior possession, third-party rightful receipt, independent development, compelled legal disclosure with prior notice); confidentiality survival of 3 to 5 years (perpetual for trade secrets and PII).",
+    "unacceptable_triggers": [
+      "one-sided confidentiality protecting only counterparty's information",
+      "missing standard exclusions (e.g., independent development or prior knowledge)",
+      "compelled disclosure allowed without prior written notice to disclosing party where legally permitted",
+      "residuals clause allowing counterparty to freely use 'unaided memory' of confidential information",
+      "confidentiality obligations expire in less than 2 years or do not survive in perpetuity for trade secrets"
+    ],
+    "fallback_guidelines": "Ensure obligations are mutual; include all five standard exclusions; require prompt prior written notice and cooperation before any legally compelled disclosure; delete any 'residuals' clause; set survival period to 3 years post-termination, and in perpetuity for trade secrets and Personal Data."
   },
   {
     "canonical_type": "data-protection-and-privacy",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Processor/Service Provider processes Personal Data solely on documented instructions of Client; implements industry-standard technical and organizational measures (SOC 2 Type II / ISO 27001); notifies Client of any confirmed or reasonably suspected Data Breach within 24–48 hours; obtains prior authorization for subprocessors and remains fully liable for them.",
+    "unacceptable_triggers": [
+      "right to sell, aggregate, or train public AI models on client personal data or confidential data",
+      "data breach notification window exceeds 72 hours or uses vague 'undue delay' without a hard cap",
+      "no flow-down liability for third-party subprocessors",
+      "lack of cross-border data transfer safeguards (SCCs / DPF / DPA reference)"
+    ],
+    "fallback_guidelines": "Prohibit use of Client Data for any purpose other than providing the Services; require breach notification within 48 hours of discovery; mandate prior written notice and objection rights for new subprocessors with full liability flow-down; incorporate the parties' Data Processing Addendum (DPA) by reference."
   },
   {
     "canonical_type": "intellectual-property",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Client retains sole ownership of all Client Data and Pre-Existing IP; all custom Deliverables and work product created for Client are 'works made for hire' and irrevocably assigned to Client upon creation; Service Provider retains ownership of its Pre-Existing Background IP and grants Client a perpetual, irrevocable, worldwide, royalty-free, transferable license to use any Background IP embedded in Deliverables.",
+    "unacceptable_triggers": [
+      "service provider retains ownership of custom deliverables or work product paid for by client",
+      "broad power of attorney granted to counterparty without notice or failure-to-sign precondition",
+      "license to embedded background IP is revocable, non-sublicensable, or requires ongoing royalties",
+      "assignment of client's pre-existing IP or derivative works to counterparty",
+      "missing moral rights waiver or present assignment language ('hereby assigns')"
+    ],
+    "fallback_guidelines": "Clarify that each Party retains its Pre-Existing IP; stipulate that all Deliverables are 'works made for hire' (and to the extent not qualifying, Service Provider 'hereby irrevocably assigns' all right, title, and interest to Client); grant Client a perpetual, irrevocable, worldwide, royalty-free license to any Service Provider Background IP incorporated into the Deliverables; condition any power-of-attorney solely on failure to execute documents within 15 business days of written request."
   },
   {
     "canonical_type": "representations-and-warranties",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Mutual authority and non-infringement of third-party agreements; Service Provider warrants professional and workmanlike performance in accordance with industry standards, compliance with all applicable laws, conformity to specifications, no malicious code/viruses, and no third-party IP infringement.",
+    "unacceptable_triggers": [
+      "entire services or deliverables provided strictly 'AS-IS' with blanket disclaimer of all performance warranties",
+      "warranty period shorter than 30 days for software/deliverables",
+      "sole and exclusive remedy for breach of warranty is re-performance without a refund/termination backstop if re-performance fails",
+      "missing compliance with laws or anti-malware warranty"
+    ],
+    "fallback_guidelines": "Add express warranties that Services will be performed in a professional and workmanlike manner by qualified personnel and Deliverables will conform to specifications for at least 90 days; if Service Provider fails to cure a warranty breach within 30 days, Client may terminate the affected SOW and receive a full refund of fees paid for the non-conforming Deliverables."
   },
   {
     "canonical_type": "indemnification",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Mutual third-party indemnification covering (a) IP infringement or misappropriation by deliverables/services, (b) bodily injury, death, or tangible property damage, (c) gross negligence, fraud, or willful misconduct, and (d) breach of applicable law or data protection obligations, subject to prompt notice, sole control of defense, and reasonable cooperation.",
+    "unacceptable_triggers": [
+      "one-sided indemnification required only from client with no counterparty indemnity",
+      "missing third-party IP infringement indemnification from service provider/vendor",
+      "indemnification triggered by mere 'allegations' without defense control by indemnifying party",
+      "indemnified party can settle claims and bind indemnifying party without prior written consent",
+      "broad first-party indemnification for any ordinary breach of contract (converts breach into uncapped indemnity)"
+    ],
+    "fallback_guidelines": "Make indemnification mutual for gross negligence, willful misconduct, and bodily injury/property damage; require Service Provider to defend and indemnify Client against third-party IP infringement claims; include standard IP mitigation remedies (procure right, modify/replace, or refund unused fees); require written consent before any settlement that admits fault or imposes monetary liability."
   },
   {
     "canonical_type": "limitation-of-liability",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Mutual exclusion of indirect, special, incidental, punitive, and consequential damages; mutual aggregate liability cap set at 12 months of fees paid or payable preceding the claim; explicit carve-outs (super-cap or uncapped) for fraud, willful misconduct, gross negligence, third-party indemnification obligations, breach of confidentiality, and IP infringement.",
+    "unacceptable_triggers": [
+      "no aggregate liability cap specified (unlimited direct damages exposure)",
+      "consequential damages waiver applies to fraud, willful misconduct, or gross negligence",
+      "consequential damages waiver bars recovery for confidentiality or data privacy breaches",
+      "consequential damages waiver bars recovery for IP infringement or misappropriation",
+      "one-sided liability cap or consequential damages exclusion favoring only the counterparty",
+      "aggregate liability cap is less than 6 months of fees paid or payable"
+    ],
+    "fallback_guidelines": "Insert a mutual aggregate cap equal to 12 months' fees (or 6 months' fees as a commercial fallback) and add explicit carve-outs stating the limitation and consequential damages exclusion shall not apply to: (a) fraud, gross negligence, or willful misconduct; (b) breach of Confidentiality or Data Protection obligations; (c) breach of Intellectual Property Rights; or (d) third-party indemnification obligations."
   },
   {
     "canonical_type": "insurance",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Service Provider maintains Commercial General Liability ($1M per occurrence / $2M aggregate), Errors & Omissions / Professional Liability ($2M+), Cyber Liability ($2M+), and Workers' Compensation as required by law with A- VII rated insurers; names Client as an additional insured on CGL and provides Certificates of Insurance (COI) upon request.",
+    "unacceptable_triggers": [
+      "no insurance requirements for a vendor performing on-site work, handling sensitive data, or delivering critical services",
+      "coverage limits below $1,000,000 for E&O or Cyber Liability"
+    ],
+    "fallback_guidelines": "Require Service Provider to maintain Commercial General Liability ($1M/$2M), Professional Liability/E&O ($2M), Cyber Liability ($2M), and statutory Workers' Compensation coverage throughout the Term and provide Certificates of Insurance naming Client as additional insured upon request."
   },
   {
     "canonical_type": "compliance",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Compliance with all applicable anti-bribery, anti-corruption (FCPA, UK Bribery Act), export control, sanctions (OFAC), and modern slavery laws; immediate termination right for breach of compliance obligations.",
+    "unacceptable_triggers": [
+      "refusal to warrant compliance with applicable anti-corruption, sanctions, or export control laws"
+    ],
+    "fallback_guidelines": "Include a mutual representation that each Party will comply with all applicable laws, including the U.S. Foreign Corrupt Practices Act (FCPA), UK Bribery Act, and applicable export control and economic sanctions regulations."
   },
   {
     "canonical_type": "audit-and-records",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Client (or its independent third-party auditor) may audit Service Provider's billing records and security/compliance controls once annually upon 10–15 business days' prior written notice (and immediately following a security breach or regulatory inquiry); if an billing overcharge of 5% or more is discovered, Service Provider reimburses the overcharge plus the reasonable cost of the audit.",
+    "unacceptable_triggers": [
+      "complete omission of billing or compliance audit rights in a time-and-materials or data-processing contract",
+      "audit fees or vendor internal support time charged to client even when material non-compliance or overbilling is found"
+    ],
+    "fallback_guidelines": "Grant Client the right to audit books, records, and compliance documentation once per year on 15 days' notice (or immediately upon reasonable suspicion of breach/fraud), with Service Provider bearing the audit costs if an overcharge exceeding 5% is uncovered."
   },
   {
     "canonical_type": "subcontracting-and-sub-processors",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Service Provider may not subcontract any material portion of the Services without Client's prior written consent; Service Provider must bind approved subcontractors to written confidentiality, IP assignment, and security obligations no less protective than this Agreement and remains fully liable for all acts and omissions of its subcontractors.",
+    "unacceptable_triggers": [
+      "unrestricted right to subcontract services or offshore client data without client notice or consent",
+      "disclaimer of liability for acts or omissions of subcontractors"
+    ],
+    "fallback_guidelines": "Require Client's prior written consent before engaging any subcontractor to perform Services, require flow-down of confidentiality and IP assignment terms, and state that Service Provider remains fully responsible for all acts and omissions of its subcontractors."
   },
   {
     "canonical_type": "assignment",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Mutual anti-assignment clause with a standard carve-out permitting assignment without consent to an Affiliate or in connection with a merger, acquisition, corporate reorganization, or sale of all or substantially all assets; any permitted assignee assumes all obligations in writing and the assigning Party remains liable for pre-assignment obligations.",
+    "unacceptable_triggers": [
+      "anti-assignment clause prohibits client from assigning the agreement in a merger, acquisition, or corporate reorganization without vendor consent",
+      "one-sided assignment clause allowing vendor to freely assign to any third party (including a competitor) while restricting client",
+      "vendor may assign or delegate performance of the services without notice to client"
+    ],
+    "fallback_guidelines": "Make the assignment restriction mutual and permit either Party to assign this Agreement without consent to an Affiliate or in connection with a merger, reorganization, or sale of all or substantially all of its assets, with written notice to the other Party; require any other assignment to have the other Party's prior written consent, not to be unreasonably withheld."
   },
   {
     "canonical_type": "force-majeure",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Mutual excuse for delay due to unforeseeable events beyond reasonable control (excluding payment obligations and failures of sub-tier vendors where BC/DR plans should apply); prompt written notice and mitigation duty; right for the unaffected Party to terminate without penalty and receive a pro-rata refund if the Force Majeure event continues for more than 15–30 consecutive days.",
+    "unacceptable_triggers": [
+      "force majeure excuses payment obligations or ordinary labor shortages / subcontractor defaults",
+      "no termination right for client if force majeure delay exceeds 30 days",
+      "one-sided force majeure clause protecting only the service provider"
+    ],
+    "fallback_guidelines": "Make Force Majeure mutual, require prompt written notice and reasonable mitigation efforts, exclude payment obligations, and allow the unaffected Party to terminate the affected SOW or Agreement upon written notice if the Force Majeure event prevents performance for more than 30 consecutive days."
   },
   {
     "canonical_type": "governing-law-and-dispute-resolution",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "Governing law and exclusive venue set in a neutral, well-established commercial jurisdiction (e.g., Delaware, New York, California, or Client's principal place of business); good-faith executive escalation prior to formal litigation or binding arbitration; right to seek immediate injunctive or equitable relief in any court of competent jurisdiction for IP or confidentiality breaches.",
+    "unacceptable_triggers": [
+      "foreign or inconvenient remote jurisdiction with no nexus to the transaction",
+      "mandatory binding arbitration that prohibits seeking preliminary injunctive relief in court for IP/confidentiality breaches",
+      "one-sided prevailing party attorneys' fees clause favoring only counterparty",
+      "shortened contractual statute of limitations (e.g., requiring claims to be brought within 6 months)"
+    ],
+    "fallback_guidelines": "Specify a mutually acceptable commercial jurisdiction (e.g., State of Delaware or New York); include a 30-day executive escalation step; ensure either Party may seek immediate injunctive or equitable relief in any court of competent jurisdiction to protect Confidential Information or Intellectual Property Rights."
   },
   {
     "canonical_type": "notices",
     "inherent_risk_tier": "Low",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Notices must be in writing and delivered via personal delivery, nationally recognized overnight courier, certified mail, or email (with confirmation or copy to legal counsel); deemed effective upon receipt (or 1 business day for overnight courier); legal notices (breach, termination, indemnification) must be copied to the Legal Department.",
+    "unacceptable_triggers": [
+      "notices of breach, termination, or price increases valid via unconfirmed regular mail or in-app banner only",
+      "deemed receipt immediately upon mailing rather than actual delivery/courier confirmation"
+    ],
+    "fallback_guidelines": "Require all formal legal notices (termination, breach, indemnification) to be delivered by nationally recognized overnight courier or certified mail with a simultaneous copy by email to the designated Legal contact."
   },
   {
     "canonical_type": "independent-contractor",
-    "inherent_risk_tier": "Low",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "Service Provider is an independent contractor; neither Party has authority to bind the other; Service Provider is solely responsible for all wages, benefits, payroll taxes, withholdings, and workers' compensation for its personnel, and indemnifies Client against any misclassification or co-employment claims.",
+    "unacceptable_triggers": [
+      "language granting service provider agency authority to bind client to third-party contracts",
+      "missing responsibility of service provider for its own personnel taxes, benefits, and misclassification claims"
+    ],
+    "fallback_guidelines": "Confirm that Service Provider is an independent contractor with no authority to bind Client, and remains solely responsible for all compensation, benefits, taxes, and withholdings for its personnel."
   },
   {
     "canonical_type": "general-provisions",
-    "inherent_risk_tier": "Low",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "Amendments and waivers valid only if in a written instrument signed by both Parties; no waiver by course of conduct; standard severability (with a direction to reform an invalid term to the nearest enforceable one), counterparts and electronic signatures, entire agreement, survival of confidentiality, IP, indemnity and limitation of liability, and no third-party beneficiaries.",
+    "unacceptable_triggers": [
+      "unilateral amendment right allowing vendor to modify agreement terms by posting updated terms at a URL",
+      "incorporation of external online URL terms that take precedence over the signed agreement"
+    ],
+    "fallback_guidelines": "Require any amendment or modification to be in writing and signed by authorized representatives of both Parties; delete any right to modify terms by posting updated terms online; state that the signed Agreement prevails over any linked or referenced online terms; add a survival clause covering confidentiality, IP, indemnification, limitation of liability and payment obligations."
   },
   {
     "canonical_type": "information-security-and-data-management",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Maintenance of a comprehensive written information security program aligned with ISO 27001 or SOC 2 Type II; encryption of data in transit (TLS 1.2+) and at rest (AES-256); annual penetration testing; prompt remediation of critical vulnerabilities.",
+    "unacceptable_triggers": [
+      "security controls provided 'as-is' or subject to unilateral downgrade by vendor during the term",
+      "no encryption commitment for data in transit and at rest",
+      "refusal to provide annual SOC 2 / ISO 27001 audit summaries upon request"
+    ],
+    "fallback_guidelines": "Require Service Provider to maintain administrative, physical, and technical safeguards no less rigorous than industry standards (SOC 2 Type II or ISO 27001) and prohibit materially degrading security controls during the Term."
   },
   {
     "canonical_type": "personnel",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Service Provider assigns qualified, background-checked personnel; Key Personnel cannot be removed or reassigned without prior notice to Client; Client may request prompt replacement of any personnel for performance or conduct issues at no additional cost during ramp-up.",
+    "unacceptable_triggers": [
+      "client barred from requesting replacement of underperforming or disruptive vendor personnel",
+      "client billed for training or ramp-up time of replacement personnel due to vendor turnover"
+    ],
+    "fallback_guidelines": "Grant Client the right to request replacement of any Service Provider personnel upon reasonable dissatisfaction, with Service Provider providing a qualified replacement promptly at no additional onboarding or ramp-up cost to Client."
   },
   {
     "canonical_type": "exit-and-transition-assistance",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Upon expiration or termination for any reason, Service Provider provides up to 30–90 days of transition assistance at standard (or free, if terminated for vendor breach) rates; prompt return or secure deletion (NIST 800-88) of all Client Data and materials in a standard machine-readable format within 30 days, with written certification of destruction.",
+    "unacceptable_triggers": [
+      "right for vendor to permanently delete client data immediately upon termination without a retrieval window",
+      "right for vendor to hold client data or materials hostage ('lien') pending resolution of disputed invoices",
+      "no obligation to return work-in-progress deliverables already paid for by client"
+    ],
+    "fallback_guidelines": "Require Service Provider to immediately deliver all completed and work-in-progress Deliverables and Client Data in a standard format upon request, prohibit withholding Client Data for any reason (including payment disputes), and require written certification of secure destruction within 30 days after Client confirms successful data export."
   },
   {
     "canonical_type": "business-continuity-and-disaster-recovery",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Documented Business Continuity and Disaster Recovery (BC/DR) plan tested at least annually; defined Recovery Time Objective (RTO <= 4 hours) and Recovery Point Objective (RPO <= 1 hour); summary of test results provided to Client upon request.",
+    "unacceptable_triggers": [
+      "no disaster recovery or backup obligations for critical hosted services",
+      "RTO exceeding 48 hours for production systems"
+    ],
+    "fallback_guidelines": "Require Service Provider to maintain and annually test a comprehensive BC/DR plan with defined RTO and RPO targets and provide a summary of annual test results to Client upon request."
   },
   {
     "canonical_type": "order-of-precedence",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Clear hierarchy resolving conflicts: (1) Data Processing Addendum (for privacy), (2) Master Services Agreement, (3) Statement of Work / Order Form (unless an SOW explicitly cites a specific MSA section to override for that SOW only), (4) Exhibits/Schedules; pre-printed terms on purchase orders or invoices are void.",
+    "unacceptable_triggers": [
+      "order form, SOW, or vendor URL policies automatically override the MSA body in full",
+      "pre-printed terms on vendor invoices or shrink-wrap/click-through prompts bind client"
+    ],
+    "fallback_guidelines": "Establish that the MSA governs over any SOW or Order Form unless the SOW expressly identifies the specific section of the MSA being modified for that SOW only, and state that any pre-printed or click-through terms on invoices or portals are of no force or effect."
   },
   {
     "canonical_type": "governance-and-project-management",
-    "inherent_risk_tier": "Medium",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "inherent_risk_tier": "Low",
+    "acceptable_standard": "Designated project managers for each Party; regular status meetings and steering committee reviews for complex engagements; structured change control procedure requiring written Change Orders signed by both Parties before any scope or fee changes take effect.",
+    "unacceptable_triggers": [
+      "no designated points of contact, escalation path, or regular status reporting for a multi-month engagement"
+    ],
+    "fallback_guidelines": "Require all changes to scope, timeline, or fees to be documented in a written Change Order signed by authorized representatives of both Parties prior to implementation."
   },
   {
     "canonical_type": "publicity-and-use-of-name",
     "inherent_risk_tier": "Low",
-    "acceptable_standard": "",
-    "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "acceptable_standard": "Neither Party may issue a press release or use the other Party's name, trademarks, or logos in marketing materials, customer lists, or case studies without the other Party's prior written consent (which may be revoked at any time).",
+    "unacceptable_triggers": [
+      "unconditional right for vendor to use client's name, logo, and trademark in public marketing and press releases without prior written approval"
+    ],
+    "fallback_guidelines": "Prohibit either Party from using the other Party's name, trade name, logos, or trademarks in any publicity, press release, or marketing materials without prior written consent."
+  },
+  {
+    "canonical_type": "non-compete",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "Commercial service agreements should generally not restrict Client's ability to engage competing vendors, develop competing internal products, or operate in any market; any exclusivity or non-compete bound to Service Provider must be narrowly tailored in scope, geography, and duration (max 12 months).",
+    "unacceptable_triggers": [
+      "restriction preventing client from engaging other vendors or building similar solutions internally",
+      "overbroad non-compete exceeding 12 months post-termination or lacking geographic/industry scope limits",
+      "exclusivity commitment binding client without minimum performance/SLA guarantees"
+    ],
+    "fallback_guidelines": "Delete any non-compete or exclusivity restriction binding Client, and expressly state that nothing in this Agreement restricts Client from independently developing, acquiring, or marketing competitive products or services, or engaging third parties for similar services."
+  },
+  {
+    "canonical_type": "non-solicitation",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "Mutual non-solicitation of personnel who were directly involved in the performance of the Agreement during the Term and for 12 months thereafter, with an explicit carve-out for general public job advertisements and unsolicited applicants.",
+    "unacceptable_triggers": [
+      "one-sided non-solicitation restricting only client",
+      "applies to all employees company-wide rather than personnel directly involved in the engagement",
+      "missing carve-out for general public recruitment ads not specifically targeted at counterparty staff",
+      "liquidated damages recruitment fee exceeding 25% of annual base salary"
+    ],
+    "fallback_guidelines": "Make the non-solicitation obligation mutual, limit its scope to employees directly involved in the Services for 12 months post-termination, and add a standard carve-out for general, non-targeted public job postings."
   }
 ]

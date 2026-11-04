@@ -10,18 +10,14 @@ from src.services.vector_store.qdrant_db import search_points_batch
 logger = get_logger(__name__)
 
 # Clause texts sent to the embedding service per request. The service handles
-# requests one at a time, so batching only saves round trips.
-EMBED_BATCH_SIZE = 16
+# requests one at a time, so one request per review batch of clauses saves the
+# round trips; callers pass already-trimmed queries (heading plus the first
+# operative words), so even a full batch stays small.
+EMBED_BATCH_SIZE = 32
 
-# The embedding service's cost grows with every word (~1s per 60 words) and the
-# collection holds sentence-level chunks, so a clause's heading and first
-# sentence match as well as its full text at a fraction of the cost. Measured:
-# identical classifications at 40 words and at full length.
-EMBED_WORDS = 40
-
-# The service may be slow, but a batch of 16 short texts takes seconds; a call
+# The service may be slow, but a batch of short texts takes seconds; a call
 # taking longer than this means the service is unhealthy and the review should
-# move on without policies.
+# fall back to the offline classifier.
 EMBED_TIMEOUT_SECONDS = 60.0
 
 # Only typed clause records can tell us a clause type; headings, exhibits, and
@@ -53,7 +49,8 @@ class QdrantClauseSearch(BaseClauseSearch):
     async def search(self, texts: Sequence[str], agreement_type: Optional[str], session_id: str, top_k: int = SEARCH_TOP_K) -> List[List[ClauseMatch]]:
         """Return the top_k typed hits for each text, in input order.
 
-        Only the opening EMBED_WORDS of each text are embedded (see above).
+        Texts are embedded as given; callers trim them to the clause heading
+        and its first operative words (see build_smart_embedding_query).
 
         agreement_type is not yet applied as a Qdrant filter: requests send free
         text ("MSA") while records store a display name ("Master Service
@@ -64,8 +61,7 @@ class QdrantClauseSearch(BaseClauseSearch):
         if not texts:
             return []
 
-        openings = [" ".join(text.split()[:EMBED_WORDS]) for text in texts]
-        vectors = await self._embedding_client.embed(openings)
+        vectors = await self._embedding_client.embed([" ".join(text.split()) for text in texts])
         results = await asyncio.to_thread(search_points_batch, vectors, top_k, None, _CLAUSE_RECORDS_FILTER)
 
         hits: List[List[ClauseMatch]] = []

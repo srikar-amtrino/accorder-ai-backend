@@ -11,7 +11,7 @@ logger = get_logger(__name__)
 # The legal team's clause taxonomy and inherent risk tiers; standards, triggers,
 # and fallbacks fill in as they supply them. Labels must match the vector DB
 # records' canonical_type / sub_type exactly.
-_POLICIES_PATH = Path(__file__).resolve().parent / "clause_policies.json"
+POLICIES_PATH = Path(__file__).resolve().parent / "clause_policies.json"
 
 # (canonical_type, sub_type, agreement_type), each folded by _label.
 _Key = Tuple[Optional[str], Optional[str], Optional[str]]
@@ -37,7 +37,7 @@ class ClausePolicyStore:
             self._policies[key] = policy
 
     @classmethod
-    def from_file(cls, path: Path = _POLICIES_PATH) -> "ClausePolicyStore":
+    def from_file(cls, path: Path = POLICIES_PATH) -> "ClausePolicyStore":
         """Load and validate a policy file; a malformed row fails loudly instead of silently dropping a rule."""
 
         rows = json.loads(path.read_text(encoding="utf-8"))

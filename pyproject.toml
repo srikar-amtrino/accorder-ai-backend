@@ -38,6 +38,7 @@ boto3 = "*"
 python-jose = "*"
 torch = { version = "*", source = "pytorch-cpu" }
 structlog = "*"
+pytest = "^9.2.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
@@ -82,6 +83,11 @@ warn_return_any = true
 warn_unused_configs = true
 warn_unused_ignores = true
 
+[[tool.mypy.overrides]]
+module = "tests.*"
+disallow_untyped_defs = false
+warn_unused_ignores = false
+
 [tool.flake8]
 max-line-length = 200
 extend-ignore = "E203, W503"
@@ -92,3 +98,7 @@ inline-quotes = "double"
 multiline-quotes = "double"
 docstring-quotes = "double"
 import-order-style = "google"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]

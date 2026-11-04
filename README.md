@@ -112,6 +112,12 @@ All settings are read from `.env` via `pydantic-settings`.
 
 ## Testing
 
+Unit tests for the General Review pipeline (clause segmentation, the three-layer clause classifier, the deterministic risk matrix, the clause cache, and an offline end-to-end run against a stubbed model) live under `tests/` and need no AWS, Qdrant, or embedding service:
+
+```bash
+poetry run pytest
+```
+
 Two smoke-test scripts ship with the repository.
 
 ```bash
