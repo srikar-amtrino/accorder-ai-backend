@@ -1,10 +1,16 @@
-"""Capitalised terms an agreement uses in its operative clauses but never defines.
+"""Internal drafting mismatches: undefined capitalised terms that stand for a term the agreement does define.
 
-A capitalised multi-word phrase ("Accordor Proprietary Information",
-"Purchase Order") reads as a defined term. When the agreement defines no such
-term, the phrase is a drafting defect the review should raise on every run,
-not only when the model happens to notice it. This module finds those phrases
-in plain code so the finding does not depend on the model's attention.
+"Accordor Proprietary Information" reads as a defined term, but the agreement
+defines the concept as "Confidential Information". That mismatch is a drafting
+defect the review should raise on every run, with the defined term as the
+fix, not only when the model happens to notice it. This module finds such
+phrases in plain code.
+
+Only mismatches the agreement itself resolves are reported. A capitalised
+phrase with no defined counterpart ("Purchase Order", or "Proprietary
+Information" describing what a party owes a third party) is left alone: the
+agreement does not say what it should be, and reporting it crowded out
+substantive findings and invited wrong replacements.
 
 Everything that defines a term counts as a definition: a quoted capitalised
 phrase anywhere in the agreement ('(the "Budget")', '"Confidential
@@ -87,12 +93,12 @@ _PROPER_NAME_WORDS = {
 
 @dataclass(frozen=True)
 class UndefinedTerm:
-    """A capitalised phrase used in an operative paragraph that the agreement never defines."""
+    """A capitalised phrase used in an operative paragraph that the agreement never defines, and the defined term it stands for."""
 
     para_identifier: str
     clause: str
     term: str
-    defined_term: Optional[str] = None  # the defined term the phrase stands for, when the agreement shows which
+    defined_term: str
 
 
 def _singular(word: str) -> str:
@@ -166,7 +172,7 @@ def _operative_text(text: str, title: str) -> str:
 
 
 def find_undefined_terms(paragraphs: Sequence[TextInformation], titles: Dict[str, str], structure: ClauseStructure, places: Sequence[str] = ()) -> Tuple[UndefinedTerm, ...]:
-    """Capitalised multi-word phrases in operative paragraphs that the agreement never defines, in document order."""
+    """Undefined capitalised phrases in operative paragraphs that stand for a term the agreement defines, in document order."""
 
     defined = _defined_terms(paragraphs)
     parties = extract_defined_parties(paragraphs)
@@ -175,31 +181,36 @@ def find_undefined_terms(paragraphs: Sequence[TextInformation], titles: Dict[str
     place_words = {word.casefold() for place in places for word in place.split()}
     titles_seen = {term_key(title) for title in titles.values()}
 
+    skip = set(defined) | party_keys | titles_seen
     found: List[UndefinedTerm] = []
     for position, para in enumerate(paragraphs):
         if structure.role(position) not in SCANNED_ROLES:
             continue
         title = titles.get(para.paraindetifier, "")
-        text = _operative_text(para.text, title)
-        for run in _PHRASE_RE.finditer(text):
-            for offset, raw_words in _groups(run.group(0)):
-                words = _trimmed(raw_words)
-                if sum(1 for word in words if word != "of") < 2:
-                    continue
-                key = term_key(" ".join(words))
-                sentence_start = not text[: run.start() + offset].strip() or bool(_SENTENCE_END_RE.search(text[: run.start() + offset]))
-                if key not in defined and sentence_start:
-                    words = _trimmed(words[1:])  # "Each Statement of Work": the first word only opens the sentence
-                    if sum(1 for word in words if word != "of") < 2:
-                        continue
-                    key = term_key(" ".join(words))
-                if key in defined or key in party_keys or key in titles_seen or _is_proper_name(words, place_words):
-                    continue
-                term = " ".join(words)
-                if any(existing.para_identifier == para.paraindetifier and existing.term == term for existing in found):
-                    continue
-                found.append(UndefinedTerm(para.paraindetifier, title, term, _standing_for(term, aliases, defined, paragraphs)))
+        for words in _capitalised_phrases(_operative_text(para.text, title), set(defined)):
+            term = " ".join(words)
+            if term_key(term) in skip or _is_proper_name(words, place_words) or any(item.para_identifier == para.paraindetifier and item.term == term for item in found):
+                continue
+            defined_term = _standing_for(term, aliases, defined, paragraphs)
+            if defined_term is not None:
+                found.append(UndefinedTerm(para.paraindetifier, title, term, defined_term))
     return tuple(found)
+
+
+def _capitalised_phrases(text: str, defined: Set[str]) -> List[List[str]]:
+    """The capitalised multi-word phrases of a text, split at possessives, without a word that only opens a sentence."""
+
+    phrases: List[List[str]] = []
+    for run in _PHRASE_RE.finditer(text):
+        for offset, raw_words in _groups(run.group(0)):
+            words = _trimmed(raw_words)
+            before = text[: run.start() + offset]
+            sentence_start = not before.strip() or bool(_SENTENCE_END_RE.search(before))
+            if sentence_start and term_key(" ".join(words)) not in defined:
+                words = _trimmed(words[1:])  # "Each Statement of Work": the first word only opens the sentence
+            if sum(1 for word in words if word != "of") >= 2:
+                phrases.append(words)
+    return phrases
 
 
 def _standing_for(term: str, aliases: Sequence[str], defined: Dict[str, Tuple[str, int]], paragraphs: Sequence[TextInformation]) -> Optional[str]:

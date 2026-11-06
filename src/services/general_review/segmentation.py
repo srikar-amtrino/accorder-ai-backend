@@ -379,6 +379,29 @@ CLAUSE_WIDE_PROTECTION_TOPICS: Dict[str, Pattern[str]] = {
         r"\bbackground\s+ip\b|\bpre-?existing\s+(?:ip|intellectual\s+property|materials|tools|works?|know-?how|technology)\b|\bcarve-?outs?\b|\blicen[cs]e[- ]back\b|\bmoral\s+rights\b", re.IGNORECASE
     ),
     "fees-and-payment": re.compile(r"\bdisputed?\s+(?:invoices?|amounts?|charges?|fees?)\b|\bwithhold\w*\b|\blate\s+(?:payment\s+)?(?:interest|fees?|charges?)\b", re.IGNORECASE),
+    # The operative nondisclosure duty: how long it lasts, the standard of care, who it may be shared with, compelled disclosure.
+    "confidentiality": re.compile(
+        r"\bduration\b|\bperpetual(?:ly)?\b|\bindefinite(?:ly)?\b|\bno\s+(?:end\s+date|time\s+limit|fixed\s+period)\b|\b(?:post-termination|survival)\s+period\b|\bduty\s+lasts\b"
+        r"|\bstandard\s+of\s+care\b|\breasonable\s+care\b|\bneed[-\s]to[-\s]know\b|\bcompelled\s+disclosure\b|\blegally\s+(?:required|compelled)\s+disclosure\b",
+        re.IGNORECASE,
+    ),
+}
+
+# Findings on one topic belong on the paragraph that deals with it, whichever paragraph of the clause the
+# model raised them on: (topic, what a reason on the topic says, what the topic's paragraph says).
+# A reason that is also about the clause's operative duty (CLAUSE_WIDE_PROTECTION_TOPICS) stays with the primary anchor.
+TOPIC_ROUTES: Dict[str, Tuple[Tuple[str, Pattern[str], Pattern[str]], ...]] = {
+    "confidentiality": (
+        (
+            "exclusions",
+            re.compile(
+                r"\bexclu(?:sion|sions|ded|des)\b|\bexceptions?\b|\bcarve-?outs?\b|\brightful(?:ly)?\s+receiv\w*|\breceived\s+(?:\w+\s+){0,4}from\s+a\s+third\s+party\b"
+                r"|\bthird[-\s]party\s+(?:receipt|source)\b",
+                re.IGNORECASE,
+            ),
+            re.compile(r"\b(?:shall|does|will)\s+not,?\s+(?:however,?\s+)?include\b|\bexcludes?\s+(?:any\s+)?information\b", re.IGNORECASE),
+        ),
+    ),
 }
 
 _ROLE_TAG_RE = re.compile(r"\[(?:" + "|".join(ROLE_TAGS) + r")\][ \t]*")
@@ -396,6 +419,18 @@ class ClauseStructure:
     unit_of: Dict[int, int] = field(default_factory=dict)
     clause_type_of: Dict[int, str] = field(default_factory=dict)
     zone_of: Dict[int, str] = field(default_factory=dict)
+    # (clause unit, topic) -> the paragraph a finding on that topic belongs on (TOPIC_ROUTES).
+    topic_anchor_of: Dict[Tuple[int, str], int] = field(default_factory=dict)
+
+    def topic_target(self, position: int, reason: str) -> Optional[int]:
+        """The paragraph a finding raised at position belongs on because of its topic, or None when its topic routes nowhere."""
+
+        clause_type = self.clause_type_of.get(position)
+        unit = self.unit_of.get(position)
+        topic = topic_of_reason(reason, clause_type)
+        if topic is None or unit is None:
+            return None
+        return self.topic_anchor_of.get((unit, topic))
 
     def role(self, position: int) -> str:
         return self.roles.get(position, ROLE_PRIMARY)
@@ -599,7 +634,31 @@ def build_clause_structure(paragraphs: Sequence[TextInformation], titles: Dict[s
         for idx in unit:
             if structure.roles[idx] != ROLE_CONTEXT_ONLY:
                 structure.anchor_of[idx] = primary
+        structure.topic_anchor_of.update(_topic_anchors(number, content, paragraphs, clause_type))
     return structure
+
+
+def _topic_anchors(unit: int, content: Sequence[int], paragraphs: Sequence[TextInformation], clause_type: Optional[str]) -> Dict[Tuple[int, str], int]:
+    """For one clause, the paragraph each routed topic belongs on: the first body paragraph that deals with it."""
+
+    anchors: Dict[Tuple[int, str], int] = {}
+    for topic, _, paragraph_pattern in TOPIC_ROUTES.get(clause_type or "", ()):
+        target = next((idx for idx in content if paragraph_pattern.search(paragraphs[idx].text)), None)
+        if target is not None:
+            anchors[(unit, topic)] = target
+    return anchors
+
+
+def topic_of_reason(reason: str, clause_type: Optional[str]) -> Optional[str]:
+    """The routed topic a finding's reason is about (TOPIC_ROUTES), or None.
+
+    A reason that is also about the clause's operative duty is not routed: it
+    belongs with the primary anchor.
+    """
+
+    if is_clause_wide_topic(reason, clause_type):
+        return None
+    return next((topic for topic, reason_pattern, _ in TOPIC_ROUTES.get(clause_type or "", ()) if reason_pattern.search(reason or "")), None)
 
 
 def is_clause_wide_topic(reason: str, clause_type: Optional[str]) -> bool:

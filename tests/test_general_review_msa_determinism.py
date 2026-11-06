@@ -730,16 +730,12 @@ def test_non_compete_maps_to_its_own_policy_not_non_exclusivity(msa: GeneralRevi
 
 
 def test_undefined_capitalised_terms_are_document_facts(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
+    # Only the mismatch the agreement itself resolves. "Purchase Order" (para_12) has no defined counterpart, and
+    # "Proprietary Information" in para_43 is what Service Provider owes a third party, not Accordor's Confidential Information.
     found = [(item.para_identifier, item.term, item.defined_term) for item in plan.facts.undefined_terms]
-    assert found == [
-        ("para_10", "Accordor Proprietary Information", "Confidential Information"),
-        ("para_12", "Purchase Order", None),
-        ("para_43", "Proprietary Information", None),  # "Inventions and/or Proprietary Information" owed to a third party: no replacement is implied
-    ]
-    assert (
-        '- Undefined terms in operative clauses: "Accordor Proprietary Information" in the "Non-Compete" clause (the defined term is "Confidential Information"); '
-        '"Purchase Order" in the "Consulting Services" clause; "Proprietary Information" in the "Representations and Warranties" clause.'
-    ) in plan.facts_block
+    assert found == [("para_10", "Accordor Proprietary Information", "Confidential Information")]
+    assert '- Undefined terms in operative clauses: "Accordor Proprietary Information" in the "Non-Compete" clause (the defined term is "Confidential Information").' in plan.facts_block
+    assert "Purchase Order" not in plan.facts_block
 
 
 def test_defined_terms_proper_names_and_sentence_openers_are_not_undefined_terms() -> None:
@@ -754,9 +750,13 @@ def test_defined_terms_proper_names_and_sentence_openers_are_not_undefined_terms
         TextInformation(text="Vendor shall keep the Customer Records and the CEO Report confidential.", paraindetifier="p3"),
     ]
     titles = sg.build_clause_titles(paragraphs)
-    facts = build_document_facts(paragraphs, titles)
-    assert [item.term for item in facts.undefined_terms] == ["Customer Records"]
-    assert facts.undefined_terms[0].defined_term is None  # "Customer" opens it, but no definition covers "records"
+    # "Customer Records" is undefined, but no definition covers "records": no mismatch the agreement resolves, so nothing is reported.
+    assert build_document_facts(paragraphs, titles).undefined_terms == ()
+    # "Customer Confidential Data" stands for "Customer Data", whose definition covers "confidential data".
+    paragraphs[1] = TextInformation(text='Services. "Customer Data" means all confidential data Customer provides.', paraindetifier="p1")
+    paragraphs[3] = TextInformation(text="Vendor shall keep the Customer Confidential Data and the Customer Records secure.", paraindetifier="p3")
+    facts = build_document_facts(paragraphs, sg.build_clause_titles(paragraphs))
+    assert [(item.term, item.defined_term) for item in facts.undefined_terms] == [("Customer Confidential Data", "Customer Data")]
 
 
 def test_undefined_term_with_a_known_replacement_is_flagged_on_every_run(msa: GeneralReviewRequest, plan: gr.ReviewPlan, container_stub: Any, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -776,6 +776,56 @@ def test_undefined_term_with_a_known_replacement_is_flagged_on_every_run(msa: Ge
     container_stub(model=ScriptedModel(msa, plan, {"para_10": fix}), search=None)
     response = asyncio.run(gr.general_review_service(msa, "terms-2"))
     assert [(s.para_identifier, s.risk_level, s.reason) for s in response.suggestions] == [("para_10", "Low", "Undefined term.")]
+
+
+# Confidentiality findings from the live runs: run 1 raised the exclusion gap on para_30, runs 2 and 3 the duration on para_29.
+EXCLUSION_GAP = (
+    "The definition of Confidential Information does not include a standalone exception for information received from a third party without restriction. "
+    "The existing exceptions cover public domain, post-disclosure public knowledge, prior possession, and independent development."
+)
+# The sentence run 1 actually proposed.
+EXCLUSION_FIX = (
+    "Notwithstanding the foregoing, Confidential Information shall not include information that was received by the receiving party from a third party who was not, "
+    "to the receiving party's knowledge, under any obligation of confidentiality to Accordor with respect to such information."
+)
+DURATION = (
+    "The clause does not state a fixed duration for the confidentiality obligation; it says at all times during the term and thereafter, which is an indefinite, perpetual obligation. "
+    "A perpetual obligation may be unenforceable under California law."
+)
+DURATION_FIX = "The obligations in this Section continue for five (5) years after termination, and for trade secrets for as long as they remain trade secrets."
+
+
+def test_confidentiality_paragraph_roles_and_exclusions_paragraph(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
+    structure = plan.structure
+    assert structure.role(_position(msa, "para_29")) == sg.ROLE_PRIMARY
+    unit = structure.unit_of[_position(msa, "para_29")]
+    assert structure.topic_anchor_of == {(unit, "exclusions"): _position(msa, "para_31")}  # the paragraph with "shall not, however, include"
+
+
+@pytest.mark.parametrize("raised_on", ["para_29", "para_30", "para_31", "para_32", "para_33"])
+def test_missing_exclusion_always_lands_on_the_exclusions_paragraph(msa: GeneralReviewRequest, plan: gr.ReviewPlan, raised_on: str) -> None:
+    suggestions = _suggestions(msa, plan, {raised_on: {"reason": EXCLUSION_GAP, "append": EXCLUSION_FIX}})
+    assert list(suggestions) == ["para_31"]
+    assert suggestions["para_31"].original_text == _text(msa, "para_31")
+    assert suggestions["para_31"].suggested_fix == _text(msa, "para_31") + " " + EXCLUSION_FIX
+    assert suggestions["para_31"].risk_level == "Medium"
+
+
+@pytest.mark.parametrize("raised_on", ["para_29", "para_30", "para_32", "para_33"])
+def test_duration_and_nondisclosure_findings_always_land_on_the_operative_paragraph(msa: GeneralReviewRequest, plan: gr.ReviewPlan, raised_on: str) -> None:
+    suggestions = _suggestions(msa, plan, {raised_on: {"reason": DURATION, "append": DURATION_FIX}})
+    assert list(suggestions) == ["para_29"]
+    assert suggestions["para_29"].suggested_fix == _text(msa, "para_29") + " " + DURATION_FIX
+    # A reason that also mentions the missing exclusion is still about the duty, so it stays with the operative paragraph.
+    mixed = _suggestions(msa, plan, {raised_on: {"reason": DURATION + " It also omits the third-party exclusion.", "append": DURATION_FIX}})
+    assert list(mixed) == ["para_29"]
+
+
+def test_both_confidentiality_findings_land_on_their_own_paragraphs(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
+    script = {"para_30": {"reason": EXCLUSION_GAP, "append": EXCLUSION_FIX}, "para_29": {"reason": DURATION, "append": DURATION_FIX}}
+    assert _validate(msa, plan, script) == [("para_29", "Medium"), ("para_31", "Medium")]
+    # Return and destruction stay on the return paragraph.
+    assert [p for p, _ in _validate(msa, plan, {"para_33": {"reason": "No deadline is set for return or destruction."}})] == ["para_33"]
 
 
 def test_order_of_precedence_is_a_document_fact(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:

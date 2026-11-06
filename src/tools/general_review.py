@@ -713,26 +713,28 @@ def _clause_favors_client(position: int, view: _BatchView) -> bool:
     return False
 
 
-def _relocate_to_anchor(candidate: _Candidate, view: _BatchView) -> Optional[_Candidate]:
-    """Move a clause-wide finding from the paragraph the model chose onto its clause's primary anchor.
+def _relocate_to_anchor(candidate: _Candidate, view: _BatchView, target: Optional[int] = None) -> Optional[_Candidate]:
+    """Move a finding from the paragraph the model chose onto the paragraph it belongs on.
 
-    The sentences the model's fix added are carried over and appended to the
-    anchor paragraph. A fix that only edits its own paragraph's wording has
+    The target is the clause's primary anchor for a clause-wide finding, or
+    the paragraph that deals with the finding's topic (TOPIC_ROUTES). The
+    sentences the model's fix added are carried over and appended to the
+    target paragraph. A fix that only edits its own paragraph's wording has
     nothing to carry, and a heading has nothing to keep, so those are dropped;
-    a body paragraph whose anchor sits outside this batch stays where it is.
+    a body paragraph whose target sits outside this batch stays where it is.
     """
 
     structure = view.plan.structure
     position = candidate.position
     is_heading = structure.role(position) == ROLE_HEADING
-    anchor = structure.anchor_of.get(position)
+    anchor = target if target is not None else structure.anchor_of.get(position)
     if anchor is None or anchor not in view.raw:
         return None if is_heading else candidate
     additions = new_sentences(view.shown[position].text, candidate.fix)
     if not additions:
-        logger.warning("Dropping clause-wide finding for clause '%s' — it was raised off the clause's primary paragraph and adds nothing that can be carried there.", candidate.finding.clause)
+        logger.warning("Dropping finding for clause '%s' — it was raised off the paragraph it belongs on and adds nothing that can be carried there.", candidate.finding.clause)
         return None
-    logger.info("Anchor lock: clause-wide finding for clause '%s' moved to the clause's primary operative paragraph.", candidate.finding.clause)
+    logger.info("Anchor lock: finding for clause '%s' moved to the paragraph it belongs on.", candidate.finding.clause)
     return replace(candidate, position=anchor, relocated=True, original=view.raw[anchor].text, fix=view.shown[anchor].text.rstrip() + " " + " ".join(additions))
 
 
@@ -838,7 +840,15 @@ def _apply_review_rules(candidate: _Candidate, view: _BatchView) -> Optional[_Ca
     policy = view.policies.policy_of.get(candidate.position)
     clause_type = structure.clause_type_of.get(candidate.position) or (policy.canonical_type if policy is not None else None)
     clause_wide = finding.finding_scope == CLAUSE_WIDE_OMISSION or is_clause_wide_topic(finding.reason, clause_type)
-    if role == ROLE_HEADING or (role in (ROLE_SECONDARY, ROLE_DEFINITION) and clause_wide):
+    topic_target = structure.topic_target(candidate.position, finding.reason)
+    if topic_target is not None:
+        # A finding on a routed topic (Confidentiality exclusions) belongs on that topic's paragraph, wherever it was raised.
+        if topic_target != candidate.position:
+            relocated = _relocate_to_anchor(candidate, view, topic_target)
+            if relocated is None:
+                return None
+            candidate = relocated
+    elif role == ROLE_HEADING or (role in (ROLE_SECONDARY, ROLE_DEFINITION) and clause_wide):
         relocated = _relocate_to_anchor(candidate, view)
         if relocated is None:
             return None
@@ -1024,7 +1034,7 @@ def _required_term_fixes(batch: _Batch, plan: ReviewPlan, picked: Dict[int, Sugg
     positions = {para.paraindetifier: position for position, para in batch}
     for item in plan.facts.undefined_terms:
         position = positions.get(item.para_identifier)
-        if item.defined_term is None or position is None or position in picked or position in added:
+        if position is None or position in picked or position in added:
             continue
         para = dict(batch)[position]
         shown = plan.shown_text.get(position, para.text)

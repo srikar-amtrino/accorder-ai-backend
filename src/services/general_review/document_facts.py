@@ -231,8 +231,8 @@ class DocumentFacts:
                 "Never report an order-of-precedence or conflict rule as missing, and never add one to another clause."
             )
         if self.undefined_terms:
-            listed = "; ".join(f'"{item.term}" in the "{item.clause}" clause' + (f' (the defined term is "{item.defined_term}")' if item.defined_term else "") for item in self.undefined_terms)
-            lines.append(f"- Undefined terms in operative clauses: {listed}. Each is capitalised like a defined term, but the agreement never defines it.")
+            listed = "; ".join(f'"{item.term}" in the "{item.clause}" clause (the defined term is "{item.defined_term}")' for item in self.undefined_terms)
+            lines.append(f"- Undefined terms in operative clauses: {listed}. Each is capitalised like a defined term but never defined; the agreement's defined term for that concept is named.")
         if self.governing_law is not None:
             state = f" The governing state is {self.governing_state}." if self.governing_state else ""
             lines.append(f'- Governing law and venue: set out in the "{self.governing_law.clause}" clause.{state}')
