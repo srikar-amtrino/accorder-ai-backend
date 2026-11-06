@@ -144,6 +144,10 @@ class GeneralReviewResponse(BaseModel):
 
 SeverityCategory = Literal["uncapped_or_severe_exposure", "material_commercial_deviation", "minor_drafting_hygiene"]
 
+CLAUSE_WIDE_OMISSION = "clause_wide_omission"
+PARAGRAPH_SPECIFIC_DEFECT = "paragraph_specific_defect"
+FindingScope = Literal["clause_wide_omission", "paragraph_specific_defect"]
+
 
 class ReviewFinding(BaseModel):
     """One flagged paragraph as the model reports it: the fix plus structured facts about the clause."""
@@ -175,6 +179,23 @@ class ReviewFinding(BaseModel):
             "minor_drafting_hygiene: ambiguity, mechanics, or clarification with no material shift in exposure."
         ),
     )
+    finding_scope: FindingScope = Field(
+        default="paragraph_specific_defect",
+        description=(
+            "clause_wide_omission: the finding adds a protection, carve-out, right, or term the clause as a whole lacks; always anchored on the clause's [PRIMARY_OPERATIVE_ANCHOR] paragraph. "
+            "paragraph_specific_defect: wording already in the paragraph is itself defective."
+        ),
+    )
+
+    @field_validator("finding_scope", mode="before")
+    @classmethod
+    def _normalize_scope(cls, value: Any) -> Any:
+        """Fold casing/spacing; an unknown or missing label counts as a defect in the paragraph it was raised on."""
+
+        if not isinstance(value, str):
+            return PARAGRAPH_SPECIFIC_DEFECT if value is None else value
+        folded = "_".join(value.strip().lower().replace("-", " ").split())
+        return CLAUSE_WIDE_OMISSION if folded == CLAUSE_WIDE_OMISSION else PARAGRAPH_SPECIFIC_DEFECT
 
     @field_validator("triggered_unacceptable_flags", mode="before")
     @classmethod

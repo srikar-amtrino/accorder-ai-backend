@@ -3,9 +3,14 @@
 Layer 2 of the general review's clause classifier (see
 src/services/clause_mapping/resilient_classifier.py) looks a clause up in the
 Qdrant collection by similarity. That only works for clause types the
-collection contains, so this script writes four to six exemplar clauses per
-canonical_type in clause_policies.json — drawn from MSA, NDA, SaaS, and SOW
-drafting — embedded with the same bge-m3 service the classifier queries with.
+collection contains, so this script writes four or more exemplar clauses per
+canonical_type in clause_policies.json (the criteria taxonomy's clause types) —
+drawn from MSA, NDA, SaaS, and SOW drafting — embedded with the same bge-m3
+service the classifier queries with.
+
+Points written under the clause types used before the taxonomy (for example
+"general-provisions") are not removed by this script; QdrantClauseSearch maps
+or drops their labels until they are deleted.
 
 Point ids are UUID5 digests of (slug, text), so re-running the script replaces
 the same points instead of duplicating them. Payloads carry exactly what
@@ -39,8 +44,10 @@ from src.services.vector_store.qdrant_db import QDRANT_COLLECTION, QDRANT_URL, _
 SEED_NAMESPACE = uuid.UUID("4f2c7c2e-7b4d-4a7f-9c9e-ac0de5000001")
 SEED_SOURCE = "archetype_seed_v1"
 
+# Types the taxonomy merged (service provider obligations now covers personnel and
+# non-solicitation, for example) keep the exemplars of each part, hence the wide range.
 MIN_PER_SLUG = 4
-MAX_PER_SLUG = 6
+MAX_PER_SLUG = 15
 
 # Texts per embedding request; the service is single-threaded so this only saves round trips.
 EMBED_BATCH_SIZE = 16
@@ -181,8 +188,28 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
             MSA,
             "Compliance with Client Policies. While performing Services at Client locations or on Client systems, Service Provider personnel shall comply with Client's information security, health and safety, and site access policies as provided to Service Provider in writing.",
         ),
+        (
+            MSA,
+            "Personnel. Service Provider shall assign qualified, experienced personnel to perform the Services and shall conduct background checks on all personnel with access to Client facilities, systems, or data, to the extent permitted by law.",
+        ),
+        (
+            MSA,
+            "Key Personnel. Service Provider shall not remove or reassign the Key Personnel identified in a Statement of Work without Client's prior written consent, except for resignation, termination, illness, or leave, and shall promptly replace any Key Personnel with an individual of equivalent qualifications acceptable to Client.",
+        ),
+        (
+            MSA,
+            "Replacement of Personnel. Client may request the removal of any Service Provider personnel for reasonable cause, including performance or conduct concerns, and Service Provider shall promptly provide a qualified replacement at no additional charge for ramp-up or knowledge transfer.",
+        ),
+        (
+            SOW,
+            "Project Staffing. Provider will staff the project with a project manager, a solution architect, two senior consultants, and a data migration specialist, each of whom has at least three years of experience with the platform being implemented.",
+        ),
+        (
+            MSA,
+            "Conduct of Personnel. Service Provider personnel shall comply with Client's workplace policies while on Client premises, including policies on harassment, drug and alcohol use, and information security, and Service Provider shall be responsible for their compliance.",
+        ),
     ],
-    "suspension-and-termination": [
+    "term-and-termination": [
         (
             MSA,
             "Termination for Cause. Either Party may terminate this Agreement or any Statement of Work upon written notice if the other Party materially breaches this Agreement and fails to cure the breach within thirty days after receiving written notice describing the breach.",
@@ -206,6 +233,26 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
         (
             SAAS,
             "Effect of Termination. Upon expiration or termination, Customer's right to access the Service ceases, Provider shall make Customer Data available for export for thirty days, and Provider shall refund any prepaid fees covering the remainder of the Subscription Term if Customer terminated for Provider's uncured breach.",
+        ),
+        (
+            MSA,
+            "Transition Assistance. Upon expiration or termination of this Agreement for any reason, Service Provider shall provide up to ninety days of transition assistance at the rates then in effect, or at no charge if termination results from Service Provider's breach, to facilitate the orderly transfer of the Services to Client or a successor provider.",
+        ),
+        (
+            SAAS,
+            "Return of Data. For thirty days after termination, Provider shall make Customer Data available for export in a standard machine-readable format at no additional charge, and thereafter shall securely delete Customer Data in accordance with NIST 800-88 and certify deletion in writing on request.",
+        ),
+        (
+            MSA,
+            "Return of Materials. Upon termination, Service Provider shall promptly deliver to Client all Deliverables and work in progress, whether complete or incomplete, all Client materials and data, and all documentation necessary for Client to use and maintain the Deliverables.",
+        ),
+        (
+            MSA,
+            "No Withholding. Service Provider shall not withhold any Client Data, Deliverables, or materials, or interrupt transition assistance, pending resolution of any dispute, including a dispute over fees, and shall not assert any lien over Client property.",
+        ),
+        (
+            SOW,
+            "Knowledge Transfer. During the final phase, Provider will deliver operational runbooks, conduct knowledge transfer sessions with Client's support team, and provide thirty days of hypercare support following go-live.",
         ),
     ],
     "deliverables-and-acceptance": [
@@ -314,10 +361,6 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
             "Late Payment. Undisputed amounts not paid when due accrue interest at the lesser of one percent per month or the maximum rate permitted by law, calculated from the due date until paid. Service Provider shall not suspend Services for non-payment without thirty days' prior written notice.",
         ),
         (
-            MSA,
-            "Taxes. Fees are exclusive of sales, use, value added, and similar taxes, which Client shall pay where applicable, excluding taxes based on Service Provider's income, employment, or property, for which Service Provider is solely responsible.",
-        ),
-        (
             SOW,
             "Pricing. The Services under this Statement of Work are provided on a time and materials basis at the rates in Appendix C, not to exceed a total of two hundred fifty thousand dollars without Client's prior written approval. Invoices are issued monthly in arrears with supporting timesheets.",
         ),
@@ -372,6 +415,30 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
         (
             SAAS,
             "Use of Customer Data. Provider shall not sell Customer Data, use it for advertising, or use it to train machine learning models made available to other customers, and shall use Customer Data solely to provide and improve the Service for Customer.",
+        ),
+        (
+            SAAS,
+            "Information Security. Provider shall maintain a comprehensive written information security program aligned with ISO 27001 or SOC 2 Type II that includes administrative, physical, and technical safeguards appropriate to the sensitivity of Customer Data, and shall not materially degrade those safeguards during the Subscription Term.",
+        ),
+        (
+            SAAS,
+            "Encryption. Provider shall encrypt Customer Data in transit using TLS 1.2 or higher and at rest using AES-256 or an equivalent industry-standard algorithm, and shall manage encryption keys in accordance with industry best practices.",
+        ),
+        (
+            MSA,
+            "Security Measures. Service Provider shall implement and maintain access controls, multi-factor authentication for privileged access, logging and monitoring, vulnerability management, and secure development practices for all systems used to perform the Services or store Client Data.",
+        ),
+        (
+            MSA,
+            "Security Incidents. Service Provider shall notify Client within twenty-four hours of discovering any actual or reasonably suspected unauthorized access to Client Data or systems, shall investigate and remediate the incident, and shall provide Client with a written root cause analysis.",
+        ),
+        (
+            SAAS,
+            "Penetration Testing. Provider shall conduct annual third-party penetration tests of the Service, remediate critical and high-severity vulnerabilities within thirty days of discovery, and provide Customer with an executive summary of the results on request.",
+        ),
+        (
+            MSA,
+            "Data Management. Service Provider shall store Client Data only in the locations approved in writing by Client, shall maintain backups sufficient to restore Client Data in accordance with the agreed recovery objectives, and shall return or securely destroy Client Data in accordance with Client's instructions.",
         ),
     ],
     "intellectual-property": [
@@ -506,10 +573,6 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
             "Anti-Corruption. Service Provider represents that neither it nor any of its personnel has offered, paid, or promised anything of value to any government official or other person to obtain or retain business in connection with this Agreement, and shall maintain accurate books and records.",
         ),
         (
-            SAAS,
-            "Export Control. Customer shall not access or use the Service in violation of any export control or economic sanctions law, and represents that it is not located in, or a national of, any embargoed country and is not on any government denied-party list.",
-        ),
-        (
             MSA,
             "Regulatory Compliance. Service Provider shall perform the Services in compliance with all industry regulations applicable to Client that Client identifies in writing, shall cooperate with Client's regulatory audits, and shall promptly notify Client of any regulatory inquiry relating to the Services.",
         ),
@@ -540,7 +603,7 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
             "Inspection. Client may inspect the work in progress at Service Provider's facilities during normal business hours upon reasonable notice. Inspections do not relieve Service Provider of its obligation to deliver conforming Deliverables.",
         ),
     ],
-    "subcontracting-and-sub-processors": [
+    "subcontractors": [
         (
             MSA,
             "Subcontracting. Service Provider shall not subcontract any material portion of the Services without Client's prior written consent. Service Provider remains fully responsible for the acts and omissions of its subcontractors as if they were its own and shall bind each subcontractor to written terms no less protective of Client than this Agreement.",
@@ -604,6 +667,26 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
         (
             NDA,
             "Force Majeure. Neither Party is in breach of this Agreement to the extent its performance is prevented by circumstances beyond its reasonable control, except that no such circumstance excuses a Party's obligation to protect Confidential Information.",
+        ),
+        (
+            SAAS,
+            "Business Continuity. Provider shall maintain and test at least annually a business continuity and disaster recovery plan designed to ensure the continued availability of the Service, with a recovery time objective of four hours and a recovery point objective of one hour for production systems.",
+        ),
+        (
+            MSA,
+            "Disaster Recovery. Service Provider shall maintain geographically separate backup facilities, back up Client Data at least daily, and be able to restore the Services and Client Data within the recovery objectives set out in the Statement of Work following a disaster.",
+        ),
+        (
+            SAAS,
+            "Plan Testing. Provider shall provide Customer, upon request, with a summary of the results of its most recent business continuity and disaster recovery test and a description of any material remediation actions taken.",
+        ),
+        (
+            MSA,
+            "Continuity of Services. In the event of a disruption, Service Provider shall implement its business continuity plan, notify Client without undue delay, prioritize restoration of the Services, and provide regular status updates until normal operations resume.",
+        ),
+        (
+            SAAS,
+            "Backups. Provider shall retain backups of Customer Data for at least thirty days, store backups in an encrypted form in a separate availability zone, and verify the integrity of backups through regular restoration testing.",
         ),
     ],
     "governing-law-and-dispute-resolution": [
@@ -669,129 +752,25 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
         ),
         (
             MSA,
-            "No Agency. Service Provider shall not hold itself out as an agent of Client, shall not enter into any contract on Client's behalf, and shall not make any representation or warranty to any third party on Client's behalf.",
-        ),
-        (
-            MSA,
             "Relationship with Client. Service Provider's work under this Agreement is performed as an independent contractor and not as an employee or agent of Client, and Service Provider retains control over the manner and means by which the Services are performed, subject to the requirements of this Agreement.",
         ),
     ],
-    "general-provisions": [
+    "entire-agreement": [
         (
             MSA,
             "Entire Agreement. This Agreement, together with its Exhibits and any executed Statements of Work, constitutes the entire agreement between the Parties regarding its subject matter and supersedes all prior or contemporaneous agreements, proposals, and representations, whether written or oral.",
         ),
         (
-            MSA,
-            "Amendment and Waiver. No amendment to this Agreement is effective unless in writing and signed by authorized representatives of both Parties. No waiver of any provision is effective unless in writing, and no failure or delay in exercising any right operates as a waiver of that right.",
-        ),
-        (
             NDA,
-            "Severability. If any provision of this Agreement is held invalid or unenforceable, that provision shall be enforced to the maximum extent permissible and the remaining provisions shall remain in full force and effect.",
-        ),
-        (
-            MSA,
-            "Counterparts and Electronic Signatures. This Agreement may be executed in counterparts, each of which is an original and all of which together constitute one instrument. Signatures delivered by electronic means are deemed original signatures.",
+            "Entire Agreement. This Agreement contains the complete understanding of the Parties concerning the protection of Confidential Information and supersedes all prior discussions, term sheets, and non-disclosure undertakings on that subject.",
         ),
         (
             SAAS,
-            "Survival. Sections concerning confidentiality, intellectual property, indemnification, limitation of liability, payment of accrued fees, and governing law survive any expiration or termination of this Agreement.",
-        ),
-        (
-            MSA,
-            "No Third-Party Beneficiaries. This Agreement is for the sole benefit of the Parties and their permitted successors and assigns, and nothing in this Agreement confers any right, benefit, or remedy on any other person.",
-        ),
-    ],
-    "information-security-and-data-management": [
-        (
-            SAAS,
-            "Information Security. Provider shall maintain a comprehensive written information security program aligned with ISO 27001 or SOC 2 Type II that includes administrative, physical, and technical safeguards appropriate to the sensitivity of Customer Data, and shall not materially degrade those safeguards during the Subscription Term.",
-        ),
-        (
-            SAAS,
-            "Encryption. Provider shall encrypt Customer Data in transit using TLS 1.2 or higher and at rest using AES-256 or an equivalent industry-standard algorithm, and shall manage encryption keys in accordance with industry best practices.",
-        ),
-        (
-            MSA,
-            "Security Measures. Service Provider shall implement and maintain access controls, multi-factor authentication for privileged access, logging and monitoring, vulnerability management, and secure development practices for all systems used to perform the Services or store Client Data.",
-        ),
-        (
-            MSA,
-            "Security Incidents. Service Provider shall notify Client within twenty-four hours of discovering any actual or reasonably suspected unauthorized access to Client Data or systems, shall investigate and remediate the incident, and shall provide Client with a written root cause analysis.",
-        ),
-        (
-            SAAS,
-            "Penetration Testing. Provider shall conduct annual third-party penetration tests of the Service, remediate critical and high-severity vulnerabilities within thirty days of discovery, and provide Customer with an executive summary of the results on request.",
-        ),
-        (
-            MSA,
-            "Data Management. Service Provider shall store Client Data only in the locations approved in writing by Client, shall maintain backups sufficient to restore Client Data in accordance with the agreed recovery objectives, and shall return or securely destroy Client Data in accordance with Client's instructions.",
-        ),
-    ],
-    "personnel": [
-        (
-            MSA,
-            "Personnel. Service Provider shall assign qualified, experienced personnel to perform the Services and shall conduct background checks on all personnel with access to Client facilities, systems, or data, to the extent permitted by law.",
-        ),
-        (
-            MSA,
-            "Key Personnel. Service Provider shall not remove or reassign the Key Personnel identified in a Statement of Work without Client's prior written consent, except for resignation, termination, illness, or leave, and shall promptly replace any Key Personnel with an individual of equivalent qualifications acceptable to Client.",
-        ),
-        (
-            MSA,
-            "Replacement of Personnel. Client may request the removal of any Service Provider personnel for reasonable cause, including performance or conduct concerns, and Service Provider shall promptly provide a qualified replacement at no additional charge for ramp-up or knowledge transfer.",
+            "Entire Agreement; Non-Reliance. This Agreement and each Order Form are the entire agreement between the Parties for the Service. Each Party acknowledges that it has not relied on any statement, representation, or warranty not expressly set out in this Agreement, provided that nothing in this Section limits liability for fraud.",
         ),
         (
             SOW,
-            "Project Staffing. Provider will staff the project with a project manager, a solution architect, two senior consultants, and a data migration specialist, each of whom has at least three years of experience with the platform being implemented.",
-        ),
-        (
-            MSA,
-            "Conduct of Personnel. Service Provider personnel shall comply with Client's workplace policies while on Client premises, including policies on harassment, drug and alcohol use, and information security, and Service Provider shall be responsible for their compliance.",
-        ),
-    ],
-    "exit-and-transition-assistance": [
-        (
-            MSA,
-            "Transition Assistance. Upon expiration or termination of this Agreement for any reason, Service Provider shall provide up to ninety days of transition assistance at the rates then in effect, or at no charge if termination results from Service Provider's breach, to facilitate the orderly transfer of the Services to Client or a successor provider.",
-        ),
-        (
-            SAAS,
-            "Return of Data. For thirty days after termination, Provider shall make Customer Data available for export in a standard machine-readable format at no additional charge, and thereafter shall securely delete Customer Data in accordance with NIST 800-88 and certify deletion in writing on request.",
-        ),
-        (
-            MSA,
-            "Return of Materials. Upon termination, Service Provider shall promptly deliver to Client all Deliverables and work in progress, whether complete or incomplete, all Client materials and data, and all documentation necessary for Client to use and maintain the Deliverables.",
-        ),
-        (
-            MSA,
-            "No Withholding. Service Provider shall not withhold any Client Data, Deliverables, or materials, or interrupt transition assistance, pending resolution of any dispute, including a dispute over fees, and shall not assert any lien over Client property.",
-        ),
-        (
-            SOW,
-            "Knowledge Transfer. During the final phase, Provider will deliver operational runbooks, conduct knowledge transfer sessions with Client's support team, and provide thirty days of hypercare support following go-live.",
-        ),
-    ],
-    "business-continuity-and-disaster-recovery": [
-        (
-            SAAS,
-            "Business Continuity. Provider shall maintain and test at least annually a business continuity and disaster recovery plan designed to ensure the continued availability of the Service, with a recovery time objective of four hours and a recovery point objective of one hour for production systems.",
-        ),
-        (
-            MSA,
-            "Disaster Recovery. Service Provider shall maintain geographically separate backup facilities, back up Client Data at least daily, and be able to restore the Services and Client Data within the recovery objectives set out in the Statement of Work following a disaster.",
-        ),
-        (
-            SAAS,
-            "Plan Testing. Provider shall provide Customer, upon request, with a summary of the results of its most recent business continuity and disaster recovery test and a description of any material remediation actions taken.",
-        ),
-        (
-            MSA,
-            "Continuity of Services. In the event of a disruption, Service Provider shall implement its business continuity plan, notify Client without undue delay, prioritize restoration of the Services, and provide regular status updates until normal operations resume.",
-        ),
-        (
-            SAAS,
-            "Backups. Provider shall retain backups of Customer Data for at least thirty days, store backups in an encrypted form in a separate availability zone, and verify the integrity of backups through regular restoration testing.",
+            "Integration. This Statement of Work, together with the Master Services Agreement under which it is issued, constitutes the entire agreement of the Parties concerning the project it describes and replaces any earlier proposals, quotations, or correspondence.",
         ),
     ],
     "order-of-precedence": [
@@ -816,29 +795,112 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
             "Hierarchy of Documents. The Parties intend the documents comprising this Agreement to be read together. Where a conflict cannot be reconciled, the more specific provision governs within the document hierarchy set out in this Section.",
         ),
     ],
-    "governance-and-project-management": [
+    "amendments-and-modifications": [
         (
             MSA,
-            "Governance. Each Party shall designate a relationship manager responsible for overseeing performance under this Agreement. The relationship managers shall meet at least monthly to review performance, service levels, open issues, and planned changes.",
+            "Amendment and Waiver. No amendment to this Agreement is effective unless in writing and signed by authorized representatives of both Parties. No waiver of any provision is effective unless in writing, and no failure or delay in exercising any right operates as a waiver of that right.",
         ),
         (
-            SOW,
-            "Project Management. Provider's project manager shall maintain the project plan, issue log, and risk register, chair weekly status meetings with Client's project manager, and deliver a written status report each week summarizing progress, risks, and upcoming decisions.",
-        ),
-        (
-            MSA,
-            "Steering Committee. The Parties shall establish a steering committee composed of senior representatives of each Party that meets quarterly to review the strategic direction of the relationship, resolve escalated issues, and approve material changes to the Services.",
+            SAAS,
+            "Modifications to Terms. Provider may not modify these terms during a Subscription Term. Any change to this Agreement, including to any policy incorporated by reference, binds Customer only if set out in a written amendment signed by both Parties.",
         ),
         (
             MSA,
-            "Escalation. Issues not resolved by the project managers within five business days shall be escalated to the relationship managers, and if not resolved within a further ten business days, to the steering committee, before either Party invokes the dispute resolution procedure.",
+            "Amendments. This Agreement, including its Exhibits and any Statement of Work, may be amended only by a written instrument that expressly refers to this Agreement and is signed by an authorized officer of each Party; no oral agreement or course of dealing modifies it.",
         ),
         (
-            SOW,
-            "Reporting. Provider shall provide Client with a monthly report covering hours consumed against budget, milestone status, change requests, and quality metrics, in the format agreed by the Parties at project kick-off.",
+            NDA,
+            "Amendment. No modification of this Agreement is binding unless it is in writing, specifically references this Agreement, and is signed by duly authorized representatives of both Parties.",
         ),
     ],
-    "publicity-and-use-of-name": [
+    "waiver": [
+        (
+            MSA,
+            "No Waiver. The failure or delay of either Party to exercise or enforce any right under this Agreement does not operate as a waiver of that right, and no single or partial exercise of any right precludes any further exercise of it.",
+        ),
+        (NDA, "Waiver. No waiver of any provision of this Agreement is effective unless it is in writing and signed by the Party against whom the waiver is to be enforced."),
+        (
+            SAAS,
+            "Waiver. A waiver of any breach of this Agreement is not a waiver of any other or subsequent breach, and acceptance of a late or partial payment does not waive the right to the full amount due.",
+        ),
+        (
+            MSA,
+            "No Waiver by Conduct. Acceptance of any Deliverable or payment of any invoice does not waive either Party's rights in respect of any prior or subsequent breach, and a waiver given on one occasion applies only to that occasion.",
+        ),
+    ],
+    "severability": [
+        (
+            NDA,
+            "Severability. If any provision of this Agreement is held invalid or unenforceable, that provision shall be enforced to the maximum extent permissible and the remaining provisions shall remain in full force and effect.",
+        ),
+        (
+            MSA,
+            "Severability. If a court of competent jurisdiction finds any provision of this Agreement invalid, illegal, or unenforceable, the Parties shall negotiate in good faith a valid replacement provision that most nearly achieves the original intent, and the remaining provisions continue in full force.",
+        ),
+        (
+            SAAS,
+            "Partial Invalidity. The invalidity or unenforceability of any term of this Agreement in any jurisdiction does not affect the validity of that term in any other jurisdiction or of the remaining terms, which shall be construed as if the invalid term had been limited to the extent necessary.",
+        ),
+        (
+            SOW,
+            "Severability. Should any part of this Statement of Work be held unenforceable, that part shall be modified to the minimum extent necessary to make it enforceable, and the rest of this Statement of Work remains binding.",
+        ),
+    ],
+    "no-agency-or-authority": [
+        (
+            MSA,
+            "No Agency. Service Provider shall not hold itself out as an agent of Client, shall not enter into any contract on Client's behalf, and shall not make any representation or warranty to any third party on Client's behalf.",
+        ),
+        (
+            NDA,
+            "No Partnership. Nothing in this Agreement creates a partnership, joint venture, or agency relationship between the Parties, and neither Party has authority to bind the other or to incur any obligation on its behalf.",
+        ),
+        (
+            MSA,
+            "No Authority to Bind. Service Provider has no authority to enter into contracts, make commitments, or incur expenses in the name of Client unless Client has given its express prior written authorization for that specific act.",
+        ),
+        (
+            SAAS,
+            "Relationship. Neither Party is the agent of the other or has any right to make representations, warranties, or commitments on behalf of the other, and neither shall hold itself out as having such authority.",
+        ),
+    ],
+    "non-exclusivity": [
+        (
+            MSA,
+            "Non-Compete. Nothing in this Agreement restricts Client from developing, acquiring, or marketing products or services that compete with those of Service Provider, or from engaging third parties to provide services similar to the Services.",
+        ),
+        (
+            SAAS,
+            "No Restriction on Customer. Customer remains free to use competing products and services and to build or buy internal solutions with similar functionality, and nothing in this Agreement obligates Customer to purchase any minimum volume from Provider.",
+        ),
+        (
+            MSA,
+            "Non-Exclusive Arrangement. This Agreement is non-exclusive. Client is under no obligation to purchase any minimum volume of Services and may engage third parties to provide services similar to the Services.",
+        ),
+        (
+            SAAS,
+            "Non-Exclusivity. The rights granted under this Agreement are non-exclusive. Nothing in this Agreement obliges either Party to deal exclusively with the other or to purchase or provide any minimum volume.",
+        ),
+    ],
+    "export-controls-and-sanctions": [
+        (
+            SAAS,
+            "Export Control. Customer shall not access or use the Service in violation of any export control or economic sanctions law, and represents that it is not located in, or a national of, any embargoed country and is not on any government denied-party list.",
+        ),
+        (
+            MSA,
+            "Sanctions. Each Party represents that neither it nor any of its owners or officers is a person targeted by sanctions administered by OFAC, the United Nations, the European Union, or the United Kingdom, and shall notify the other Party promptly if that changes.",
+        ),
+        (
+            MSA,
+            "Export Compliance. Service Provider shall not export, re-export, or transfer any Deliverable, technical data, or software received under this Agreement except in full compliance with the U.S. Export Administration Regulations and all other applicable export control laws, and shall obtain any required licenses.",
+        ),
+        (
+            SAAS,
+            "Restricted Countries. Customer shall not permit any user located in an embargoed country to access the Service. Provider may suspend access without liability where continued provision would breach applicable sanctions or export control laws.",
+        ),
+    ],
+    "publicity-and-use-of-names": [
         (
             MSA,
             "Publicity. Neither Party shall issue any press release or public announcement regarding this Agreement, or use the other Party's name, logo, or trademarks in any marketing material, customer list, or case study, without the other Party's prior written consent.",
@@ -860,11 +922,129 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
             "Trademarks. Provider shall not use Client's trademarks, trade names, or logos in any manner, including in proposals to other customers, without Client's express prior written consent in each instance.",
         ),
     ],
-    "non-compete": [
+    "equitable-relief": [
+        (
+            NDA,
+            "Equitable Relief. The Receiving Party acknowledges that unauthorized disclosure of Confidential Information would cause the Disclosing Party irreparable harm for which damages would not be an adequate remedy, and that the Disclosing Party is entitled to seek injunctive relief without posting bond, in addition to any other remedy.",
+        ),
         (
             MSA,
-            "Non-Compete. Nothing in this Agreement restricts Client from developing, acquiring, or marketing products or services that compete with those of Service Provider, or from engaging third parties to provide services similar to the Services.",
+            "Injunctive Relief. Notwithstanding the dispute resolution procedure, either Party may apply to any court of competent jurisdiction for a temporary restraining order or preliminary injunction to protect its intellectual property or Confidential Information.",
         ),
+        (
+            SAAS,
+            "Specific Performance. Each Party agrees that the other may seek specific performance of the obligations relating to data return and use restrictions, since monetary damages alone would not compensate for a breach of those obligations.",
+        ),
+        (MSA, "Cumulative Remedies. A Party's right to seek equitable relief is cumulative and does not limit any other right or remedy available to it under this Agreement or at law."),
+    ],
+    "conflict-of-interest": [
+        (
+            MSA,
+            "Conflicts of Interest. Service Provider shall promptly disclose to Client in writing any financial interest, relationship, or engagement that conflicts or could reasonably appear to conflict with its performance of the Services, and shall take the steps Client reasonably requires to manage or remove the conflict.",
+        ),
+        (
+            MSA,
+            "No Conflicting Engagements. During the Term, Service Provider shall not accept any engagement from a third party that would prevent it from performing the Services impartially, and shall notify Client before accepting work from any of Client's direct competitors.",
+        ),
+        (
+            SOW,
+            "Independence. Provider confirms that no member of the project team has any personal or financial interest in the outcome of the vendor selection being advised on under this Statement of Work.",
+        ),
+        (
+            MSA,
+            "Conflicts Register. Service Provider shall maintain a register of actual and potential conflicts of interest relating to the Services, review it each quarter, and make it available to Client on request.",
+        ),
+    ],
+    "survival": [
+        (
+            SAAS,
+            "Survival. Sections concerning confidentiality, intellectual property, indemnification, limitation of liability, payment of accrued fees, and governing law survive any expiration or termination of this Agreement.",
+        ),
+        (
+            MSA,
+            "Survival. Any provision of this Agreement which by its nature is intended to continue after termination, including the obligations relating to confidentiality, ownership of Deliverables, indemnities, and accrued payment obligations, survives the expiration or termination of this Agreement.",
+        ),
+        (
+            NDA,
+            "Survival of Obligations. The obligations of the Receiving Party under this Agreement survive its termination for a period of five years, and with respect to trade secrets for so long as the information remains a trade secret under applicable law.",
+        ),
+        (
+            MSA,
+            "Accrued Rights. Termination or expiration of this Agreement does not affect any rights, remedies, obligations, or liabilities of either Party that have accrued up to the date of termination or expiry.",
+        ),
+    ],
+    "counterparts": [
+        (
+            MSA,
+            "Counterparts and Electronic Signatures. This Agreement may be executed in counterparts, each of which is an original and all of which together constitute one instrument. Signatures delivered by electronic means are deemed original signatures.",
+        ),
+        (NDA, "Counterparts. This Agreement may be signed in any number of counterparts, each of which is deemed an original and all of which together constitute a single agreement."),
+        (
+            SAAS,
+            "Electronic Signatures. The Parties agree that this Agreement and any Order Form may be executed by electronic signature, and that a signed copy delivered by email or through an electronic signature platform has the same legal effect as a manually signed original.",
+        ),
+        (SOW, "Execution. This Statement of Work may be executed in two counterparts on different dates and becomes effective on the date on which the last Party signs it."),
+    ],
+    "time-of-the-essence": [
+        (
+            MSA,
+            "Time of the Essence. Time is of the essence for the delivery dates and milestones set out in each Statement of Work, and Service Provider's failure to meet any such date is a material breach of this Agreement.",
+        ),
+        (SOW, "Critical Dates. The Parties agree that time is of the essence with respect to the go-live date stated in this Statement of Work; all other dates are targets only."),
+        (
+            MSA,
+            "Time Not of the Essence. Except for payment obligations, time is not of the essence for the performance of either Party's obligations, and a missed date is a breach only if not remedied within a reasonable period after written notice.",
+        ),
+        (
+            SAAS,
+            "Timely Performance. Time is of the essence in Customer's obligation to pay undisputed fees by the due date and in Provider's obligation to restore the Service within the restoration times in the Service Level Agreement.",
+        ),
+    ],
+    "taxes": [
+        (
+            MSA,
+            "Taxes. Fees are exclusive of sales, use, value added, and similar taxes, which Client shall pay where applicable, excluding taxes based on Service Provider's income, employment, or property, for which Service Provider is solely responsible.",
+        ),
+        (
+            MSA,
+            "Withholding Tax. If applicable law requires Client to withhold tax from any payment, Client shall deduct the amount required, pay it to the relevant authority, and provide Service Provider with an official receipt; the Parties shall cooperate to claim any available treaty relief.",
+        ),
+        (
+            SAAS,
+            "Taxes. Fees do not include taxes. Customer is responsible for all sales, use, goods and services, and value added taxes on the Service, excluding taxes based on Provider's net income, property, or employees.",
+        ),
+        (
+            SOW,
+            "Tax Gross-Up. Where any payment under this Statement of Work is subject to deduction for tax, the payer shall increase the amount paid so that the recipient receives the amount it would have received had no deduction been required.",
+        ),
+    ],
+    "miscellaneous-other-provisions": [
+        (
+            MSA,
+            "No Third-Party Beneficiaries. This Agreement is for the sole benefit of the Parties and their permitted successors and assigns, and nothing in this Agreement confers any right, benefit, or remedy on any other person.",
+        ),
+        (
+            MSA,
+            "Governance. Each Party shall designate a relationship manager responsible for overseeing performance under this Agreement. The relationship managers shall meet at least monthly to review performance, service levels, open issues, and planned changes.",
+        ),
+        (
+            SOW,
+            "Project Management. Provider's project manager shall maintain the project plan, issue log, and risk register, chair weekly status meetings with Client's project manager, and deliver a written status report each week summarizing progress, risks, and upcoming decisions.",
+        ),
+        (
+            MSA,
+            "Steering Committee. The Parties shall establish a steering committee composed of senior representatives of each Party that meets quarterly to review the strategic direction of the relationship, resolve escalated issues, and approve material changes to the Services.",
+        ),
+        (
+            MSA,
+            "Escalation. Issues not resolved by the project managers within five business days shall be escalated to the relationship managers, and if not resolved within a further ten business days, to the steering committee, before either Party invokes the dispute resolution procedure.",
+        ),
+        (
+            SOW,
+            "Reporting. Provider shall provide Client with a monthly report covering hours consumed against budget, milestone status, change requests, and quality metrics, in the format agreed by the Parties at project kick-off.",
+        ),
+    ],
+    "non-compete": [
         (
             MSA,
             "Exclusivity. During the Term and for twelve months thereafter, Service Provider shall not provide services substantially similar to the Services to the competitors of Client identified in Exhibit F within North America, in exchange for the exclusivity fee set out in the Statement of Work.",
@@ -878,8 +1058,8 @@ ARCHETYPES: Dict[str, List[Tuple[str, str]]] = {
             "Non-Competition. During the term of this Agreement and for two years thereafter, Service Provider shall not, directly or indirectly, engage in any business that competes with Client's business anywhere in the world.",
         ),
         (
-            SAAS,
-            "No Restriction on Customer. Customer remains free to use competing products and services and to build or buy internal solutions with similar functionality, and nothing in this Agreement obligates Customer to purchase any minimum volume from Provider.",
+            MSA,
+            "Restrictive Covenant. For twelve months after the last Statement of Work ends, Service Provider shall not perform services for any competitor of Client listed in Schedule C within the United States, except where such a restriction is prohibited by applicable law.",
         ),
     ],
     "non-solicitation": [

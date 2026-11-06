@@ -3,6 +3,7 @@ from typing import Any, Dict, List, Optional, Sequence
 
 from src.config.logging import get_logger
 from src.schemas.clause_mapping import ClauseMatch
+from src.services.clause_mapping.resilient_classifier import current_canonical_type
 from src.services.clause_mapping.search import SEARCH_TOP_K, BaseClauseSearch
 from src.services.vector_store.embeddings.embedding_client import EmbeddingClient
 from src.services.vector_store.qdrant_db import search_points_batch
@@ -89,9 +90,12 @@ def _to_match(point: Dict[str, Any]) -> Optional[ClauseMatch]:
     score = point.get("score")
     if not isinstance(canonical_type, str) or not canonical_type.strip() or not isinstance(score, (int, float)):
         return None
+    current = current_canonical_type(canonical_type.strip())
+    if current is None:
+        return None
     sub_type = payload.get("sub_type")
     return ClauseMatch(
-        canonical_type=canonical_type.strip(),
+        canonical_type=current,
         sub_type=sub_type.strip() if isinstance(sub_type, str) and sub_type.strip() else None,
         score=float(score),
     )

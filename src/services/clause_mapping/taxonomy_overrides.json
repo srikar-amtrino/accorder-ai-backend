@@ -1,0 +1,130 @@
+{
+  "_about": "Additions to MSA_Criteria_Final_Taxonomy.json, merged by scripts/build_policies_from_taxonomy.py into clause_policies.json and read by the review at runtime. extra_types use the taxonomy's own schema, so they can move into the workbook unchanged. extra_triggers name criteria, by id, that are unacceptable triggers although they are neither Core nor a gate in the workbook.",
+  "extra_triggers": {
+    "Governing Law & Dispute Resolution": ["LAW-03"]
+  },
+  "extra_types": {
+    "Non-Compete": {
+      "group": "Clause",
+      "rated": true,
+      "id_prefix": "NCP",
+      "criteria": {
+        "NCP-01": {
+          "criterion_id": "NCP-01",
+          "clause_type": "Non-Compete",
+          "criterion": "Duration is limited",
+          "issue_category": "Clarity",
+          "applies_when": "Always",
+          "question_for_llm": "Does any restriction that continues after the agreement ends last no longer than 12 months?",
+          "met_when": "Any restriction after the agreement ends lasts 12 months or less.",
+          "not_met_when": "It lasts more than 12 months after the agreement ends, or has no end date.",
+          "weight": "Core",
+          "gate_if_not_met": "None"
+        },
+        "NCP-02": {
+          "criterion_id": "NCP-02",
+          "clause_type": "Non-Compete",
+          "criterion": "Restricted activity is defined",
+          "issue_category": "Clarity",
+          "applies_when": "Always",
+          "question_for_llm": "Is the restricted activity defined by a specific technology, product, service or industry?",
+          "met_when": "The restricted activity is specifically defined.",
+          "not_met_when": "The restricted activity is not defined.",
+          "weight": "Major",
+          "gate_if_not_met": "None"
+        },
+        "NCP-03": {
+          "criterion_id": "NCP-03",
+          "clause_type": "Non-Compete",
+          "criterion": "Geographic scope and enforceability",
+          "issue_category": "Enforceability",
+          "applies_when": "Always",
+          "question_for_llm": "Does the clause state its geographic scope, and is the restriction enforceable under the governing law (for example, California law generally voids post-termination non-competes)?",
+          "met_when": "A geographic scope is stated and the restriction is enforceable under the governing law.",
+          "not_met_when": "No geographic scope is stated, or the restriction is likely unenforceable under the governing law.",
+          "weight": "Major",
+          "gate_if_not_met": "None"
+        },
+        "NCP-04": {
+          "criterion_id": "NCP-04",
+          "clause_type": "Non-Compete",
+          "criterion": "Client is not restricted",
+          "issue_category": "Balance",
+          "applies_when": "Always",
+          "question_for_llm": "Does the clause leave the client free to engage other vendors, build or buy competing solutions, and operate in any market?",
+          "met_when": "Only the service provider is restricted.",
+          "not_met_when": "The client is restricted.",
+          "weight": "Core",
+          "gate_if_not_met": "None"
+        }
+      }
+    },
+    "Non-Solicitation": {
+      "group": "Clause",
+      "rated": true,
+      "id_prefix": "NSO",
+      "criteria": {
+        "NSO-01": {
+          "criterion_id": "NSO-01",
+          "clause_type": "Non-Solicitation",
+          "criterion": "Restriction is even-handed",
+          "issue_category": "Balance",
+          "applies_when": "Always",
+          "question_for_llm": "Does the restriction bind both parties in the same way, rather than restricting the client alone?",
+          "met_when": "Both parties are bound in the same way.",
+          "not_met_when": "Only the client is restricted.",
+          "weight": "Core",
+          "gate_if_not_met": "None"
+        },
+        "NSO-02": {
+          "criterion_id": "NSO-02",
+          "clause_type": "Non-Solicitation",
+          "criterion": "Duration is limited",
+          "issue_category": "Clarity",
+          "applies_when": "Always",
+          "question_for_llm": "Does the restriction end no later than 12 months after the agreement ends?",
+          "met_when": "It ends 12 months or less after the agreement ends.",
+          "not_met_when": "It lasts longer than 12 months after the agreement ends, or has no end date.",
+          "weight": "Major",
+          "gate_if_not_met": "None"
+        },
+        "NSO-03": {
+          "criterion_id": "NSO-03",
+          "clause_type": "Non-Solicitation",
+          "criterion": "Covered personnel are limited",
+          "issue_category": "Clarity",
+          "applies_when": "Always",
+          "question_for_llm": "Is the restriction limited to personnel directly involved in the services?",
+          "met_when": "Only personnel directly involved in the services are covered.",
+          "not_met_when": "It covers all personnel of a party.",
+          "weight": "Major",
+          "gate_if_not_met": "None"
+        },
+        "NSO-04": {
+          "criterion_id": "NSO-04",
+          "clause_type": "Non-Solicitation",
+          "criterion": "General recruitment carve-out",
+          "issue_category": "Completeness",
+          "applies_when": "Always",
+          "question_for_llm": "Are general job advertisements not aimed at the other party's staff, and people who apply on their own initiative, excluded?",
+          "met_when": "Both are excluded.",
+          "not_met_when": "No carve-out is stated.",
+          "weight": "Major",
+          "gate_if_not_met": "None"
+        },
+        "NSO-05": {
+          "criterion_id": "NSO-05",
+          "clause_type": "Non-Solicitation",
+          "criterion": "Hiring fee is proportionate",
+          "issue_category": "Balance",
+          "applies_when": "The clause sets a fee or damages for hiring the other party's personnel",
+          "question_for_llm": "Is any such fee no more than 25% of the person's annual base salary?",
+          "met_when": "The fee is 25% of annual base salary or less.",
+          "not_met_when": "The fee exceeds 25% of annual base salary.",
+          "weight": "Major",
+          "gate_if_not_met": "None"
+        }
+      }
+    }
+  }
+}

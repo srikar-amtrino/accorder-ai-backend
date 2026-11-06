@@ -14,6 +14,8 @@ from docx.shared import Length
 from docx.text.paragraph import Paragraph
 from docx.text.run import Run
 
+from src.services.docx_text import paragraph_text
+
 logger = logging.getLogger(__name__)
 
 ALIGNMENT_NAMES = {
@@ -333,7 +335,7 @@ def _font_color_hex(run: Run) -> str | None:
 
 def extract_paragraph(paragraph: Paragraph, idx: int, resolver: NumberingResolver) -> ParaMeta:
 
-    text = paragraph.text
+    text = paragraph_text(paragraph)
     stripped = text.strip()
     words = stripped.split()
 
@@ -413,7 +415,7 @@ def parse_docx(path: str) -> list[ParaMeta]:
     resolver = NumberingResolver(d)
     result = []
     for i, p in enumerate(d.paragraphs):
-        if not p.text.strip():
+        if not paragraph_text(p).strip():
             continue
         result.append(extract_paragraph(p, i, resolver))
     return result

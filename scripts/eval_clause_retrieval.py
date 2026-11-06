@@ -43,7 +43,7 @@ HELD_OUT: List[Tuple[str, str]] = [
         "service-provider-obligations",
         "The Supplier will carry out the work with the skill and care expected of a competent professional firm, follow the Customer's site rules when on its premises, and tell the Customer at once if it expects any slippage.",
     ),
-    ("suspension-and-termination", "Either side may end this Agreement by notice if the other commits a serious breach and has not put it right within thirty days of being told about it in writing."),
+    ("term-and-termination", "Either side may end this Agreement by notice if the other commits a serious breach and has not put it right within thirty days of being told about it in writing."),
     (
         "deliverables-and-acceptance",
         "The Customer has ten working days from delivery to check each item against the agreed criteria; if it reports a defect in that time the Supplier will fix it free of charge, otherwise the item is treated as approved.",
@@ -101,7 +101,7 @@ HELD_OUT: List[Tuple[str, str]] = [
         "The Customer may, once a year and on two weeks' notice, inspect the Supplier's timesheets and invoices for the work; if an overcharge of more than five percent is found the Supplier bears the cost of the inspection.",
     ),
     (
-        "subcontracting-and-sub-processors",
+        "subcontractors",
         "The Supplier may not pass any significant part of the work to a third party without the Customer's written agreement, and remains answerable for anything such a third party does or fails to do.",
     ),
     (
@@ -125,23 +125,23 @@ HELD_OUT: List[Tuple[str, str]] = [
         "The Supplier acts on its own account and not as the Customer's employee, partner, or agent; it pays its own staff and taxes and cannot make promises on the Customer's behalf.",
     ),
     (
-        "general-provisions",
+        "entire-agreement",
         "This document is the whole bargain between the sides and replaces earlier discussions; it can be changed only by a signed written amendment, and if any part is unenforceable the rest still stands.",
     ),
     (
-        "information-security-and-data-management",
+        "data-protection-and-privacy",
         "The Supplier will protect the Customer's systems and files with controls consistent with ISO 27001, encrypt data in transit and at rest, and fix critical vulnerabilities within thirty days of learning of them.",
     ),
     (
-        "personnel",
+        "service-provider-obligations",
         "The Supplier will staff the engagement with suitably experienced people, will not swap out the named lead without the Customer's agreement, and will replace anyone the Customer reasonably objects to.",
     ),
     (
-        "exit-and-transition-assistance",
+        "term-and-termination",
         "When this Agreement ends for any reason the Supplier will hand back all of the Customer's files in a usable format, help move the service to a replacement for up to ninety days, and then securely erase what it holds.",
     ),
     (
-        "business-continuity-and-disaster-recovery",
+        "force-majeure",
         "The Supplier will keep and test every year a plan for carrying on the service after a major incident, restoring production within four hours with no more than one hour of lost data.",
     ),
     (
@@ -149,12 +149,18 @@ HELD_OUT: List[Tuple[str, str]] = [
         "If these terms and a project schedule say different things, these terms win unless the schedule names the clause it is meant to replace, and the small print on any purchase order has no effect.",
     ),
     (
-        "governance-and-project-management",
+        "miscellaneous-other-provisions",
         "The two project leads will meet every week, a joint steering group of senior managers will meet every quarter, and unresolved problems move up from one level to the next within ten working days.",
     ),
-    ("publicity-and-use-of-name", "Neither side may mention the other in a press release, on its website, or in sales material without first getting written permission for the specific wording."),
-    ("non-compete", "For the length of this Agreement and one year afterwards the Supplier will not provide similar services to the three named competitors of the Customer in the European market."),
-    ("non-solicitation", "For twelve months after the project ends neither side will try to hire the other's people who worked on it, although replying to a public job advert does not count."),
+    ("publicity-and-use-of-names", "Neither side may mention the other in a press release, on its website, or in sales material without first getting written permission for the specific wording."),
+    (
+        "non-exclusivity",
+        "For the length of this Agreement and one year afterwards the Supplier will not provide similar services to the three named competitors of the Customer in the European market.",
+    ),
+    (
+        "service-provider-obligations",
+        "For twelve months after the project ends neither side will try to hire the other's people who worked on it, although replying to a public job advert does not count.",
+    ),
 ]
 
 

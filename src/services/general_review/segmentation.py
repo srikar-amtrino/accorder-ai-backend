@@ -7,9 +7,12 @@ mapping, and the clause names on the suggestions.
 """
 
 import re
-from typing import Dict, List, Optional, Sequence, Tuple
+from dataclasses import dataclass, field
+from difflib import SequenceMatcher
+from typing import Dict, List, Optional, Pattern, Sequence, Tuple
 
 from src.schemas.general_review import TextInformation
+from src.services.clause_mapping.resilient_classifier import HEADING_MATCH_CONFIDENCE, classify_layer1_heading
 
 # Short paragraphs with few words are treated as headings and kept with their body.
 _HEADING_MAX_CHARS = 80
@@ -251,3 +254,415 @@ def extract_defined_terms(paragraphs: Sequence[TextInformation], limit: int = MA
                 if len(terms) >= limit:
                     return terms
     return terms
+
+
+def build_clause_units(paragraphs: Sequence[TextInformation], titles: Dict[str, str]) -> List[List[int]]:
+    """Group paragraph positions into clauses.
+
+    Consecutive paragraphs under the same clause title form one clause; a
+    paragraph with no title stands alone.
+    """
+
+    units: List[List[int]] = []
+    previous: Optional[str] = None
+    for idx, para in enumerate(paragraphs):
+        if not para.text.strip():
+            continue
+        title = titles.get(para.paraindetifier)
+        if units and title is not None and title == previous:
+            units[-1].append(idx)
+        else:
+            units.append([idx])
+        previous = title
+    return units
+
+
+# --- paragraph roles and anchor locking ---------------------------------------
+#
+# Every paragraph gets one role, decided in code from the document alone, so
+# the paragraph a finding lands on never depends on which of a clause's
+# paragraphs the model happened to pick:
+#
+#   CONTEXT_ONLY              non-clause content: preamble, recitals, party and
+#                             address lines, the signature block. Never flagged.
+#   HEADING                   a clause heading standing alone. Never flagged.
+#   PRIMARY_OPERATIVE_ANCHOR  the paragraph carrying the clause's main operative
+#                             obligation. Clause-wide omissions attach here.
+#   SECONDARY / DEFINITION    the clause's other paragraphs. Flagged only for a
+#                             defect in their own wording.
+#   BOILERPLATE               a paragraph of a routine clause (headings,
+#                             counterparts, severability, waiver, amendments,
+#                             notices). Flagged only when its wording sets off
+#                             an unacceptable trigger or a taxonomy gate.
+
+ROLE_CONTEXT_ONLY = "CONTEXT_ONLY"
+ROLE_HEADING = "HEADING"
+ROLE_PRIMARY = "PRIMARY_OPERATIVE_ANCHOR"
+ROLE_SECONDARY = "SECONDARY"
+ROLE_DEFINITION = "DEFINITION"
+ROLE_BOILERPLATE = "BOILERPLATE"
+ROLE_TAGS = (ROLE_CONTEXT_ONLY, ROLE_HEADING, ROLE_PRIMARY, ROLE_SECONDARY, ROLE_DEFINITION, ROLE_BOILERPLATE)
+REVIEWABLE_ROLES = (ROLE_PRIMARY, ROLE_SECONDARY, ROLE_DEFINITION, ROLE_BOILERPLATE)
+
+# Why a paragraph is context only.
+ZONE_PREAMBLE = "preamble"
+ZONE_RECITALS = "recitals"
+ZONE_PARTY_BLOCK = "party_block"
+ZONE_SIGNATURE = "signature"
+
+# The preamble and recitals end within the opening paragraphs or not at all.
+_PREAMBLE_SCAN_PARAGRAPHS = 20
+_RECITALS_END_RE = re.compile(r"\bNOW,?\s+THEREFORE\b|\bagrees?\s+as\s+follows\b", re.IGNORECASE)
+_RECITALS_START_RE = re.compile(r"^\s*(?:RECITALS?|BACKGROUND|WITNESSETH|WHEREAS)\b", re.IGNORECASE)
+_PARTY_INTRO_RE = re.compile(r"\bby\s+and\s+between\b|\b(?:entered\s+into|made|dated)\b[^.]{0,160}\bbetween\b", re.IGNORECASE)
+
+_WITNESS_RE = re.compile(r"^\s*IN\s+WITNESS\s+WHEREOF\b", re.IGNORECASE)
+_SIGNATURE_LINE_RE = re.compile(r"^\s*(?:By|Name|Title|Date|Signature|Signed|Its)\s*:|_{4,}", re.IGNORECASE)
+_SIGNATURE_BLOCK_MAX_WORDS = 6
+
+# Address and contact lines: "San Ramon, CA 94583", "2603 Camino Ramon suit 200", "Attn.: Accounts Payable", "To Amtrino:".
+_ADDRESS_MAX_WORDS = 12
+_COMPANY_LINE_MAX_WORDS = 6
+_LEAD_IN_MAX_WORDS = 8
+_STATE_ZIP_RE = re.compile(r",\s*[A-Z]{2}\.?(?:\s+\d{5}(?:-\d{4})?)?\s*\.?$")
+_STREET_SUFFIX_RE = re.compile(r"^\d+[A-Za-z]?\s+.*\b(?:St|Street|Ave|Avenue|Rd|Road|Blvd|Boulevard|Suite|Ste|Dr|Drive|Ln|Lane|Way|Floor|Plaza|Pkwy|Parkway|Hwy|Highway|Court|Ct|Place|Square)\b\.?")
+# "2603 Camino Ramon suit 200": a street number and capitalised names. "100 hours of support are included" is a sentence, not a street.
+_STREET_NUMBER_RE = re.compile(r"^\d{3,6}[A-Za-z]?\s+[A-Z]")
+_STREET_MAX_WORDS = 6
+_STREET_MAX_LOWERCASE_WORDS = 1
+_CONTACT_LINE_RE = re.compile(r"^(?:attn|attention|c/o|e-?mail|fax|facsimile|tel|telephone|phone)\b\.?\s*:|^to\s+[^:.]{1,40}:\s*$", re.IGNORECASE)
+_EMAIL_RE = re.compile(r"[\w.+-]+@[\w-]+\.[\w.-]+")
+
+# Routine boilerplate clauses, matched on the whole clause title: "Headings", "Execution of Counterparts",
+# "Severability", "Modification, Waiver and Authorized Representative". A title that says more than that is a
+# clause of substance and is reviewed in full: "Waiver of Jury Trial", "Amendments to the Agreement".
+# A notices clause is boilerplate too, whatever its title, by its clause type.
+_AMENDMENT_WORDS = r"(?:modifications?|amendments?|(?:no\s+)?waivers?|authorized\s+representatives?)"
+_BOILERPLATE_TITLE_RE = re.compile(
+    rf"^(?:headings|captions|section\s+headings|(?:execution\s+(?:of|in)\s+)?counterparts|severability|{_AMENDMENT_WORDS}(?:(?:\s*,\s*(?:and\s+)?|\s+and\s+|\s+or\s+){_AMENDMENT_WORDS})*)$",
+    re.IGNORECASE,
+)
+
+# A paragraph that opens by defining a term or stating what the term covers.
+_DEFINITION_PARAGRAPH_RE = re.compile(
+    r"^\s*(?:\(?[a-z0-9]{1,3}\)\s*)?[\"“]?[A-Z][A-Za-z0-9\s\-/]{1,50}[\"”]?\s+"
+    r"(?:means|shall\s+mean|includes?|shall\s+include|shall\s+not,?\s+(?:however,?\s+)?include|does\s+not\s+include|has\s+the\s+meaning|refers\s+to)\b"
+)
+
+NOTICES_TYPE = "notices"
+# The clause type a "Recitals" / "Background" heading maps to.
+RECITALS_TYPE = "purpose"
+
+# The wording that marks a clause type's main operative paragraph, strongest first.
+# The first paragraph matching the strongest pattern is the anchor; a clause
+# type with no pattern here, or no match, anchors on its first operative paragraph.
+PRIMARY_ANCHOR_PATTERNS: Dict[str, Tuple[Pattern[str], ...]] = {
+    "intellectual-property": (
+        re.compile(r"\bhereby\s+(?:irrevocably\s+)?(?:assigns?|transfers?|conveys?)\b", re.IGNORECASE),
+        re.compile(r"\b(?:shall|will|agrees?\s+to)\s+assign\b", re.IGNORECASE),
+        re.compile(r"\bsole\s+and\s+exclusive\s+property\b|\bshall\s+(?:own|be\s+owned)\b|\bworks?\s+made\s+for\s+hire\b", re.IGNORECASE),
+    ),
+    "fees-and-payment": (
+        re.compile(r"\bpay\s+(?:all\s+|each\s+|undisputed\s+)?invoices?\s+within\b", re.IGNORECASE),
+        re.compile(r"\b(?:shall|will)\s+pay\b|\bpayable\s+within\b|\bdue\s+(?:and\s+payable\s+)?within\b", re.IGNORECASE),
+    ),
+    "confidentiality": (
+        re.compile(r"\bhold\b[^.]{0,60}\bconfiden", re.IGNORECASE),
+        re.compile(r"\b(?:shall|will|agrees?)\s+not\s+(?:to\s+)?(?:disclose|use)\b", re.IGNORECASE),
+    ),
+}
+
+# Protections that belong to the clause as a whole whatever paragraph a finding
+# was raised on, so a finding about one always attaches to the primary anchor.
+CLAUSE_WIDE_PROTECTION_TOPICS: Dict[str, Pattern[str]] = {
+    "intellectual-property": re.compile(
+        r"\bbackground\s+ip\b|\bpre-?existing\s+(?:ip|intellectual\s+property|materials|tools|works?|know-?how|technology)\b|\bcarve-?outs?\b|\blicen[cs]e[- ]back\b|\bmoral\s+rights\b", re.IGNORECASE
+    ),
+    "fees-and-payment": re.compile(r"\bdisputed?\s+(?:invoices?|amounts?|charges?|fees?)\b|\bwithhold\w*\b|\blate\s+(?:payment\s+)?(?:interest|fees?|charges?)\b", re.IGNORECASE),
+}
+
+_ROLE_TAG_RE = re.compile(r"\[(?:" + "|".join(ROLE_TAGS) + r")\][ \t]*")
+
+# A rewritten sentence this similar to a source sentence is that sentence edited, not a new one.
+_EDITED_SENTENCE_RATIO = 0.6
+
+
+@dataclass(frozen=True)
+class ClauseStructure:
+    """Role, clause, and anchor of every paragraph, by position in the document."""
+
+    roles: Dict[int, str] = field(default_factory=dict)
+    anchor_of: Dict[int, int] = field(default_factory=dict)
+    unit_of: Dict[int, int] = field(default_factory=dict)
+    clause_type_of: Dict[int, str] = field(default_factory=dict)
+    zone_of: Dict[int, str] = field(default_factory=dict)
+
+    def role(self, position: int) -> str:
+        return self.roles.get(position, ROLE_PRIMARY)
+
+    def reviewable(self, position: int) -> bool:
+        return self.role(position) in REVIEWABLE_ROLES
+
+
+def format_with_role(text: str, role: str) -> str:
+    """Prefix a paragraph with its role tag for the prompt."""
+
+    return f"[{role}] {text}"
+
+
+def strip_role_tags(text: str) -> str:
+    """Remove role tags the model copied into a text field."""
+
+    return _ROLE_TAG_RE.sub("", text or "")
+
+
+def is_address_line(text: str) -> bool:
+    """True for a line of an address or contact block: a street, a city/state line, a company name, an Attn/To line."""
+
+    stripped = text.strip()
+    words = stripped.split()
+    if not words or len(words) > _ADDRESS_MAX_WORDS:
+        return False
+    if _STATE_ZIP_RE.search(stripped) or _STREET_SUFFIX_RE.match(stripped) or _CONTACT_LINE_RE.match(stripped) or _EMAIL_RE.search(stripped):
+        return True
+    if _STREET_NUMBER_RE.match(stripped):
+        lowercase = sum(1 for word in words if word[0].islower())
+        return len(words) <= _STREET_MAX_WORDS and lowercase <= _STREET_MAX_LOWERCASE_WORDS
+    return len(words) <= _COMPANY_LINE_MAX_WORDS and words[-1].strip(".,").lower() in _TITLE_COMPANY_SUFFIXES and words[0][0].isupper()
+
+
+def is_definition_paragraph(text: str) -> bool:
+    """True when a paragraph opens by defining a term ('“Confidential Information” means...')."""
+
+    return bool(_DEFINITION_PARAGRAPH_RE.match(text))
+
+
+def is_standalone_heading(text: str, title: str) -> bool:
+    """True when a paragraph is nothing but its clause's heading ('Non-Compete.')."""
+
+    if not title:
+        return False
+    stripped = _TITLE_NUMBER_PREFIX_RE.sub("", text.strip(), count=1)
+    return is_heading(stripped) and stripped.rstrip(".:").strip() == title
+
+
+def _preamble_zones(texts: Dict[int, str], order: Sequence[int], operative: Sequence[int]) -> Dict[int, str]:
+    """Preamble and recitals at the top of the document.
+
+    When the opening paragraphs reach "NOW, THEREFORE ... agree as follows",
+    everything up to that line is preamble or recitals — unless an operative
+    clause (operative: the positions under a heading that names a clause
+    type) starts before it, in which case that line sits inside the body and
+    proves nothing. Otherwise only the lines that are unmistakably preamble
+    or recitals are marked.
+    """
+
+    opening = order[:_PREAMBLE_SCAN_PARAGRAPHS]
+    zones: Dict[int, str] = {}
+    end = next((idx for idx in reversed(opening) if _RECITALS_END_RE.search(texts[idx])), None)
+    if end is not None and any(idx <= end for idx in operative):
+        end = None
+    in_recitals = False
+    for idx in opening:
+        text = texts[idx]
+        in_recitals = in_recitals or bool(_RECITALS_START_RE.match(text))
+        if end is not None:
+            if idx > end:
+                break
+            zones[idx] = ZONE_RECITALS if in_recitals else ZONE_PREAMBLE
+        elif _RECITALS_START_RE.match(text):
+            zones[idx] = ZONE_RECITALS
+        elif _PARTY_INTRO_RE.search(text):
+            zones[idx] = ZONE_PREAMBLE
+    return zones
+
+
+def _is_signature_line(text: str) -> bool:
+    """A line of a signature block: "By: ____", "Name:", a party name standing alone."""
+
+    return bool(_SIGNATURE_LINE_RE.search(text)) or len(text.split()) <= _SIGNATURE_BLOCK_MAX_WORDS
+
+
+def _signature_zones(texts: Dict[int, str], order: Sequence[int]) -> Dict[int, str]:
+    """Signature blocks: each "IN WITNESS WHEREOF" line and the signature lines under it, and the document's closing run of signature lines.
+
+    A block ends at the first paragraph of substance, so an exhibit or
+    schedule that follows the signatures is still reviewed.
+    """
+
+    zones: Dict[int, str] = {}
+    in_block = False
+    for idx in order:
+        text = texts[idx]
+        if _WITNESS_RE.match(text):
+            in_block = True
+        elif in_block and not _is_signature_line(text):
+            in_block = False
+        if in_block:
+            zones[idx] = ZONE_SIGNATURE
+
+    tail: List[int] = []
+    for idx in reversed(order):
+        if idx in zones or not _is_signature_line(texts[idx]):
+            break
+        tail.append(idx)
+    if any(_SIGNATURE_LINE_RE.search(texts[idx]) for idx in tail):
+        zones.update({idx: ZONE_SIGNATURE for idx in tail})
+    return zones
+
+
+def _party_block_zones(texts: Dict[int, str], order: Sequence[int]) -> Dict[int, str]:
+    """Address and contact lines, and the short lead-in that introduces them ("All invoices should be mailed to:")."""
+
+    zones = {idx: ZONE_PARTY_BLOCK for idx in order if is_address_line(texts[idx])}
+    for idx, following in zip(order, order[1:]):
+        text = texts[idx].strip()
+        if following in zones and text.endswith(":") and len(text.split()) <= _LEAD_IN_MAX_WORDS:
+            zones[idx] = ZONE_PARTY_BLOCK
+    return zones
+
+
+def _context_zones(paragraphs: Sequence[TextInformation], titles: Dict[str, str]) -> Dict[int, str]:
+    """Positions that are read for context and never reviewed, with the reason."""
+
+    texts = {idx: para.text for idx, para in enumerate(paragraphs) if para.text.strip()}
+    order = sorted(texts)
+    operative = [idx for idx in order if clause_type_for_title(titles.get(paragraphs[idx].paraindetifier, "")) not in (None, RECITALS_TYPE)]
+    zones: Dict[int, str] = {}
+    zones.update(_party_block_zones(texts, order))
+    zones.update(_preamble_zones(texts, order, operative))
+    zones.update(_signature_zones(texts, order))
+    return zones
+
+
+def clause_type_for_title(title: str) -> Optional[str]:
+    """The clause type a clause's own heading names, decided offline; None when the heading names none."""
+
+    resolved = classify_layer1_heading(title) if title else None
+    return resolved[0] if resolved and resolved[1] >= HEADING_MATCH_CONFIDENCE else None
+
+
+def pick_primary_anchor(candidates: Sequence[Tuple[int, str]], clause_type: Optional[str]) -> int:
+    """Choose a clause's primary operative paragraph from (position, text) candidates in document order."""
+
+    for pattern in PRIMARY_ANCHOR_PATTERNS.get(clause_type or "", ()):
+        for position, text in candidates:
+            if pattern.search(text):
+                return position
+    return candidates[0][0]
+
+
+def is_boilerplate_clause(title: str, clause_type: Optional[str]) -> bool:
+    """True for a routine clause: headings, counterparts, severability, waiver, amendments, or notices."""
+
+    return clause_type == NOTICES_TYPE or bool(_BOILERPLATE_TITLE_RE.match(title or ""))
+
+
+def _assign_content_roles(structure: ClauseStructure, paragraphs: Sequence[TextInformation], content: Sequence[int], title: str, clause_type: Optional[str]) -> int:
+    """Give a clause's body paragraphs their roles and return the primary anchor's position."""
+
+    definitions = {idx for idx in content if is_definition_paragraph(paragraphs[idx].text)}
+    operative = [idx for idx in content if idx not in definitions] or list(content)
+    primary = pick_primary_anchor([(idx, paragraphs[idx].text) for idx in operative], clause_type)
+    boilerplate = is_boilerplate_clause(title, clause_type)
+    for idx in content:
+        if boilerplate:
+            structure.roles[idx] = ROLE_BOILERPLATE
+        elif idx == primary:
+            structure.roles[idx] = ROLE_PRIMARY
+        else:
+            structure.roles[idx] = ROLE_DEFINITION if idx in definitions else ROLE_SECONDARY
+    return primary
+
+
+def build_clause_structure(paragraphs: Sequence[TextInformation], titles: Dict[str, str]) -> ClauseStructure:
+    """Assign every paragraph its role, clause unit, clause type, and primary anchor."""
+
+    structure = ClauseStructure(zone_of=_context_zones(paragraphs, titles))
+    for number, unit in enumerate(build_clause_units(paragraphs, titles)):
+        title = titles.get(paragraphs[unit[0]].paraindetifier, "")
+        clause_type = clause_type_for_title(title)
+        content: List[int] = []
+        for idx in unit:
+            structure.unit_of[idx] = number
+            if clause_type:
+                structure.clause_type_of[idx] = clause_type
+            if idx in structure.zone_of:
+                structure.roles[idx] = ROLE_CONTEXT_ONLY
+            elif is_standalone_heading(paragraphs[idx].text, title):
+                structure.roles[idx] = ROLE_HEADING
+            else:
+                content.append(idx)
+        if not content:
+            continue
+        primary = _assign_content_roles(structure, paragraphs, content, title, clause_type)
+        for idx in unit:
+            if structure.roles[idx] != ROLE_CONTEXT_ONLY:
+                structure.anchor_of[idx] = primary
+    return structure
+
+
+def is_clause_wide_topic(reason: str, clause_type: Optional[str]) -> bool:
+    """True when a finding's reason is about a protection that belongs to its clause as a whole."""
+
+    pattern = CLAUSE_WIDE_PROTECTION_TOPICS.get(clause_type or "")
+    return bool(pattern and pattern.search(reason or ""))
+
+
+_SENTENCE_FOLD = str.maketrans({"’": "'", "‘": "'", "“": '"', "”": '"', "–": "-", "—": "-"})
+
+
+def _fold_sentence(sentence: str) -> str:
+    return " ".join(sentence.translate(_SENTENCE_FOLD).split()).casefold()
+
+
+def sentence_keys(text: str) -> List[str]:
+    """The paragraph's sentences, folded for comparison (case, whitespace, quote and dash variants)."""
+
+    return [folded for folded in (_fold_sentence(sentence) for sentence in _SENTENCE_SPLIT_RE.split(text.strip())) if folded]
+
+
+def fold_sentence(sentence: str) -> str:
+    """One sentence folded the way sentence_keys folds it."""
+
+    return _fold_sentence(sentence)
+
+
+def remove_sentence(text: str, sentence: str) -> str:
+    """The text with one occurrence of a sentence taken out, together with one space next to it."""
+
+    index = text.find(sentence)
+    if index < 0:
+        return text
+    before, after = text[:index], text[index + len(sentence) :]
+    if before.endswith(" "):
+        before = before[:-1]
+    elif after.startswith(" "):
+        after = after[1:]
+    return before + after
+
+
+def new_sentences(original: str, revised: str) -> List[str]:
+    """Sentences a rewrite adds to a paragraph, in order.
+
+    A sentence counts as added only when it is neither a source sentence nor
+    a source sentence edited: those belong to the paragraph they came from
+    and cannot be carried to another one.
+    """
+
+    source = [_fold_sentence(sentence) for sentence in _SENTENCE_SPLIT_RE.split(original.strip()) if sentence.strip()]
+    added: List[str] = []
+    for sentence in _SENTENCE_SPLIT_RE.split(revised.strip()):
+        folded = _fold_sentence(sentence)
+        if folded and not any(_is_same_or_edited(folded, known) for known in source):
+            added.append(sentence.strip())
+    return added
+
+
+def _is_same_or_edited(sentence: str, source: str) -> bool:
+    """True when a rewritten sentence is a source sentence, that sentence extended, or that sentence reworded."""
+
+    if sentence == source or sentence.startswith(source.rstrip(".;:")):
+        return True
+    # autojunk off: on long sentences difflib's shortcut discards common letters and misreads an edit as new text.
+    return SequenceMatcher(None, sentence, source, autojunk=False).ratio() >= _EDITED_SENTENCE_RATIO

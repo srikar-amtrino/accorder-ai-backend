@@ -2,406 +2,424 @@
   {
     "canonical_type": "definitions-and-interpretation",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Clear, unambiguous, and balanced definitions of Confidential Information, Deliverables, Intellectual Property, Services, and Affiliates; no hidden substantive obligations, risk-shifting carve-outs, or unilateral scope reductions buried inside defined terms.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause define the main terms the agreement relies on (for example services or deliverables, confidential information, fees)? (2) Does each definition identify what it covers with clear boundaries? (3) Is any term defined more than once with different meanings within the clause? (4) Does the clause state rules for reading the agreement (for example headings do not affect meaning, singular includes plural, references to laws include amendments)? (5) [Only where a definition relies on another document, law or standard] Where a definition relies on another document, law or standard, is the source identified specifically (by name, and by version or date where the source changes over time)? (6) [Balance] [Only where a definition extends to affiliates, group companies or related entities] Is the extension to affiliates or related entities limited by a stated test (for example ownership or control)? (7) Do the definitions only describe terms, without creating obligations, rights, exclusions or limits?",
     "unacceptable_triggers": [
-      "definition of 'Confidential Information' requires strict physical marking ('CONFIDENTIAL') and excludes information that a reasonable person would understand to be confidential",
-      "definition of 'Deliverables' excludes source code, documentation, or configurations paid for by client",
-      "substantive assignment or power-of-attorney obligations buried inside a definitions clause"
+      "Main terms are defined: No main terms are defined (DEF-01)",
+      "Definitions are precise: Most definitions are open-ended or circular (DEF-02)"
     ],
-    "fallback_guidelines": "Ensure 'Confidential Information' includes both marked information and information that reasonably should be understood to be confidential given the nature of the information and circumstances of disclosure, and keep substantive covenants in their respective operative sections."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "purpose",
     "inherent_risk_tier": "Low",
-    "acceptable_standard": "Clearly defines the background, commercial context, and overarching objective of the Agreement without creating binding substantive obligations, exclusivity, or minimum spend commitments that conflict with the operative sections.",
-    "unacceptable_triggers": [
-      "binding exclusivity or minimum volume commitment hidden in the purpose or recitals clause",
-      "language stating recitals override operative provisions of the agreement"
-    ],
-    "fallback_guidelines": "Clarify that the Purpose/Background section is for context only and does not create binding obligations beyond those expressly set forth in the operative sections of the Agreement."
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state what the agreement is for (the services or relationship it covers)? (2) Does the clause describe the purpose in the same way throughout, without conflicting statements? (3) Does the clause avoid creating obligations, rights or restrictions?",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "scope-of-services",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "Services and Deliverables are clearly defined in the Agreement or an executed Statement of Work (SOW) with objective specifications, timelines, and deliverables; any material scope changes require a mutually executed written Change Order; no unilateral right for Service Provider to reduce or materially alter the scope of Services.",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause identify the services to be provided (by description, list or reference to a schedule)? (2) Does the clause say what is outside the scope of the services? (3) [Balance] [Only where the clause lets the scope expand or change] Is the growth or change of scope limited by agreement or a change process? (4) Does the clause identify who receives or may use the services (for example the customer and named affiliates)? (5) Does the clause say where detailed service requirements are set (for example a SoW or schedule)?",
     "unacceptable_triggers": [
-      "unilateral right for service provider to modify, deprecate, or reduce scope of services without client consent",
-      "vague 'best efforts' or undefined scope that allows billing for out-of-scope work without a signed change order",
-      "client bound to minimum purchase commitments or exclusivity not reflected in an order form"
+      "Services are identified: The services are not identified (SCO-01)"
     ],
-    "fallback_guidelines": "Specify that Service Provider shall perform the Services set forth in each mutually executed SOW in accordance with the agreed specifications and timelines, and that no changes to scope or fees shall be binding unless set forth in a written Change Order signed by both Parties."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "statements-of-work-and-work-orders",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Services performed pursuant to mutually executed Statements of Work (SOWs) specifying scope, milestones, acceptance criteria, personnel, and fees; each SOW incorporates the MSA; MSA terms prevail over conflicting SOW terms unless the SOW expressly identifies the specific MSA section being overridden for that SOW only.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say what each statement of work or work order must contain (for example scope, deliverables, timeline, fees)? (2) Does the clause say how a statement of work is agreed and becomes binding? (3) Does the clause set a process for changing a statement of work (for example request, assessment, written approval)? (4) [Balance] Can a statement of work be changed or issued only with the agreement of both parties? (5) Does the clause say how a statement of work relates to the master agreement and what applies if they conflict? (6) Does the clause say whether one statement of work can end without ending the master agreement or other work orders? (7) Does the clause require each statement of work to state how the work is priced (for example fixed price, time and materials)?",
     "unacceptable_triggers": [
-      "SOW automatically overrides MSA liability or IP protections without explicit reference"
+      "SoW content is required: No content requirements are stated (SOW-01)",
+      "How a SoW becomes binding: No mechanism is stated (SOW-02)"
     ],
-    "fallback_guidelines": "Add a 15-business-day acceptance period during which Client may review Deliverables and notify Service Provider of any non-conformities, which Service Provider shall correct at no additional cost within 10 business days; clarify that MSA terms take precedence over any SOW unless the SOW explicitly states an intent to supersede a named MSA section."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "customer-obligations",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Client provides reasonable cooperation, timely access to necessary information, and designated points of contact; Service Provider's relief for Client delay is limited to an equitable day-for-day extension of affected milestones after prompt written notice of the delay.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Are the customer's obligations described specifically (for example access, information, approvals, resources) rather than only as 'cooperation'? (2) Does the clause say when the customer must act (for example when to give information or approvals)? (3) Does the clause state what follows if the customer does not perform an obligation? (4) [Balance] [Only where the clause states a consequence for customer non-performance] Is the consequence limited to a defined remedy (for example time or cost relief) rather than open-ended liability or termination? (5) [Balance] [Only where the clause lets a party claim relief for customer delay] Is that relief conditional on prompt written notice of the problem? (6) [Balance] [Only where the clause lets a party claim relief for customer delay] Must the party claiming relief take reasonable steps to limit the impact of the delay?",
     "unacceptable_triggers": [
-      "broad excuse of all vendor performance or SLA obligations for any minor delay by client without prior notice",
-      "automatic idle-time or standby penalty fees charged to client without prior written warning"
+      "Obligations are specific: Only broad 'cooperation' wording is used (CUS-01)"
     ],
-    "fallback_guidelines": "Limit Client's obligations to reasonable cooperation and access to information necessary for the Services, and provide that Service Provider is excused from delays only to the extent directly caused by Client's failure and only if Service Provider gives prompt written notice."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "service-provider-obligations",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "Service Provider performs all Services in a professional, workmanlike, and timely manner using qualified personnel in compliance with all applicable laws, industry standards, and Client's security and safety policies while on Client premises or accessing Client systems.",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state what the provider must do (identified duties, not just 'provide the services')? (2) Does the clause set a standard for how the provider performs (a named standard, specification or defined test)? (3) Does the clause state when the provider's obligations must be performed? (4) Does the clause say what follows if the provider does not perform (for example re-performance, credit, termination)? (5) [Only where the clause deals with the provider's personnel] Does the clause require personnel to be suitably qualified or skilled? (6) [Only where the clause identifies key personnel] Is replacement of key personnel subject to notice or consent? (7) [Balance] [Only where the clause deals with the provider's personnel] Can a party require removal or replacement of personnel on stated grounds? (8) [Only where the clause deals with the provider's personnel] Does the clause state which party is responsible for personnel's pay, taxes and benefits? (9) [Only where the clause deals with the provider's personnel] Are personnel required to follow the other party's policies or rules, and are those identified or provided? (10) [Balance] [Only where the clause restricts hiring or soliciting personnel] Is the restriction mutual, limited in time and limited in scope?",
     "unacceptable_triggers": [
-      "disclaimer of duty to comply with client security policies or applicable laws",
-      "service provider obligations conditioned entirely on subjective discretion without objective performance standards",
-      "excuse of vendor performance for minor client delays without prompt written notice"
+      "Obligations are specific: No duties are stated (SPO-01)"
     ],
-    "fallback_guidelines": "Require Service Provider to perform the Services with due care, skill, and diligence in accordance with industry standards, comply with all applicable laws and Client's reasonable security and access policies, and promptly notify Client of any circumstances likely to delay delivery."
+    "fallback_guidelines": ""
   },
   {
-    "canonical_type": "suspension-and-termination",
+    "canonical_type": "term-and-termination",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Mutual termination for material breach after 30 days' written notice and opportunity to cure; immediate termination for insolvency/bankruptcy; Client right to terminate for convenience upon 15–30 days' written notice with pro-rata refund of prepaid unearned fees and payment only for work performed up to termination effective date.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state the grounds on which a party may terminate (for example material breach, insolvency)? (2) [Balance] Are termination rights available to both parties, or, if one-sided, is the difference limited? (3) [Only where the clause allows termination for breach] Is a chance to remedy the breach stated with a definite period? (4) [Only where the clause allows termination without cause (for convenience)] Is a notice period stated for termination without cause? (5) Does the clause require termination by written notice and say when termination takes effect? (6) [Balance] [Only where the clause allows suspension of services] Does the clause limit suspension by grounds, prior notice and restoration of service? (7) Does the clause say what happens on termination (for example payment for work done, refund of prepaid amounts, return of materials)? (8) Does the clause say which provisions continue after termination? (9) Does the clause refer to exit or transition arrangements? (10) [Only where the clause deals with exit, transition or handover] Does the clause require assistance on exit or transition? (11) [Only where the clause deals with exit, transition or handover] Does the clause say what assistance includes (for example data return, handover, knowledge transfer, continued service)? (12) [Only where the clause deals with exit, transition or handover] Is the period of assistance stated? (13) [Only where the clause deals with exit, transition or handover] Does the clause require an exit or transition plan? (14) [Only where the clause deals with exit, transition or handover] Does the clause say on what terms (for example fees, standards) services continue during exit? (15) [Only where the clause covers return of data] Does the clause say when and in what format data is returned? (16) [Only where the clause deals with exit, transition or handover] Does the clause say whether and how assistance is charged? (17) [Only where the clause deals with exit, transition or handover] Must the party cooperate with any replacement provider?",
     "unacceptable_triggers": [
-      "no termination for convenience right for client, or early termination triggers a 100% remaining contract value penalty",
-      "counterparty can terminate for convenience immediately without notice, stranding client operations",
-      "counterparty can suspend services immediately for any disputed invoice without a cure period",
-      "no pro-rata refund of prepaid unused fees upon termination for cause by client or convenience by vendor"
+      "Grounds for termination: No ground is stated (TER-01)",
+      "Notice for termination without cause: No notice period is stated (TER-04)",
+      "Assistance is required: It is not required (TER-10)"
     ],
-    "fallback_guidelines": "Grant Client the right to terminate the Agreement or any SOW for convenience upon 30 days' prior written notice without penalty (paying only for accepted work performed through the effective date); require a 30-day cure period for material breach; require a pro-rata refund of any prepaid, unused fees upon termination by Client for cause."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "deliverables-and-acceptance",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Clear acceptance testing procedure: Client has 15 to 30 business days to test each Deliverable against the acceptance criteria in the SOW, may reject with a written list of deficiencies, and Service Provider re-performs promptly at no extra cost; after a second failed re-performance Client may terminate the affected SOW and receive a refund of fees paid for the non-conforming Deliverable; silence never constitutes acceptance in fewer than 10 business days.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Are the deliverables identified by description or specification? (2) Does the clause give delivery dates or a definite way to work them out? (3) Does the clause state the criteria or tests used to accept a deliverable? (4) Is the period for reviewing a deliverable stated? (5) Does the clause say what happens if the reviewing party does not respond within the review period? (6) [Balance] [Only where the clause treats silence or non-response as acceptance] Is acceptance by silence conditional on a reminder or further notice? (7) Does the clause say what happens when a deliverable is rejected (reasons, correction, re-submission)? (8) Does the clause state a consequence if deliverables repeatedly fail acceptance (for example termination or refund)? (9) [Balance] Does the clause say whether acceptance affects the right to raise defects found later?",
     "unacceptable_triggers": [
-      "deemed acceptance of deliverables in fewer than 5 business days of silence",
-      "no formal acceptance testing or rejection/cure workflow for deliverables",
-      "acceptance occurs upon delivery or upon payment rather than upon successful testing",
-      "no refund or termination remedy when a deliverable repeatedly fails acceptance"
+      "Deliverables are identified: Deliverables are not identified (DEL-01)",
+      "Acceptance criteria: No criteria are stated (DEL-03)",
+      "No acceptance by silence alone: Acceptance follows from silence alone (DEL-06)",
+      "Rejection and correction: Rejection is not addressed (DEL-07)"
     ],
-    "fallback_guidelines": "Add a 15-business-day acceptance period during which Client may review Deliverables and notify Service Provider of any non-conformities, which Service Provider shall correct at no additional cost within 10 business days; provide that if a Deliverable fails acceptance twice Client may terminate the affected SOW and recover the fees paid for that Deliverable."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "service-levels",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Minimum 99.9% monthly uptime commitment; defined severity response and resolution times; service credits applied automatically against next invoice; right to terminate for cause and receive a pro-rata refund in the event of chronic SLA failures (e.g., uptime < 99.0% in any month or 3 consecutive months of missed SLAs).",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Are the service levels defined as named, measurable standards (for example availability, response time)? (2) Does each measure have a stated target? (3) Does the clause say how, and over what period, performance is measured? (4) Must performance against the service levels be reported to the other party? (5) Does the clause state a consequence for missing a service level (for example credits, a remedial plan, a right to terminate)? (6) [Balance] [Only where the clause states a remedy for missed service levels] Does the clause leave other remedies available, rather than making the stated remedy the only one? (7) [Only where the clause excludes events or periods from measurement] Are the exclusions listed specifically? (8) Does the clause state a consequence for repeated or serious failure beyond the usual remedy (for example a right to terminate)?",
     "unacceptable_triggers": [
-      "service credits are stated as the 'sole and exclusive remedy' even for catastrophic or chronic multi-month outages",
-      "scheduled maintenance windows are uncapped or occur during core business hours without notice",
-      "uptime commitment below 99.5% for production enterprise software"
+      "Service levels are measurable: Only general commitments are given (SLA-01)",
+      "Targets are stated: No measure has a target (SLA-02)",
+      "Remedy for missed targets: No consequence is stated (SLA-05)"
     ],
-    "fallback_guidelines": "Ensure service credits do not preclude Client from terminating the Agreement for cause and receiving a pro-rata refund of prepaid fees if availability drops below 99.0% in any single month or fails to meet the SLA for three (3) consecutive months."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "support-and-maintenance",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Service Provider provides ongoing technical support, bug fixes, patches, and updates included in the baseline fees; defined severity tiers (Severity 1 critical response within 1–2 hours, 24x7) with clear escalation paths; no discontinuation (End-of-Life) of supported software/services during an active paid term without at least 12 months' prior written notice and migration assistance.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause identify what support covers (for example services, systems, products)? (2) Are the times when support is available and the contact channels stated? (3) Are incidents classified by severity or priority, with criteria for each class? (4) Does the clause state response or resolution times by category? (5) Does the clause provide for escalation of incidents that are not resolved in time? (6) Does the clause say whether updates, patches and fixes are included? (7) Does the clause deal with planned maintenance (notice or timing)? (8) [Only where the clause excludes matters from support] Are the exclusions listed specifically?",
     "unacceptable_triggers": [
-      "support, bug fixes, or security patches require additional unscheduled fees during the active subscription term",
-      "right to discontinue or sunset support during a paid term without refund or notice",
-      "no defined response times for critical production-down (Severity 1) issues"
+      "Scope of support: No scope is stated (SUP-01)",
+      "Response and resolution times: No times are stated (SUP-04)"
     ],
-    "fallback_guidelines": "Include standard maintenance, security patches, and updates at no additional charge during the Term; establish a <2 hour response time for critical Severity 1 issues; and prohibit discontinuing support during any paid Term."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "change-control",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Structured change control procedure: either Party may request a change in writing; Service Provider provides a written impact assessment (scope, schedule, fees) within a fixed period at no charge; no change to scope, timeline, or fees takes effect until a Change Order is signed by authorized representatives of both Parties; Service Provider continues performing the unchanged work meanwhile.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause set a process for requesting, assessing and approving changes? (2) Are changes effective only when agreed in writing by both parties? (3) Must a change request be assessed for its effect on price, timing and scope? (4) Does the clause state how quickly a change request must be answered? (5) [Balance] Can both parties request a change, and is neither forced to accept one without agreement? (6) Does the clause say how price and timetable adjustments from an approved change are recorded?",
     "unacceptable_triggers": [
-      "vendor can bill for out-of-scope work without a mutually signed written change order",
-      "vendor may unilaterally change scope, deliverables, or fees by notice",
-      "client is charged for preparing change impact assessments or estimates"
+      "Change process is set: No process is stated (CHG-01)",
+      "Changes are not one-sided: One party may impose changes (CHG-05)"
     ],
-    "fallback_guidelines": "Require all changes to scope, timeline, or fees to be documented in a written Change Order signed by authorized representatives of both Parties prior to implementation, with Service Provider providing impact assessments at no charge and continuing performance of the unchanged Services in the meantime."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "fees-and-payment",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Net 30 to Net 45 payment terms from receipt of an undisputed, valid invoice; right to withhold payment on good-faith disputed amounts without late interest or service suspension; travel and out-of-pocket expenses reimbursable only if pre-approved in writing by Client and billed at actual cost with receipts; taxes limited to sales/use taxes excluding Vendor's income/payroll taxes.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Are the fees stated or determinable (amounts, rates, or a specific reference to where they are set)? (2) Does the clause say how fees are calculated (for example fixed, time-based, usage-based)? (3) Does the clause say when and how invoices are issued? (4) Does the clause state when payment is due? (5) Does the clause say whether fees are fixed or how they may change? (6) [Balance] [Only where the clause lets one party change fees without the other's agreement] Is that change limited (by a cap, an index, notice or a right to object)? (7) Does the clause let the paying party dispute an invoice and say how the disputed amount is treated? (8) Does the clause state the consequence of late payment (for example interest or suspension)? (9) Does the clause say whether expenses are included or extra, and who approves or bears them? (10) [Balance] [Only where the clause lets a party suspend or stop work for non-payment] Is suspension conditional on written notice and a chance to pay first?",
     "unacceptable_triggers": [
-      "payment due in less than Net 15 days or automatic ACH/credit card debit without invoice review",
-      "late payment interest rate exceeds 1.0% per month (12% per annum) or triggers immediate termination",
-      "no right to withhold payment for good-faith disputed invoice amounts",
-      "reimbursement of travel or out-of-pocket expenses without prior written approval by client",
-      "unilateral fee increases during the initial term or without at least 60 days' prior notice before renewal"
+      "Fees are identified: No fees or basis are stated (FEE-01)",
+      "Payment timing: No payment timing is stated (FEE-04)",
+      "Fee changes are limited: The change is unrestricted (FEE-06)",
+      "Disputed invoices: No right to dispute is stated (FEE-07)"
     ],
-    "fallback_guidelines": "Set payment terms to Net 30 days from receipt of an undisputed invoice; permit Client to withhold disputed amounts in good faith while parties work to resolve the dispute; cap late interest at the lesser of 1.0% per month or the maximum rate permitted by law; require prior written approval from Client for all reimbursable expenses."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "confidentiality",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Mutual protection of Confidential Information using at least reasonable care; restricted use solely for performing the Agreement; standard five (5) exclusions (public domain, prior possession, third-party rightful receipt, independent development, compelled legal disclosure with prior notice); confidentiality survival of 3 to 5 years (perpetual for trade secrets and PII).",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause require the receiving party to keep information confidential and limit how it is used? (2) Is confidential information identified by a definite description (categories, marking or a defined test)? (3) Does the clause state the level of care required to protect the information? (4) Does the clause list exceptions such as public information, information already known, independently developed or received from a third party? (5) Does the clause allow disclosure required by law or a regulator, with notice to the other party? (6) [Balance] Do the confidentiality duties apply to both parties in the same way? (7) Is the period for which the duty lasts stated? (8) Does the clause deal with return or destruction of confidential information on request or when the agreement ends? (9) [Balance] Is disclosure limited to people who need to know it and are bound by confidentiality?",
     "unacceptable_triggers": [
-      "one-sided confidentiality protecting only counterparty's information",
-      "missing standard exclusions (e.g., independent development or prior knowledge)",
-      "compelled disclosure allowed without prior written notice to disclosing party where legally permitted",
-      "residuals clause allowing counterparty to freely use 'unaided memory' of confidential information",
-      "confidentiality obligations expire in less than 2 years or do not survive in perpetuity for trade secrets"
+      "Duty to keep information confidential: No duty is stated (CON-01)",
+      "Confidential information is described: Confidential information is not described (CON-02)"
     ],
-    "fallback_guidelines": "Ensure obligations are mutual; include all five standard exclusions; require prompt prior written notice and cooperation before any legally compelled disclosure; delete any 'residuals' clause; set survival period to 3 years post-termination, and in perpetuity for trade secrets and Personal Data."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "data-protection-and-privacy",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Processor/Service Provider processes Personal Data solely on documented instructions of Client; implements industry-standard technical and organizational measures (SOC 2 Type II / ISO 27001); notifies Client of any confirmed or reasonably suspected Data Breach within 24–48 hours; obtains prior authorization for subprocessors and remains fully liable for them.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause require compliance with applicable data protection or privacy law? (2) Does the clause state each party's role for personal data (for example controller and processor, or an equivalent)? (3) [Balance] Is processing of personal data limited to stated purposes or documented instructions? (4) Does the clause describe what data and processing it covers (for example types of data, purpose, duration), directly or by reference? (5) Must a party notify the other of a personal data breach or security incident? (6) Must a party help with data subject requests or regulator enquiries? (7) Does the clause deal with moving personal data to another country or location? (8) Does the clause deal with return or deletion of personal data and other data when processing or the agreement ends? (9) [Only where the clause deals with security of data or systems] Does the clause set a security standard (a named framework or specified measures)? (10) [Only where the clause deals with security of data or systems] Does the clause identify specific controls (for example access control, encryption, logging)? (11) [Only where the clause deals with security of data or systems] Must the responsible party investigate, contain and report on incidents? (12) [Only where the clause deals with security of data or systems] Does the clause give a way to verify compliance (for example audit, certification, reports)? (13) [Only where the clause deals with security of data or systems] Is access to data limited to people who need it or who are bound by confidentiality?",
     "unacceptable_triggers": [
-      "right to sell, aggregate, or train public AI models on client personal data or confidential data",
-      "data breach notification window exceeds 72 hours or uses vague 'undue delay' without a hard cap",
-      "no flow-down liability for third-party subprocessors",
-      "lack of cross-border data transfer safeguards (SCCs / DPF / DPA reference)"
+      "Compliance with data protection law: No compliance duty is stated (DPP-01)",
+      "Processing is limited to purposes: No limit is stated (DPP-03)",
+      "Breach notification: No duty is stated (DPP-05)",
+      "Security standard is stated: No standard is stated (DPP-09)"
     ],
-    "fallback_guidelines": "Prohibit use of Client Data for any purpose other than providing the Services; require breach notification within 48 hours of discovery; mandate prior written notice and objection rights for new subprocessors with full liability flow-down; incorporate the parties' Data Processing Addendum (DPA) by reference."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "intellectual-property",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Client retains sole ownership of all Client Data and Pre-Existing IP; all custom Deliverables and work product created for Client are 'works made for hire' and irrevocably assigned to Client upon creation; Service Provider retains ownership of its Pre-Existing Background IP and grants Client a perpetual, irrevocable, worldwide, royalty-free, transferable license to use any Background IP embedded in Deliverables.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state who owns each kind of IP (pre-existing IP, newly created IP, data)? (2) [Balance] Does the clause say that each party keeps its pre-existing IP? (3) [Only where one party needs to use IP that the other party owns] Is a licence granted with its scope (purpose, duration, whether exclusive) stated? (4) [Only where the clause passes ownership of IP from one party to another] Is the transfer worded as an assignment that takes effect (not only a promise to assign later)? (5) [Balance] Does the clause state limits on how each party may use the other's IP (for example only for the agreed purpose)? (6) Does the clause deal with third-party claims that IP infringes their rights (responsibility or remedy, directly or by reference to an indemnity)?",
     "unacceptable_triggers": [
-      "service provider retains ownership of custom deliverables or work product paid for by client",
-      "broad power of attorney granted to counterparty without notice or failure-to-sign precondition",
-      "license to embedded background IP is revocable, non-sublicensable, or requires ongoing royalties",
-      "assignment of client's pre-existing IP or derivative works to counterparty",
-      "missing moral rights waiver or present assignment language ('hereby assigns')"
+      "Ownership is allocated: Ownership is not stated (IPR-01)",
+      "Licence where ownership stays: No licence is granted (IPR-03)"
     ],
-    "fallback_guidelines": "Clarify that each Party retains its Pre-Existing IP; stipulate that all Deliverables are 'works made for hire' (and to the extent not qualifying, Service Provider 'hereby irrevocably assigns' all right, title, and interest to Client); grant Client a perpetual, irrevocable, worldwide, royalty-free license to any Service Provider Background IP incorporated into the Deliverables; condition any power-of-attorney solely on failure to execute documents within 15 business days of written request."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "representations-and-warranties",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "Mutual authority and non-infringement of third-party agreements; Service Provider warrants professional and workmanlike performance in accordance with industry standards, compliance with all applicable laws, conformity to specifications, no malicious code/viruses, and no third-party IP infringement.",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Do the parties state that they have authority to enter the agreement? (2) Is the standard for performing the services stated (for example skill and care, conformance to a specification)? (3) Do the parties warrant compliance with applicable laws? (4) Is there a warranty that the services or deliverables do not infringe others' rights? (5) Does the clause state the remedy for breach of warranty (for example correction, re-performance, refund)? (6) [Only where the clause gives performance or conformance warranties] Is the period during which the warranty applies stated? (7) [Balance] [Only where the clause disclaims warranties] Does the disclaimer leave the express warranties intact?",
     "unacceptable_triggers": [
-      "entire services or deliverables provided strictly 'AS-IS' with blanket disclaimer of all performance warranties",
-      "warranty period shorter than 30 days for software/deliverables",
-      "sole and exclusive remedy for breach of warranty is re-performance without a refund/termination backstop if re-performance fails",
-      "missing compliance with laws or anti-malware warranty"
+      "Performance standard: No standard is stated (REP-02)"
     ],
-    "fallback_guidelines": "Add express warranties that Services will be performed in a professional and workmanlike manner by qualified personnel and Deliverables will conform to specifications for at least 90 days; if Service Provider fails to cure a warranty breach within 30 days, Client may terminate the affected SOW and receive a full refund of fees paid for the non-conforming Deliverables."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "indemnification",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Mutual third-party indemnification covering (a) IP infringement or misappropriation by deliverables/services, (b) bodily injury, death, or tangible property damage, (c) gross negligence, fraud, or willful misconduct, and (d) breach of applicable law or data protection obligations, subject to prompt notice, sole control of defense, and reasonable cooperation.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause identify the matters that trigger the indemnity (for example third-party claims, IP infringement, breach of law)? (2) Is it clear which party indemnifies which? (3) Does the clause say what losses are covered (for example damages, costs, legal fees, settlements)? (4) [Balance] Are indemnities mutual or, if one-sided, limited to matters within the indemnifying party's control? (5) Does the clause set out how claims are handled (prompt notice, control of defence, cooperation)? (6) Does the clause say whether the indemnity is subject to the liability cap or exclusions? (7) [Balance] Must the indemnified party take reasonable steps to limit its loss?",
     "unacceptable_triggers": [
-      "one-sided indemnification required only from client with no counterparty indemnity",
-      "missing third-party IP infringement indemnification from service provider/vendor",
-      "indemnification triggered by mere 'allegations' without defense control by indemnifying party",
-      "indemnified party can settle claims and bind indemnifying party without prior written consent",
-      "broad first-party indemnification for any ordinary breach of contract (converts breach into uncapped indemnity)"
+      "Triggers are defined: No triggers are identified (IND-01)"
     ],
-    "fallback_guidelines": "Make indemnification mutual for gross negligence, willful misconduct, and bodily injury/property damage; require Service Provider to defend and indemnify Client against third-party IP infringement claims; include standard IP mitigation remedies (procure right, modify/replace, or refund unused fees); require written consent before any settlement that admits fault or imposes monetary liability."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "limitation-of-liability",
     "inherent_risk_tier": "High",
-    "acceptable_standard": "Mutual exclusion of indirect, special, incidental, punitive, and consequential damages; mutual aggregate liability cap set at 12 months of fees paid or payable preceding the claim; explicit carve-outs (super-cap or uncapped) for fraud, willful misconduct, gross negligence, third-party indemnification obligations, breach of confidentiality, and IP infringement.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state clearly whether liability is limited and, if so, by what amount or formula? (2) [Balance] [Only where the clause limits liability] Does the limit apply to both parties, or are differences between them explained? (3) [Only where the clause excludes types of loss (for example indirect or consequential loss, loss of profit)] Are the excluded losses identified specifically and applied to both parties? (4) Does the clause leave unlimited the liabilities that cannot lawfully or fairly be limited (for example fraud, death or personal injury caused by negligence)? (5) Does the clause say whether the limit applies to data breach, confidentiality breach, IP infringement and indemnities? (6) Does the clause say whether the limit applies per claim, per period or in total?",
     "unacceptable_triggers": [
-      "no aggregate liability cap specified (unlimited direct damages exposure)",
-      "consequential damages waiver applies to fraud, willful misconduct, or gross negligence",
-      "consequential damages waiver bars recovery for confidentiality or data privacy breaches",
-      "consequential damages waiver bars recovery for IP infringement or misappropriation",
-      "one-sided liability cap or consequential damages exclusion favoring only the counterparty",
-      "aggregate liability cap is less than 6 months of fees paid or payable"
+      "The limit is clear: It is not stated, or the wording is contradictory (LOL-01)",
+      "The limit applies fairly: It protects one party only (LOL-02)",
+      "Liabilities that cannot be limited: None is addressed, or the clause limits them (LOL-04)"
     ],
-    "fallback_guidelines": "Insert a mutual aggregate cap equal to 12 months' fees (or 6 months' fees as a commercial fallback) and add explicit carve-outs stating the limitation and consequential damages exclusion shall not apply to: (a) fraud, gross negligence, or willful misconduct; (b) breach of Confidentiality or Data Protection obligations; (c) breach of Intellectual Property Rights; or (d) third-party indemnification obligations."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "insurance",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Service Provider maintains Commercial General Liability ($1M per occurrence / $2M aggregate), Errors & Omissions / Professional Liability ($2M+), Cyber Liability ($2M+), and Workers' Compensation as required by law with A- VII rated insurers; names Client as an additional insured on CGL and provides Certificates of Insurance (COI) upon request.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause name the types of insurance that must be held? (2) Does the clause say which party must hold each insurance? (3) Are minimum amounts of cover stated? (4) Must the insuring party show evidence of cover (for example a certificate) when asked or at set times? (5) Does the clause say how long cover must be kept (for example during the term and for a period after)? (6) Does the clause say whether insurance limits or otherwise affects a party's liability?",
     "unacceptable_triggers": [
-      "no insurance requirements for a vendor performing on-site work, handling sensitive data, or delivering critical services",
-      "coverage limits below $1,000,000 for E&O or Cyber Liability"
+      "Required cover is identified: No insurance is required (INS-01)"
     ],
-    "fallback_guidelines": "Require Service Provider to maintain Commercial General Liability ($1M/$2M), Professional Liability/E&O ($2M), Cyber Liability ($2M), and statutory Workers' Compensation coverage throughout the Term and provide Certificates of Insurance naming Client as additional insured upon request."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "compliance",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Compliance with all applicable anti-bribery, anti-corruption (FCPA, UK Bribery Act), export control, sanctions (OFAC), and modern slavery laws; immediate termination right for breach of compliance obligations.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause require compliance with applicable laws and regulations? (2) Does the clause identify the laws, codes or standards that must be followed? (3) [Only where the clause requires compliance with a party's policies or code of conduct] Are those policies identified or provided? (4) Does the clause address bribery and corruption? (5) Must a party tell the other if it breaches a law or policy that affects the agreement? (6) [Balance] [Only where the clause deals with changes in law] Does the clause say who bears the effort and cost of complying with a change in law?",
     "unacceptable_triggers": [
-      "refusal to warrant compliance with applicable anti-corruption, sanctions, or export control laws"
+      "Duty to comply with law: No duty is stated (CMP-01)"
     ],
-    "fallback_guidelines": "Include a mutual representation that each Party will comply with all applicable laws, including the U.S. Foreign Corrupt Practices Act (FCPA), UK Bribery Act, and applicable export control and economic sanctions regulations."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "audit-and-records",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Client (or its independent third-party auditor) may audit Service Provider's billing records and security/compliance controls once annually upon 10–15 business days' prior written notice (and immediately following a security breach or regulatory inquiry); if an billing overcharge of 5% or more is discovered, Service Provider reimburses the overcharge plus the reasonable cost of the audit.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause give a right to audit or inspect? (2) Does the clause say what can be audited (for example premises, systems, records)? (3) Does the clause say how often audits can take place? (4) Does the clause say how much notice must be given before an audit? (5) Must relevant records be kept, with a retention period? (6) Must the audited party cooperate and give access to records and people? (7) Must the audited party correct findings? (8) [Balance] Does the clause say who bears the cost of an audit?",
     "unacceptable_triggers": [
-      "complete omission of billing or compliance audit rights in a time-and-materials or data-processing contract",
-      "audit fees or vendor internal support time charged to client even when material non-compliance or overbilling is found"
+      "Audit right: No right is given (AUD-01)"
     ],
-    "fallback_guidelines": "Grant Client the right to audit books, records, and compliance documentation once per year on 15 days' notice (or immediately upon reasonable suspicion of breach/fraud), with Service Provider bearing the audit costs if an overcharge exceeding 5% is uncovered."
+    "fallback_guidelines": ""
   },
   {
-    "canonical_type": "subcontracting-and-sub-processors",
-    "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Service Provider may not subcontract any material portion of the Services without Client's prior written consent; Service Provider must bind approved subcontractors to written confidentiality, IP assignment, and security obligations no less protective than this Agreement and remains fully liable for all acts and omissions of its subcontractors.",
+    "canonical_type": "subcontractors",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say whether subcontracting is allowed and on what conditions (for example consent or notice)? (2) Does the clause say that the contracting party remains responsible for its subcontractors? (3) Must subcontractors be bound by obligations equivalent to the main agreement (for example confidentiality, security, data protection)? (4) [Balance] Does the other party have a right to approve or object to subcontractors? (5) Is a list or record of subcontractors kept or shared? (6) [Only where the clause gives a right to object to a subcontractor] Does the clause say what happens if an objection is not resolved?",
     "unacceptable_triggers": [
-      "unrestricted right to subcontract services or offshore client data without client notice or consent",
-      "disclaimer of liability for acts or omissions of subcontractors"
+      "Permission and conditions: It is not addressed (SUB-01)",
+      "Responsibility is retained: This is not stated (SUB-02)"
     ],
-    "fallback_guidelines": "Require Client's prior written consent before engaging any subcontractor to perform Services, require flow-down of confidentiality and IP assignment terms, and state that Service Provider remains fully responsible for all acts and omissions of its subcontractors."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "assignment",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Mutual anti-assignment clause with a standard carve-out permitting assignment without consent to an Affiliate or in connection with a merger, acquisition, corporate reorganization, or sale of all or substantially all assets; any permitted assignee assumes all obligations in writing and the assigning Party remains liable for pre-assignment obligations.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) [Balance] Does the clause deal with transfer of rights or obligations to others, with rules that apply to both parties? (2) [Only where the clause requires consent for a transfer] Is consent subject to a stated standard (for example 'not unreasonably withheld') and a response time? (3) Does the clause deal with transfers to affiliates or on a merger or sale of the business? (4) [Balance] Does the party that transfers remain responsible for its obligations unless released? (5) [Only where the clause allows a transfer without consent in some cases] Must the other party be told of the transfer?",
     "unacceptable_triggers": [
-      "anti-assignment clause prohibits client from assigning the agreement in a merger, acquisition, or corporate reorganization without vendor consent",
-      "one-sided assignment clause allowing vendor to freely assign to any third party (including a competitor) while restricting client",
-      "vendor may assign or delegate performance of the services without notice to client"
+      "Consent for assignment: It is not addressed (ASG-01)"
     ],
-    "fallback_guidelines": "Make the assignment restriction mutual and permit either Party to assign this Agreement without consent to an Affiliate or in connection with a merger, reorganization, or sale of all or substantially all of its assets, with written notice to the other Party; require any other assignment to have the other Party's prior written consent, not to be unreasonably withheld."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "force-majeure",
-    "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Mutual excuse for delay due to unforeseeable events beyond reasonable control (excluding payment obligations and failures of sub-tier vendors where BC/DR plans should apply); prompt written notice and mitigation duty; right for the unaffected Party to terminate without penalty and receive a pro-rata refund if the Force Majeure event continues for more than 15–30 consecutive days.",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause define force majeure events (a list or a defined test)? (2) [Balance] Does the clause exclude events a party could prevent or control (for example its own labour disputes, failure of its own suppliers)? (3) Must the affected party notify the other of the event? (4) Must the affected party take steps to limit the effect and resume performance? (5) Does the clause say what is excused (for example delay, but not payment of sums already due)? (6) Does the clause say what happens to payment during the event? (7) Does the clause give a way out if the event continues for a stated period (for example a right to terminate)? (8) Does the clause say whether continuity or recovery obligations still apply during the event? (9) [Only where the clause deals with business continuity or disaster recovery] Does the clause require a business continuity or disaster recovery plan? (10) [Only where the clause deals with business continuity or disaster recovery] Does the clause say what the plan must cover (for example services, systems, data, locations)? (11) [Only where the clause deals with business continuity or disaster recovery] Does the clause state recovery timeframes or objectives? (12) [Only where the clause deals with business continuity or disaster recovery] Must the plan be tested or reviewed, and how often? (13) [Only where the clause deals with business continuity or disaster recovery] Must the plan or test results be shared with the other party? (14) [Only where the clause deals with business continuity or disaster recovery] Must a party notify the other when the plan is invoked or a disruption occurs? (15) [Only where the clause deals with business continuity or disaster recovery] Must gaps found in tests or events be corrected?",
     "unacceptable_triggers": [
-      "force majeure excuses payment obligations or ordinary labor shortages / subcontractor defaults",
-      "no termination right for client if force majeure delay exceeds 30 days",
-      "one-sided force majeure clause protecting only the service provider"
+      "Events are defined: No definition is given (FOR-01)",
+      "Long-running events: No way out is stated (FOR-07)",
+      "Plan is required: No plan is required (FOR-09)"
     ],
-    "fallback_guidelines": "Make Force Majeure mutual, require prompt written notice and reasonable mitigation efforts, exclude payment obligations, and allow the unaffected Party to terminate the affected SOW or Agreement upon written notice if the Force Majeure event prevents performance for more than 30 consecutive days."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "governing-law-and-dispute-resolution",
-    "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Governing law and exclusive venue set in a neutral, well-established commercial jurisdiction (e.g., Delaware, New York, California, or Client's principal place of business); good-faith executive escalation prior to formal litigation or binding arbitration; right to seek immediate injunctive or equitable relief in any court of competent jurisdiction for IP or confidentiality breaches.",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause name the law that governs the agreement? (2) Does the clause say where disputes are decided (specific courts or arbitration)? (3) Does the clause avoid conflicting statements about law or forum (for example courts in one place and arbitration elsewhere with no explanation)? (4) [Only where disputes are to be decided by arbitration] Are the rules and the seat of arbitration stated? (5) Does the clause set steps before formal proceedings (for example negotiation, escalation, mediation) with timeframes? (6) [Balance] Does the clause bind both parties to the same forum, or, if one party can choose, is that choice limited? (7) Does the clause preserve the right to seek urgent court relief? (8) Must the parties keep performing while a dispute is resolved?",
     "unacceptable_triggers": [
-      "foreign or inconvenient remote jurisdiction with no nexus to the transaction",
-      "mandatory binding arbitration that prohibits seeking preliminary injunctive relief in court for IP/confidentiality breaches",
-      "one-sided prevailing party attorneys' fees clause favoring only counterparty",
-      "shortened contractual statute of limitations (e.g., requiring claims to be brought within 6 months)"
+      "Governing law is named: No governing law is named (LAW-01)",
+      "Forum is identified: No forum is named (LAW-02)",
+      "No conflicting provisions: There is a conflict (LAW-03)"
     ],
-    "fallback_guidelines": "Specify a mutually acceptable commercial jurisdiction (e.g., State of Delaware or New York); include a 30-day executive escalation step; ensure either Party may seek immediate injunctive or equitable relief in any court of competent jurisdiction to protect Confidential Information or Intellectual Property Rights."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "notices",
     "inherent_risk_tier": "Low",
-    "acceptable_standard": "Notices must be in writing and delivered via personal delivery, nationally recognized overnight courier, certified mail, or email (with confirmation or copy to legal counsel); deemed effective upon receipt (or 1 business day for overnight courier); legal notices (breach, termination, indemnification) must be copied to the Legal Department.",
-    "unacceptable_triggers": [
-      "notices of breach, termination, or price increases valid via unconfirmed regular mail or in-app banner only",
-      "deemed receipt immediately upon mailing rather than actual delivery/courier confirmation"
-    ],
-    "fallback_guidelines": "Require all formal legal notices (termination, breach, indemnification) to be delivered by nationally recognized overnight courier or certified mail with a simultaneous copy by email to the designated Legal contact."
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state the required form of notice (for example in writing)? (2) Are addresses or contact details for notices stated or referenced for each party? (3) Are the permitted delivery methods listed (for example hand, courier, post, email)? (4) Does the clause say when a notice is treated as received? (5) Does the clause say how a party changes its notice details?",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "independent-contractor",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Service Provider is an independent contractor; neither Party has authority to bind the other; Service Provider is solely responsible for all wages, benefits, payroll taxes, withholdings, and workers' compensation for its personnel, and indemnifies Client against any misclassification or co-employment claims.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state that the parties' relationship is that of independent contractors? (2) Does the clause state that no partnership, agency, joint venture or employment relationship is created? (3) Does the clause state that neither party can bind the other? (4) Does the clause state that each party is responsible for its own personnel's costs, taxes and benefits? (5) Does the clause say who controls the manner and means of performance?",
     "unacceptable_triggers": [
-      "language granting service provider agency authority to bind client to third-party contracts",
-      "missing responsibility of service provider for its own personnel taxes, benefits, and misclassification claims"
+      "Status is stated: This is not stated (IC-01)"
     ],
-    "fallback_guidelines": "Confirm that Service Provider is an independent contractor with no authority to bind Client, and remains solely responsible for all compensation, benefits, taxes, and withholdings for its personnel."
+    "fallback_guidelines": ""
   },
   {
-    "canonical_type": "general-provisions",
-    "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Amendments and waivers valid only if in a written instrument signed by both Parties; no waiver by course of conduct; standard severability (with a direction to reform an invalid term to the nearest enforceable one), counterparts and electronic signatures, entire agreement, survival of confidentiality, IP, indemnity and limitation of liability, and no third-party beneficiaries.",
-    "unacceptable_triggers": [
-      "unilateral amendment right allowing vendor to modify agreement terms by posting updated terms at a URL",
-      "incorporation of external online URL terms that take precedence over the signed agreement"
-    ],
-    "fallback_guidelines": "Require any amendment or modification to be in writing and signed by authorized representatives of both Parties; delete any right to modify terms by posting updated terms online; state that the signed Agreement prevails over any linked or referenced online terms; add a survival clause covering confidentiality, IP, indemnification, limitation of liability and payment obligations."
-  },
-  {
-    "canonical_type": "information-security-and-data-management",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "Maintenance of a comprehensive written information security program aligned with ISO 27001 or SOC 2 Type II; encryption of data in transit (TLS 1.2+) and at rest (AES-256); annual penetration testing; prompt remediation of critical vulnerabilities.",
-    "unacceptable_triggers": [
-      "security controls provided 'as-is' or subject to unilateral downgrade by vendor during the term",
-      "no encryption commitment for data in transit and at rest",
-      "refusal to provide annual SOC 2 / ISO 27001 audit summaries upon request"
-    ],
-    "fallback_guidelines": "Require Service Provider to maintain administrative, physical, and technical safeguards no less rigorous than industry standards (SOC 2 Type II or ISO 27001) and prohibit materially degrading security controls during the Term."
-  },
-  {
-    "canonical_type": "personnel",
-    "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Service Provider assigns qualified, background-checked personnel; Key Personnel cannot be removed or reassigned without prior notice to Client; Client may request prompt replacement of any personnel for performance or conduct issues at no additional cost during ramp-up.",
-    "unacceptable_triggers": [
-      "client barred from requesting replacement of underperforming or disruptive vendor personnel",
-      "client billed for training or ramp-up time of replacement personnel due to vendor turnover"
-    ],
-    "fallback_guidelines": "Grant Client the right to request replacement of any Service Provider personnel upon reasonable dissatisfaction, with Service Provider providing a qualified replacement promptly at no additional onboarding or ramp-up cost to Client."
-  },
-  {
-    "canonical_type": "exit-and-transition-assistance",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "Upon expiration or termination for any reason, Service Provider provides up to 30–90 days of transition assistance at standard (or free, if terminated for vendor breach) rates; prompt return or secure deletion (NIST 800-88) of all Client Data and materials in a standard machine-readable format within 30 days, with written certification of destruction.",
-    "unacceptable_triggers": [
-      "right for vendor to permanently delete client data immediately upon termination without a retrieval window",
-      "right for vendor to hold client data or materials hostage ('lien') pending resolution of disputed invoices",
-      "no obligation to return work-in-progress deliverables already paid for by client"
-    ],
-    "fallback_guidelines": "Require Service Provider to immediately deliver all completed and work-in-progress Deliverables and Client Data in a standard format upon request, prohibit withholding Client Data for any reason (including payment disputes), and require written certification of secure destruction within 30 days after Client confirms successful data export."
-  },
-  {
-    "canonical_type": "business-continuity-and-disaster-recovery",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "Documented Business Continuity and Disaster Recovery (BC/DR) plan tested at least annually; defined Recovery Time Objective (RTO <= 4 hours) and Recovery Point Objective (RPO <= 1 hour); summary of test results provided to Client upon request.",
-    "unacceptable_triggers": [
-      "no disaster recovery or backup obligations for critical hosted services",
-      "RTO exceeding 48 hours for production systems"
-    ],
-    "fallback_guidelines": "Require Service Provider to maintain and annually test a comprehensive BC/DR plan with defined RTO and RPO targets and provide a summary of annual test results to Client upon request."
+    "canonical_type": "entire-agreement",
+    "inherent_risk_tier": "Low",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say which documents make up the whole agreement? (2) [Balance] [Only where the clause contains entire agreement or exclusion wording] Does that wording leave liability for fraud intact? (3) Does the clause say that earlier agreements and communications on the same subject are replaced? (4) [Balance] [Only where the clause excludes reliance on statements outside the agreement] Does the exclusion of reliance apply to both parties?",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "order-of-precedence",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause identify the documents that form the agreement? (2) Does the clause state an order of priority between the documents? (3) Does the clause say how a conflict is resolved (for example the higher document prevails to the extent of the conflict)? (4) Does the clause prevent lower-ranking documents (for example a work order) from overriding higher-ranking ones without express words? (5) [Balance] Does the clause exclude other terms (for example standard terms, purchase orders, online terms) from the agreement?",
+    "unacceptable_triggers": [
+      "Priority order is stated: No order is stated (PRE-02)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "amendments-and-modifications",
+    "inherent_risk_tier": "High",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say how the agreement can be amended? (2) [Balance] Is any right of one party to change the terms alone (including by updating referenced terms) absent or limited? (3) Does the clause say who may sign an amendment for each party? (4) Does the clause say the amendment process covers the whole agreement, including schedules and orders? (5) Does the clause say that oral agreements or conduct do not change the agreement?",
+    "unacceptable_triggers": [
+      "No one-sided changes: A party may change terms alone without limit (AMD-02)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "waiver",
+    "inherent_risk_tier": "Low",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say that delay or failure to enforce a right is not a waiver? (2) Is a waiver effective only if it is in writing and signed by the waiving party? (3) Does the clause say that waiving one breach or right does not waive others?",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "severability",
+    "inherent_risk_tier": "Low",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say that a term found invalid does not affect the rest of the agreement? (2) Does the clause provide for replacing an invalid term with a valid one that has the closest effect? (3) Does the clause name the grounds (invalid, illegal, unenforceable)?",
+    "unacceptable_triggers": [],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "no-agency-or-authority",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Clear hierarchy resolving conflicts: (1) Data Processing Addendum (for privacy), (2) Master Services Agreement, (3) Statement of Work / Order Form (unless an SOW explicitly cites a specific MSA section to override for that SOW only), (4) Exhibits/Schedules; pre-printed terms on purchase orders or invoices are void.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state that neither party is the agent or representative of the other? (2) Does the clause state that neither party may make commitments in the other's name? (3) Does the clause exclude partnership, joint venture or employment? (4) [Balance] [Only where the clause allows one party to act for the other in some cases] Is that authority limited in scope and recorded in writing?",
     "unacceptable_triggers": [
-      "order form, SOW, or vendor URL policies automatically override the MSA body in full",
-      "pre-printed terms on vendor invoices or shrink-wrap/click-through prompts bind client"
+      "No agency is created: This is not stated (NAA-01)"
     ],
-    "fallback_guidelines": "Establish that the MSA governs over any SOW or Order Form unless the SOW expressly identifies the specific section of the MSA being modified for that SOW only, and state that any pre-printed or click-through terms on invoices or portals are of no force or effect."
+    "fallback_guidelines": ""
   },
   {
-    "canonical_type": "governance-and-project-management",
-    "inherent_risk_tier": "Low",
-    "acceptable_standard": "Designated project managers for each Party; regular status meetings and steering committee reviews for complex engagements; structured change control procedure requiring written Change Orders signed by both Parties before any scope or fee changes take effect.",
+    "canonical_type": "non-exclusivity",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state whether the arrangement is exclusive or non-exclusive? (2) Does the clause state that each party may deal with third parties for similar services? (3) Does the clause say whether any minimum volume or spend is promised? (4) [Balance] [Only where the clause grants exclusivity to a party] Is the exclusivity limited by scope, territory or time?",
     "unacceptable_triggers": [
-      "no designated points of contact, escalation path, or regular status reporting for a multi-month engagement"
+      "Exclusivity position is stated: It is not stated (NEX-01)"
     ],
-    "fallback_guidelines": "Require all changes to scope, timeline, or fees to be documented in a written Change Order signed by authorized representatives of both Parties prior to implementation."
+    "fallback_guidelines": ""
   },
   {
-    "canonical_type": "publicity-and-use-of-name",
-    "inherent_risk_tier": "Low",
-    "acceptable_standard": "Neither Party may issue a press release or use the other Party's name, trademarks, or logos in marketing materials, customer lists, or case studies without the other Party's prior written consent (which may be revoked at any time).",
+    "canonical_type": "export-controls-and-sanctions",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause require compliance with export control and sanctions laws? (2) Does the clause name the regimes or lists that apply? (3) Does each party confirm it is not a sanctioned or restricted party? (4) [Balance] [Only where the clause lets a party suspend or end the agreement for export or sanctions reasons] Is that right limited to the affected activity and subject to notice? (5) Must a party give the information the other needs to meet export and sanctions rules?",
     "unacceptable_triggers": [
-      "unconditional right for vendor to use client's name, logo, and trademark in public marketing and press releases without prior written approval"
+      "Duty to comply: No duty is stated (EXP-01)"
     ],
-    "fallback_guidelines": "Prohibit either Party from using the other Party's name, trade name, logos, or trademarks in any publicity, press release, or marketing materials without prior written consent."
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "publicity-and-use-of-names",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say whether using a party's name, logo or trademarks needs that party's consent? (2) Must consent be in writing and given before use? (3) Does the clause identify the uses covered (for example announcements, client lists, marketing, case studies)? (4) [Balance] Do the restrictions apply to both parties? (5) Does the clause allow disclosures that law or regulation require?",
+    "unacceptable_triggers": [
+      "Consent for use of name: Use is allowed without consent, or the matter is not addressed (PUB-01)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "equitable-relief",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state that injunctive or other equitable relief is available for breach? (2) [Balance] Is the right to equitable relief available to both parties? (3) [Balance] Does the clause say equitable relief is in addition to other remedies? (4) Does the clause identify which breaches can justify relief (for example confidentiality or IP)?",
+    "unacceptable_triggers": [
+      "Relief is available: It is not stated (EQR-01)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "conflict-of-interest",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause require the parties to avoid conflicts of interest? (2) Does the clause describe what counts as a conflict of interest? (3) Must a party disclose an actual or possible conflict? (4) Does the clause say what follows if a conflict arises (for example stop the activity or terminate)?",
+    "unacceptable_triggers": [
+      "Duty to avoid conflicts: No duty is stated (COI-01)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "survival",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause list the provisions that continue after expiry or termination? (2) Does the clause keep rights and liabilities that arose before termination? (3) [Only where the clause says some provisions continue] Is the period for which they continue stated? (4) [Balance] Does survival protect both parties' interests?",
+    "unacceptable_triggers": [
+      "Surviving provisions are identified: It is not stated (SUR-01)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "counterparts",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause allow the agreement to be signed in separate counterparts? (2) Does the clause say the counterparts together form one agreement? (3) Does the clause allow electronic signature and electronic delivery of signed copies? (4) Does the clause say when the agreement takes effect if counterparts are signed on different dates?",
+    "unacceptable_triggers": [
+      "Counterparts are allowed: This is not stated (CTP-01)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "time-of-the-essence",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause identify which obligations or dates time is of the essence for? (2) [Balance] Does the clause apply to both parties' obligations? (3) Does the clause say what follows if the time is missed? (4) [Balance] Does the clause allow more time where delay is caused by the other party or an excused event?",
+    "unacceptable_triggers": [
+      "Time-critical obligations are identified: No obligation or date is identified (TOE-01)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "taxes",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say which party bears each tax it covers (for example sales or transaction tax and withholding)? (2) Does the clause state whether fees include taxes? (3) [Balance] [Only where the clause deals with withholding tax or gross-up] Are the treatment of withholding and the documents needed stated? (4) Must the parties provide tax invoices, exemption certificates or other documents? (5) Does the clause say each party bears taxes on its own income and personnel?",
+    "unacceptable_triggers": [
+      "Responsibility for taxes: No allocation is stated (TAX-01)"
+    ],
+    "fallback_guidelines": ""
+  },
+  {
+    "canonical_type": "miscellaneous-other-provisions",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does each right or duty the clause creates say who, what and when? (2) Does the clause avoid terms that belong in a specific clause type (for example liability, payment or termination)? (3) [Balance] Do the rights in the clause apply to both parties in the same way? (4) Does any duty in the clause have a consequence or a way to act on it if it is not followed? (5) [Only where the clause says it applies despite other terms] Does the clause name the terms it overrides? (6) [Only where the clause sets up governance, review or relationship-management arrangements] Does each party appoint a named person or role to manage the relationship? (7) [Only where the clause sets up governance, review or relationship-management arrangements] Does the clause say how often governance meetings or reviews take place? (8) [Only where the clause sets up governance, review or relationship-management arrangements] Does the clause require progress or performance reports, with their content or frequency stated? (9) [Only where the clause sets up governance, review or relationship-management arrangements] Does the clause set how unresolved issues are escalated (levels or steps)? (10) [Only where the clause sets up governance, review or relationship-management arrangements] Does the clause say what the representatives can decide, and that their decisions do not change the agreement unless formally agreed?",
+    "unacceptable_triggers": [
+      "Rights and duties are definite: Most are vague (MSC-01)",
+      "Escalation route: No escalation route is stated (MSC-09)"
+    ],
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "non-compete",
-    "inherent_risk_tier": "High",
-    "acceptable_standard": "Commercial service agreements should generally not restrict Client's ability to engage competing vendors, develop competing internal products, or operate in any market; any exclusivity or non-compete bound to Service Provider must be narrowly tailored in scope, geography, and duration (max 12 months).",
+    "inherent_risk_tier": "Medium",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) Does any restriction that continues after the agreement ends last no longer than 12 months? (2) Is the restricted activity defined by a specific technology, product, service or industry? (3) Does the clause state its geographic scope, and is the restriction enforceable under the governing law (for example, California law generally voids post-termination non-competes)? (4) [Balance] Does the clause leave the client free to engage other vendors, build or buy competing solutions, and operate in any market?",
     "unacceptable_triggers": [
-      "restriction preventing client from engaging other vendors or building similar solutions internally",
-      "overbroad non-compete exceeding 12 months post-termination or lacking geographic/industry scope limits",
-      "exclusivity commitment binding client without minimum performance/SLA guarantees"
+      "Duration is limited: It lasts more than 12 months after the agreement ends, or has no end date (NCP-01)",
+      "Client is not restricted: The client is restricted (NCP-04)"
     ],
-    "fallback_guidelines": "Delete any non-compete or exclusivity restriction binding Client, and expressly state that nothing in this Agreement restricts Client from independently developing, acquiring, or marketing competitive products or services, or engaging third parties for similar services."
+    "fallback_guidelines": ""
   },
   {
     "canonical_type": "non-solicitation",
     "inherent_risk_tier": "Medium",
-    "acceptable_standard": "Mutual non-solicitation of personnel who were directly involved in the performance of the Agreement during the Term and for 12 months thereafter, with an explicit carve-out for general public job advertisements and unsolicited applicants.",
+    "acceptable_standard": "The clause should satisfy each of these checks. (1) [Balance] Does the restriction bind both parties in the same way, rather than restricting the client alone? (2) Does the restriction end no later than 12 months after the agreement ends? (3) Is the restriction limited to personnel directly involved in the services? (4) Are general job advertisements not aimed at the other party's staff, and people who apply on their own initiative, excluded? (5) [Balance] [Only where the clause sets a fee or damages for hiring the other party's personnel] Is any such fee no more than 25% of the person's annual base salary?",
     "unacceptable_triggers": [
-      "one-sided non-solicitation restricting only client",
-      "applies to all employees company-wide rather than personnel directly involved in the engagement",
-      "missing carve-out for general public recruitment ads not specifically targeted at counterparty staff",
-      "liquidated damages recruitment fee exceeding 25% of annual base salary"
+      "Restriction is even-handed: Only the client is restricted (NSO-01)"
     ],
-    "fallback_guidelines": "Make the non-solicitation obligation mutual, limit its scope to employees directly involved in the Services for 12 months post-termination, and add a standard carve-out for general, non-targeted public job postings."
+    "fallback_guidelines": ""
   }
 ]

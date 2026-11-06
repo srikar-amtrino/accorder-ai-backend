@@ -1,7 +1,8 @@
 """In-memory, zero-data-retention cache of per-paragraph review outcomes.
 
 Keys are SHA-256 digests of the normalised paragraph text, its clause title,
-the reviewer context, and the policy/prompt version; values are the computed
+the resolved parties, the reviewer context, the clause and document facts the
+paragraph was judged against, and the policy/prompt version; values are the computed
 assessment (or an explicit "nothing to flag"). Nothing is written to disk and
 no raw contract text is stored, so an unchanged clause reviewed again — in
 the same document or a revised one — returns exactly the outcome it got the
@@ -14,9 +15,11 @@ from collections import OrderedDict
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Union
 
 from src.services.clause_mapping.policy_store import POLICIES_PATH
+from src.services.general_review.party_resolver import PartyContext
+from src.services.general_review.taxonomy_gates import OVERRIDES_PATH, TAXONOMY_PATH
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "prompts" / "v2" / "general_review"
 
@@ -40,11 +43,12 @@ NO_FINDING = ClauseAssessment(flagged=False)
 
 @lru_cache
 def policy_version_hash() -> str:
-    """Digest of the policy file and the review prompts: editing either invalidates every cached outcome."""
+    """Digest of the policy file, the review prompts, and the criteria taxonomy: editing any of them invalidates every cached outcome."""
 
     digest = hashlib.sha256()
-    for path in (POLICIES_PATH, _PROMPTS_DIR / "system.mustache", _PROMPTS_DIR / "user.mustache"):
-        digest.update(path.read_bytes())
+    for path in (POLICIES_PATH, _PROMPTS_DIR / "system.mustache", _PROMPTS_DIR / "user.mustache", TAXONOMY_PATH, OVERRIDES_PATH):
+        # The taxonomy is optional; its absence is part of the version too.
+        digest.update(path.read_bytes() if path.is_file() else b"<absent>")
         digest.update(b"|")
     return digest.hexdigest()
 
@@ -67,14 +71,36 @@ class ZDRClauseHashCache:
     def normalize_text(text: str) -> str:
         return re.sub(r"\s+", " ", (text or "").strip()).casefold()
 
-    def compute_key(self, paragraph_text: str, clause_title: str, party_represented: Optional[str], agreement_type: Optional[str], reviewer_context: str = "") -> str:
+    def compute_key(
+        self,
+        paragraph_text: str,
+        clause_title: str,
+        party_context: Union[PartyContext, str, None],
+        agreement_type: Optional[str],
+        reviewer_context: str = "",
+        clause_context: str = "",
+        document_facts: str = "",
+    ) -> str:
+        """Key one paragraph's outcome by everything that decides it.
+
+        party_context is the resolved PartyContext (or the reviewer's raw
+        wording when there is none): "ACI" and "Accordor" resolve to the same
+        parties and so share a key. clause_context is a digest of the whole
+        clause the paragraph sits in, because a clause-wide finding raised on
+        one paragraph is anchored on another; document_facts is the digest of
+        the cross-document facts every batch is given.
+        """
+
+        party = party_context.cache_token if isinstance(party_context, PartyContext) else (party_context or "")
         payload = "|".join(
             [
                 self.normalize_text(paragraph_text),
                 self.normalize_text(clause_title),
-                self.normalize_text(party_represented or ""),
+                self.normalize_text(party),
                 self.normalize_text(agreement_type or ""),
                 self.normalize_text(reviewer_context),
+                clause_context,
+                document_facts,
                 self.version_hash,
             ]
         )

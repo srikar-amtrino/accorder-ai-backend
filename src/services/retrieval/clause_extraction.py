@@ -407,6 +407,8 @@ from typing import Optional
 
 from docx.document import Document
 
+from src.services.docx_text import paragraph_text
+
 # ---------------------------------------------------------------------------
 # Constants & patterns
 # ---------------------------------------------------------------------------
@@ -573,7 +575,7 @@ def _extract_plain(doc: Document) -> list:
             sub = None
 
     for para in doc.paragraphs:
-        text = para.text.strip()
+        text = paragraph_text(para).strip()
         if not text or _should_skip(text):
             continue
 
@@ -632,7 +634,7 @@ def _extract_styled(doc: Document) -> list:
             sub = None
 
     for para in doc.paragraphs:
-        text = para.text.strip()
+        text = paragraph_text(para).strip()
         style = para.style.name
         if not text or _should_skip(text):
             continue
@@ -691,7 +693,7 @@ def _extract_styled(doc: Document) -> list:
 
 
 def _detect(doc: Document) -> str:
-    styles = {p.style.name for p in doc.paragraphs if p.text.strip()}
+    styles = {p.style.name for p in doc.paragraphs if paragraph_text(p).strip()}
     return "styled" if (LEGAL2_L1 in styles or "Heading 1" in styles) else "plain"
 
 

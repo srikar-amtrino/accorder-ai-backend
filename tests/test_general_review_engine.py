@@ -82,7 +82,7 @@ def _finding(original_text: str, **facts: Any) -> Dict[str, Any]:
     return base
 
 
-LOL_TRIGGER = "no aggregate liability cap specified (unlimited direct damages exposure)"
+LOL_TRIGGER = "The limit is clear: It is not stated, or the wording is contradictory (LOL-01)"
 DAMAGES = (
     "Damages. In no event will either Party be liable, whether arising in contract, tort, warranty or otherwise, "
     "for any special, indirect, incidental, exemplary, punitive or consequential damages, including, but not limited to loss of anticipated profits."
@@ -134,14 +134,14 @@ def test_every_router_slug_has_a_policy():
 
 def test_weighted_knn_prefers_supported_type_and_is_deterministic():
     hits = [
-        ClauseMatch(canonical_type="general-provisions", score=0.81),
+        ClauseMatch(canonical_type="miscellaneous-other-provisions", score=0.81),
         ClauseMatch(canonical_type="confidentiality", score=0.80),
         ClauseMatch(canonical_type="confidentiality", score=0.79),
         ClauseMatch(canonical_type="confidentiality", score=0.78),
         ClauseMatch(canonical_type="data-protection-and-privacy", score=0.69),
     ]
     assert resolve_qdrant_weighted_knn(hits)[0] == "confidentiality"
-    assert resolve_qdrant_weighted_knn(hits, heading_boost_slug="general-provisions")[0] == "general-provisions"
+    assert resolve_qdrant_weighted_knn(hits, heading_boost_slug="miscellaneous-other-provisions")[0] == "miscellaneous-other-provisions"
     assert resolve_qdrant_weighted_knn([ClauseMatch(canonical_type="notices", score=0.5)]) == (None, 0.0)
 
 
@@ -152,11 +152,11 @@ def test_generic_heading_does_not_lock_and_yields_to_vector_vote():
     with_hits = classify_clause_resilient("Miscellaneous", query, words, [ClauseMatch(canonical_type="confidentiality", score=0.79)])
     assert (with_hits.canonical_type, with_hits.source) == ("confidentiality", "layer2_qdrant")
     without = classify_clause_resilient("Miscellaneous", query, words, None)
-    assert (without.canonical_type, without.source) == ("general-provisions", "layer3_fallback")
+    assert (without.canonical_type, without.source) == ("miscellaneous-other-provisions", "layer3_fallback")
     specific = classify_clause_resilient(
         "Severability", "Severability. If any provision is held invalid, the remainder continues in force and effect.", 16, [ClauseMatch(canonical_type="confidentiality", score=0.79)]
     )
-    assert (specific.canonical_type, specific.source) == ("general-provisions", "layer1_heading")
+    assert (specific.canonical_type, specific.source) == ("severability", "layer1_heading")
 
 
 # --- risk matrix -------------------------------------------------------------
@@ -289,7 +289,7 @@ def test_policy_block_without_any_clause_search():
 def test_vector_path_gets_smart_query_and_layer2_resolves():
     body = "Protection of Accordor. The Parties shall keep each other's non-public information secret and use it only for this Agreement, for five years after termination."
     request = GeneralReviewRequest(textinformation=[_para("p1", body)])
-    search = CannedSearch([ClauseMatch(canonical_type="confidentiality", score=0.83), ClauseMatch(canonical_type="general-provisions", score=0.74)])
+    search = CannedSearch([ClauseMatch(canonical_type="confidentiality", score=0.83), ClauseMatch(canonical_type="miscellaneous-other-provisions", score=0.74)])
     (policies,) = _run_mapping(request, search)
     assert search.queries == ["Protection of Accordor. The Parties shall keep each other's non-public information secret and use it only for this Agreement, for five years after termination."]
     assert policies.policy_of[0].canonical_type == "confidentiality"
@@ -339,11 +339,17 @@ def test_unchanged_paragraph_keeps_its_outcome_and_response_shape(container_stub
 def test_streaming_service_emits_public_shape(container_stub, monkeypatch):
     monkeypatch.setattr(gr, "clause_cache", ZDRClauseHashCache(version_hash="stream"))
     monkeypatch.setattr(gr, "_response_cache", gr.OrderedDict())
-    container_stub(model=FakeModel(default=[_finding(NOTICES, clause="Notices", severity_category="minor_drafting_hygiene", falls_short_of_acceptable_standard=True)]), search=None)
+    # A drafting-hygiene finding on a payment clause; the same finding on a Notices clause is suppressed as noise.
+    # An in-place wording edit (no sentence added) that the model calls drafting hygiene stays Low.
+    in_place = PAYMENT.replace("fifteen (15) days", "thirty (30) days")
+    container_stub(
+        model=FakeModel(default=[_finding(PAYMENT, clause="Fees and Payment", severity_category="minor_drafting_hygiene", falls_short_of_acceptable_standard=True, suggested_fix=in_place)]),
+        search=None,
+    )
 
     async def collect() -> str:
         chunks = []
-        async for frame in gr.general_review_streaming_service(_request(_para("p1", NOTICES)), "s"):
+        async for frame in gr.general_review_streaming_service(_request(_para("p1", PAYMENT)), "s"):
             chunks.append(frame)
         return "".join(chunks)
 

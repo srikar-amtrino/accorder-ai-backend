@@ -89,8 +89,8 @@ def test_ten_runs_are_identical_with_vector_path_flapping():
     ]
     facts: dict = {
         "triggered_unacceptable_flags": [
-            "no aggregate liability cap specified (unlimited direct damages exposure)",
-            "consequential damages waiver applies to fraud, willful misconduct, or gross negligence",
+            "The limit is clear: It is not stated, or the wording is contradictory (LOL-01)",
+            "Liabilities that cannot be limited: None is addressed, or the clause limits them (LOL-04)",
         ],
         "falls_short_of_acceptable_standard": True,
         "is_materially_one_sided_against_client": False,

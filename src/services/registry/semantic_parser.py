@@ -21,6 +21,7 @@ from src.exceptions.parser_exceptions import (
 )
 from src.schemas.playbook_review import TextInfo
 from src.schemas.registry import Chunk, ParseResult
+from src.services.docx_text import paragraph_text
 from src.services.registry.base_parser import BaseParser
 from src.services.session_manager import SessionData
 from src.services.vector_store.embeddings.base_embedding_service import (
@@ -311,7 +312,7 @@ class DocxParser(BaseParser):
                 for run in p.runs:
                     if run.text:
                         run.text = _WHITESPACE_RE.sub(" ", run.text).strip()
-                raw = p.text.strip()
+                raw = paragraph_text(p).strip()
                 if not raw:
                     continue
                 cleaned = _clean_text(raw)
