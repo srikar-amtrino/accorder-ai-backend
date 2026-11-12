@@ -47,7 +47,7 @@ HEADING_TO_CANONICAL_TYPE: List[Tuple[Pattern[str], str]] = [
     (re.compile(r"\b(export\s+controls?|export\s+compliance|sanctions|ofac|embargo(es|ed)?)\b", re.I), "export-controls-and-sanctions"),
     (
         re.compile(
-            r"\b(term\s+and\s+termination|term\s*/\s*termination|termination|suspension|return\s+of\s+(materials|data|advances?|deposits?|property|documents|unused\s+\w+)"
+            r"\b(term\s+and\s+termination|term\s*/\s*termination|termination|return\s+of\s+(materials|data|advances?|deposits?|property|documents|unused\s+\w+)"
             r"|transition\s+(assistance|services)|exit\s+(plan|assistance)|wind[-\s]down|effect\s+of\s+(termination|expiration))\b",
             re.I,
         ),
@@ -172,7 +172,8 @@ class ResolvedClause:
 def classify_layer1_heading(heading: str, opening_text: str = "") -> Optional[Tuple[str, float]]:
     """Match a clause heading (or, weaker, its opening words) to a clause type in code."""
 
-    heading = (heading or "").strip()
+    # Word types apostrophes curly ("PROVIDER’S OBLIGATIONS"); the patterns are written with straight ones.
+    heading = (heading or "").strip().replace("’", "'").replace("‘", "'")
     if heading:
         for pattern, slug in HEADING_TO_CANONICAL_TYPE:
             if pattern.search(heading):

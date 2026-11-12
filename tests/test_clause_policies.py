@@ -9,7 +9,7 @@ import pytest
 
 from src.services.clause_mapping.policy_store import POLICIES_PATH, get_clause_policy_store
 from src.services.clause_mapping.resilient_classifier import HEADING_TO_CANONICAL_TYPE, LEGACY_CANONICAL_TYPES, current_canonical_type
-from src.services.general_review.taxonomy_gates import TAXONOMY_PATH, load_criteria, load_overrides, taxonomy_slug
+from src.services.general_review.taxonomy_gates import TAXONOMY_PATH, load_criteria, load_legal_standards, load_overrides, taxonomy_slug
 
 REPO_ROOT = Path(__file__).resolve().parents[1]
 SEED_SCRIPT = REPO_ROOT / "scripts" / "seed_qdrant_archetypes.py"
@@ -42,7 +42,7 @@ def _load(path: Path, name: str) -> Any:
 
 def test_policy_file_is_generated_from_the_taxonomy():
     build = _load(BUILD_SCRIPT, "build_policies_from_taxonomy")
-    assert POLICIES_PATH.read_text(encoding="utf-8") == build.render(build.build_policies(_taxonomy(), load_overrides())), "run scripts/build_policies_from_taxonomy.py"
+    assert POLICIES_PATH.read_text(encoding="utf-8") == build.render(build.build_policies(_taxonomy(), load_overrides(), load_legal_standards())), "run scripts/build_policies_from_taxonomy.py"
 
 
 def test_one_policy_per_taxonomy_clause_type():
@@ -62,7 +62,8 @@ def test_every_policy_row_carries_its_criteria(row):
     assert row["acceptable_standard"].startswith("The clause should satisfy each of these checks. (1) ")
     assert isinstance(row["unacceptable_triggers"], list)
     assert all(trigger.strip() for trigger in row["unacceptable_triggers"])
-    assert row["fallback_guidelines"] == ""  # the taxonomy carries no fallback positions
+    # The fallback position is the legal team's, for every clause type its classification covers.
+    assert row["fallback_guidelines"] == load_legal_standards().get(row["canonical_type"], {}).get("fallback_guidelines", "")
 
 
 def test_every_gate_and_core_criterion_is_a_trigger_and_sets_the_tier():
@@ -80,7 +81,8 @@ def test_every_gate_and_core_criterion_is_a_trigger_and_sets_the_tier():
         ]
         assert row["unacceptable_triggers"] == [criteria[criterion_id].trigger for criterion_id in hard], name
     assert rows["amendments-and-modifications"]["unacceptable_triggers"] == ["No one-sided changes: A party may change terms alone without limit (AMD-02)"]
-    assert rows["amendments-and-modifications"]["inherent_risk_tier"] == "High"  # AMD-02 gates at High
+    # The tier is the legal team's risk allocation for the clause type, whatever the type's gates would suggest.
+    assert rows["amendments-and-modifications"]["inherent_risk_tier"] == "Medium"
     assert rows["fees-and-payment"]["inherent_risk_tier"] == "High"
     assert rows["notices"]["inherent_risk_tier"] == "Low" and rows["notices"]["unacceptable_triggers"] == []  # no Core criterion, no gate
     assert "[Balance] Is any right of one party to change the terms alone" in rows["amendments-and-modifications"]["acceptable_standard"]

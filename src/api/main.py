@@ -16,6 +16,7 @@ from src.api.endpoints.clause_extractor.router import router as clause_extractio
 # )
 # from src.api.endpoints.describe_draft.router import router as describe_draft_router
 from src.api.endpoints.ingestion.router import router as ingestion_router
+from src.api.endpoints.review_portal.router import install_review_portal
 from src.api.endpoints.vector_db.router import router as vector_db_router
 from src.config.logging import setup_logging
 from src.config.settings import get_settings
@@ -67,6 +68,10 @@ app.include_router(ingestion_router, prefix="/ingestion")
 app.include_router(agents_router, prefix="/Accorder/agents")
 app.include_router(clause_extraction_router, prefix="/extract")
 app.include_router(vector_db_router, prefix="/vector-db")
+
+# Development only: save every agent response and serve the legal team's review page at /review.
+if settings.env == "development":
+    install_review_portal(app)
 
 
 def main_entry() -> None:

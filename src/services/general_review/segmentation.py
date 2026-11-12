@@ -1,18 +1,17 @@
-"""Clause segmentation for the general review: titles, cut points, embedding queries, defined terms.
+"""Clause segmentation for the general review: titles, clause units, embedding queries, paragraph roles.
 
 Everything here is pure string work on the paragraphs the frontend sends; no
 model or network call. The title heuristics decide where one clause ends and
-the next begins, which drives batch boundaries, clause units for policy
-mapping, and the clause names on the suggestions.
+the next begins, which drives the clause units a checklist is answered
+against, the batches, and the clause names on the suggestions.
 """
 
 import re
 from dataclasses import dataclass, field
-from difflib import SequenceMatcher
 from typing import Dict, List, Optional, Pattern, Sequence, Tuple
 
 from src.schemas.general_review import TextInformation
-from src.services.clause_mapping.resilient_classifier import HEADING_MATCH_CONFIDENCE, classify_layer1_heading
+from src.services.clause_mapping.resilient_classifier import HEADING_MATCH_CONFIDENCE, MISCELLANEOUS_TYPE, classify_layer1_heading
 
 # Short paragraphs with few words are treated as headings and kept with their body.
 _HEADING_MAX_CHARS = 80
@@ -26,6 +25,9 @@ _NUMBERED_START_RE = re.compile(r"^\s*(?:(?:section|article|clause)\s+)?\d+(?:\.
 # lead-in many contracts open their clauses with.
 _TITLE_NUMBER_PREFIX_RE = re.compile(r"^(?:(?:section|article|clause)\s+)?\d{1,2}(?:\.\d+)*[.)]?\s+", re.IGNORECASE)
 _INLINE_TITLE_RE = re.compile(r"^([^.:]{1,70})[.:](?:\s|$)")
+# The same prefix with its number captured. A sub-clause ("5.2 Invoices.") under a numbered, titled clause
+# ("5. Fees and Payment.") belongs to that clause: its lead-in names a sub-topic, not a new clause.
+_LEADING_NUMBER_RE = re.compile(r"^(?:(?:section|article|clause)\s+)?(\d{1,2}(?:\.\d+)*)[.)]?\s+", re.IGNORECASE)
 
 # Lowercase connectors allowed inside an otherwise capitalized clause title.
 TITLE_STOP_WORDS = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "the", "to", "with"}
@@ -97,10 +99,6 @@ _DEFINITION_SENTENCE_RE = re.compile(
 _DEFINITIONS_HEADING_RE = re.compile(r"\b(definitions?|defined\s+terms)\b", re.IGNORECASE)
 _SENTENCE_SPLIT_RE = re.compile(r"(?<=[.;])\s+")
 
-# '"Term" means ...' — the document's own glossary, listed with every batch.
-_DEFINED_TERM_RE = re.compile(r"[\"“]([A-Z][A-Za-z0-9\s\-]{1,40})[\"”]\s+(?:means|shall\s+mean)\b")
-MAX_DEFINED_TERMS = 40
-
 # Words of a clause embedded for clause-type mapping. The embedding service's
 # cost grows with every word and the collection holds sentence-level chunks, so
 # the heading plus the first operative sentences match as well as the full text.
@@ -171,22 +169,93 @@ def build_clause_titles(paragraphs: Sequence[TextInformation]) -> Dict[str, str]
     """Map each paragraph id to its clause title, extracted from the document itself.
 
     A paragraph's title is its own heading/lead-in when it has one, otherwise
-    the most recent titled paragraph above it. Paragraphs with no determinable
+    the most recent titled paragraph above it. A numbered sub-clause keeps the
+    title of the numbered clause it sits under, so "5.1 Fees." to "5.4 Disputed
+    Amounts." are all part of "5. Fees and Payment". Paragraphs with no determinable
     title (e.g. a lone selected body paragraph whose heading was not sent) are
     omitted so the model's own label stays as the fallback.
     """
 
     titles: Dict[str, str] = {}
     current = ""
+    # Top-level number of the clause `current` names ("5" for "5. Fees and Payment"), when it carries one.
+    current_root: Optional[str] = None
+    previous = ""
     for para in paragraphs:
         if not para.text.strip():
             continue
-        own = clause_title(para.text)
-        if own:
+        number = clause_number(para.text)
+        # A paragraph that carries on the sentence the one above broke off has no title of its own, whatever its opening words look like.
+        own = None if runs_on_into(previous, para.text) else clause_title(para.text)
+        is_subclause = number is not None and len(number) > 1 and current_root == number[0] and bool(current)
+        if own and not is_subclause:
             current = own
+            current_root = number[0] if number is not None and len(number) == 1 else None
         if current:
             titles[para.paraindetifier] = current
+        previous = para.text
     return titles
+
+
+# Words a sentence cannot end on: a paragraph that stops on one was cut where the document broke the line.
+_NEVER_LAST_WORDS = frozenset(
+    "a an the of in on at to by for from with under and or nor but that which who whose if unless until as than is are was were be been has have had "
+    "shall will may must can not its their his her any all each such this these those".split()
+)
+
+
+def breaks_off_mid_sentence(text: str) -> bool:
+    """True when a paragraph of running text stops on a word no sentence ends with ("... EXCEPT WHERE COREWEAVE IS IN").
+
+    A paragraph break can fall inside a sentence on the way from Word. The
+    words that follow belong to the same sentence and the same clause.
+    """
+
+    words = text.split()
+    if len(words) <= _HEADING_MAX_WORDS:
+        return False
+    # "...; or" and "...; and" close an item of a list: the sentence is whole, and the list goes on.
+    if words[-2][-1] in ";,:":
+        return False
+    return words[-1].isalpha() and words[-1].casefold() in _NEVER_LAST_WORDS
+
+
+# How a paragraph opens when it carries on a sentence: with a lower-case word.
+_CONTINUATION_START_RE = re.compile(r"^\s*[a-z]{2,}\b")
+_LIST_ITEM_START_RE = re.compile(r"^\s*\(?(?:[a-z]|[ivx]{1,4}|\d{1,2})[.)]\s")
+# "twelve" / "(12) months' notice": a number written out at the end of one paragraph and in figures at the start of the next.
+_FIGURE_START_RE = re.compile(r"^\s*\(\d+\)\s")
+_NUMBER_WORDS = frozenset(
+    "one two three four five six seven eight nine ten eleven twelve thirteen fourteen fifteen sixteen seventeen eighteen nineteen twenty thirty forty forty-five fifty sixty ninety hundred".split()
+)
+
+
+def runs_on_into(text: str, following: str) -> bool:
+    """True when the sentence a paragraph ends with carries on in the paragraph after it.
+
+    Either the paragraph stops on a word no sentence ends with, or it stops
+    without closing punctuation and the next paragraph opens the way the
+    middle of a sentence does ("... with twelve" / "(12) months' notice ...").
+    A list item ("(a) ...", "(ii) ...") opens a new item, not the same sentence.
+    """
+
+    if not text.strip() or not following.strip():
+        return False
+    if breaks_off_mid_sentence(text):
+        return True
+    words = text.split()
+    if len(words) <= _HEADING_MAX_WORDS or not words[-1][-1].isalnum():
+        return False
+    if words[-1].casefold() in _NUMBER_WORDS and _FIGURE_START_RE.match(following):
+        return True
+    return bool(_CONTINUATION_START_RE.match(following)) and not _LIST_ITEM_START_RE.match(following)
+
+
+def clause_number(text: str) -> Optional[Tuple[str, ...]]:
+    """The components of a paragraph's leading clause number: "5.2 Invoices." -> ("5", "2"); None when it has none."""
+
+    match = _LEADING_NUMBER_RE.match(text.strip())
+    return tuple(match.group(1).split(".")) if match else None
 
 
 def detect_clause_start(text: str) -> Tuple[bool, Optional[str]]:
@@ -242,58 +311,74 @@ def build_smart_embedding_query(heading: str, paragraph_texts: Sequence[str], ma
     return f"{heading}. {words}".strip() if heading else words
 
 
-def extract_defined_terms(paragraphs: Sequence[TextInformation], limit: int = MAX_DEFINED_TERMS) -> List[str]:
-    """Collect the document's defined terms ('"Term" means ...') in order of first definition."""
-
-    terms: List[str] = []
-    for para in paragraphs:
-        for match in _DEFINED_TERM_RE.finditer(para.text):
-            term = " ".join(match.group(1).split())
-            if term not in terms:
-                terms.append(term)
-                if len(terms) >= limit:
-                    return terms
-    return terms
-
-
 def build_clause_units(paragraphs: Sequence[TextInformation], titles: Dict[str, str]) -> List[List[int]]:
-    """Group paragraph positions into clauses.
+    """Group paragraph positions into clauses, in order of each clause's first paragraph.
 
-    Consecutive paragraphs under the same clause title form one clause; a
-    paragraph with no title stands alone.
+    Consecutive paragraphs under the same clause title form one group; a
+    paragraph with no title stands alone. Groups are then gathered under
+    section headings: a heading standing on its own that names a clause type
+    ("LIMITATION OF LIABILITY", "Term/Termination.") opens a section, and the
+    titled sub-clauses that follow it ("Liability cap. ...", "Excluded Claims.
+    ...", "Time limit for claims. ...") are part of that one clause, up to the
+    next standalone heading.
+
+    How firmly the sub-clauses belong depends on how the heading is set. A
+    heading in capitals over sentence-case lead-ins is plainly a level above
+    them, so every sub-clause stays in its section whatever its own title
+    says ("Notice." under FORCE MAJEURE is the force majeure notice, not a
+    notices clause). Where the heading is typed like the lead-ins, the two
+    may be siblings, so a sub-clause whose own title names a different clause
+    type ("Indemnity. ..." after "Representations and Warranties.") is a
+    clause of its own, and a document that sets every clause at one level is
+    left as it is.
+
+    A clause's positions are in document order but need not be consecutive:
+    a clause of another type may sit in the middle of a section.
     """
 
-    units: List[List[int]] = []
+    groups: List[List[int]] = []
     previous: Optional[str] = None
     for idx, para in enumerate(paragraphs):
         if not para.text.strip():
             continue
         title = titles.get(para.paraindetifier)
-        if units and title is not None and title == previous:
-            units[-1].append(idx)
+        if groups and title is not None and title == previous:
+            groups[-1].append(idx)
         else:
-            units.append([idx])
+            groups.append([idx])
         previous = title
+
+    units: List[List[int]] = []
+    # The open section: (its index in units, the clause type its heading names, whether the heading is in capitals).
+    section: Optional[Tuple[int, str, bool]] = None
+    for group in groups:
+        first = paragraphs[group[0]]
+        title = titles.get(first.paraindetifier, "")
+        clause_type = clause_type_for_title(title)
+        if is_standalone_heading(first.text, title):
+            section = (len(units), clause_type, title.isupper()) if clause_type is not None and clause_type not in (RECITALS_TYPE, MISCELLANEOUS_TYPE) else None
+            units.append(list(group))
+        elif section is not None and title and (section[2] or clause_type in (None, section[1])):
+            units[section[0]].extend(group)
+        else:
+            units.append(list(group))
     return units
 
 
-# --- paragraph roles and anchor locking ---------------------------------------
+# --- paragraph roles and the primary anchor -----------------------------------
 #
-# Every paragraph gets one role, decided in code from the document alone, so
-# the paragraph a finding lands on never depends on which of a clause's
-# paragraphs the model happened to pick:
+# Every paragraph gets one role, decided in code from the document alone:
 #
 #   CONTEXT_ONLY              non-clause content: preamble, recitals, party and
-#                             address lines, the signature block. Never flagged.
-#   HEADING                   a clause heading standing alone. Never flagged.
+#                             address lines, the signature block. Never assessed.
+#   HEADING                   a clause heading standing alone. Never assessed.
 #   PRIMARY_OPERATIVE_ANCHOR  the paragraph carrying the clause's main operative
-#                             obligation. Clause-wide omissions attach here.
-#   SECONDARY / DEFINITION    the clause's other paragraphs. Flagged only for a
-#                             defect in their own wording.
+#                             obligation. A finding that the clause as a whole
+#                             lacks something is anchored here.
+#   SECONDARY / DEFINITION    the clause's other paragraphs.
 #   BOILERPLATE               a paragraph of a routine clause (headings,
 #                             counterparts, severability, waiver, amendments,
-#                             notices). Flagged only when its wording sets off
-#                             an unacceptable trigger or a taxonomy gate.
+#                             notices).
 
 ROLE_CONTEXT_ONLY = "CONTEXT_ONLY"
 ROLE_HEADING = "HEADING"
@@ -301,7 +386,6 @@ ROLE_PRIMARY = "PRIMARY_OPERATIVE_ANCHOR"
 ROLE_SECONDARY = "SECONDARY"
 ROLE_DEFINITION = "DEFINITION"
 ROLE_BOILERPLATE = "BOILERPLATE"
-ROLE_TAGS = (ROLE_CONTEXT_ONLY, ROLE_HEADING, ROLE_PRIMARY, ROLE_SECONDARY, ROLE_DEFINITION, ROLE_BOILERPLATE)
 REVIEWABLE_ROLES = (ROLE_PRIMARY, ROLE_SECONDARY, ROLE_DEFINITION, ROLE_BOILERPLATE)
 
 # Why a paragraph is context only.
@@ -372,43 +456,6 @@ PRIMARY_ANCHOR_PATTERNS: Dict[str, Tuple[Pattern[str], ...]] = {
     ),
 }
 
-# Protections that belong to the clause as a whole whatever paragraph a finding
-# was raised on, so a finding about one always attaches to the primary anchor.
-CLAUSE_WIDE_PROTECTION_TOPICS: Dict[str, Pattern[str]] = {
-    "intellectual-property": re.compile(
-        r"\bbackground\s+ip\b|\bpre-?existing\s+(?:ip|intellectual\s+property|materials|tools|works?|know-?how|technology)\b|\bcarve-?outs?\b|\blicen[cs]e[- ]back\b|\bmoral\s+rights\b", re.IGNORECASE
-    ),
-    "fees-and-payment": re.compile(r"\bdisputed?\s+(?:invoices?|amounts?|charges?|fees?)\b|\bwithhold\w*\b|\blate\s+(?:payment\s+)?(?:interest|fees?|charges?)\b", re.IGNORECASE),
-    # The operative nondisclosure duty: how long it lasts, the standard of care, who it may be shared with, compelled disclosure.
-    "confidentiality": re.compile(
-        r"\bduration\b|\bperpetual(?:ly)?\b|\bindefinite(?:ly)?\b|\bno\s+(?:end\s+date|time\s+limit|fixed\s+period)\b|\b(?:post-termination|survival)\s+period\b|\bduty\s+lasts\b"
-        r"|\bstandard\s+of\s+care\b|\breasonable\s+care\b|\bneed[-\s]to[-\s]know\b|\bcompelled\s+disclosure\b|\blegally\s+(?:required|compelled)\s+disclosure\b",
-        re.IGNORECASE,
-    ),
-}
-
-# Findings on one topic belong on the paragraph that deals with it, whichever paragraph of the clause the
-# model raised them on: (topic, what a reason on the topic says, what the topic's paragraph says).
-# A reason that is also about the clause's operative duty (CLAUSE_WIDE_PROTECTION_TOPICS) stays with the primary anchor.
-TOPIC_ROUTES: Dict[str, Tuple[Tuple[str, Pattern[str], Pattern[str]], ...]] = {
-    "confidentiality": (
-        (
-            "exclusions",
-            re.compile(
-                r"\bexclu(?:sion|sions|ded|des)\b|\bexceptions?\b|\bcarve-?outs?\b|\brightful(?:ly)?\s+receiv\w*|\breceived\s+(?:\w+\s+){0,4}from\s+a\s+third\s+party\b"
-                r"|\bthird[-\s]party\s+(?:receipt|source)\b",
-                re.IGNORECASE,
-            ),
-            re.compile(r"\b(?:shall|does|will)\s+not,?\s+(?:however,?\s+)?include\b|\bexcludes?\s+(?:any\s+)?information\b", re.IGNORECASE),
-        ),
-    ),
-}
-
-_ROLE_TAG_RE = re.compile(r"\[(?:" + "|".join(ROLE_TAGS) + r")\][ \t]*")
-
-# A rewritten sentence this similar to a source sentence is that sentence edited, not a new one.
-_EDITED_SENTENCE_RATIO = 0.6
-
 
 @dataclass(frozen=True)
 class ClauseStructure:
@@ -419,36 +466,12 @@ class ClauseStructure:
     unit_of: Dict[int, int] = field(default_factory=dict)
     clause_type_of: Dict[int, str] = field(default_factory=dict)
     zone_of: Dict[int, str] = field(default_factory=dict)
-    # (clause unit, topic) -> the paragraph a finding on that topic belongs on (TOPIC_ROUTES).
-    topic_anchor_of: Dict[Tuple[int, str], int] = field(default_factory=dict)
-
-    def topic_target(self, position: int, reason: str) -> Optional[int]:
-        """The paragraph a finding raised at position belongs on because of its topic, or None when its topic routes nowhere."""
-
-        clause_type = self.clause_type_of.get(position)
-        unit = self.unit_of.get(position)
-        topic = topic_of_reason(reason, clause_type)
-        if topic is None or unit is None:
-            return None
-        return self.topic_anchor_of.get((unit, topic))
 
     def role(self, position: int) -> str:
         return self.roles.get(position, ROLE_PRIMARY)
 
     def reviewable(self, position: int) -> bool:
         return self.role(position) in REVIEWABLE_ROLES
-
-
-def format_with_role(text: str, role: str) -> str:
-    """Prefix a paragraph with its role tag for the prompt."""
-
-    return f"[{role}] {text}"
-
-
-def strip_role_tags(text: str) -> str:
-    """Remove role tags the model copied into a text field."""
-
-    return _ROLE_TAG_RE.sub("", text or "")
 
 
 def is_address_line(text: str) -> bool:
@@ -634,94 +657,4 @@ def build_clause_structure(paragraphs: Sequence[TextInformation], titles: Dict[s
         for idx in unit:
             if structure.roles[idx] != ROLE_CONTEXT_ONLY:
                 structure.anchor_of[idx] = primary
-        structure.topic_anchor_of.update(_topic_anchors(number, content, paragraphs, clause_type))
     return structure
-
-
-def _topic_anchors(unit: int, content: Sequence[int], paragraphs: Sequence[TextInformation], clause_type: Optional[str]) -> Dict[Tuple[int, str], int]:
-    """For one clause, the paragraph each routed topic belongs on: the first body paragraph that deals with it."""
-
-    anchors: Dict[Tuple[int, str], int] = {}
-    for topic, _, paragraph_pattern in TOPIC_ROUTES.get(clause_type or "", ()):
-        target = next((idx for idx in content if paragraph_pattern.search(paragraphs[idx].text)), None)
-        if target is not None:
-            anchors[(unit, topic)] = target
-    return anchors
-
-
-def topic_of_reason(reason: str, clause_type: Optional[str]) -> Optional[str]:
-    """The routed topic a finding's reason is about (TOPIC_ROUTES), or None.
-
-    A reason that is also about the clause's operative duty is not routed: it
-    belongs with the primary anchor.
-    """
-
-    if is_clause_wide_topic(reason, clause_type):
-        return None
-    return next((topic for topic, reason_pattern, _ in TOPIC_ROUTES.get(clause_type or "", ()) if reason_pattern.search(reason or "")), None)
-
-
-def is_clause_wide_topic(reason: str, clause_type: Optional[str]) -> bool:
-    """True when a finding's reason is about a protection that belongs to its clause as a whole."""
-
-    pattern = CLAUSE_WIDE_PROTECTION_TOPICS.get(clause_type or "")
-    return bool(pattern and pattern.search(reason or ""))
-
-
-_SENTENCE_FOLD = str.maketrans({"’": "'", "‘": "'", "“": '"', "”": '"', "–": "-", "—": "-"})
-
-
-def _fold_sentence(sentence: str) -> str:
-    return " ".join(sentence.translate(_SENTENCE_FOLD).split()).casefold()
-
-
-def sentence_keys(text: str) -> List[str]:
-    """The paragraph's sentences, folded for comparison (case, whitespace, quote and dash variants)."""
-
-    return [folded for folded in (_fold_sentence(sentence) for sentence in _SENTENCE_SPLIT_RE.split(text.strip())) if folded]
-
-
-def fold_sentence(sentence: str) -> str:
-    """One sentence folded the way sentence_keys folds it."""
-
-    return _fold_sentence(sentence)
-
-
-def remove_sentence(text: str, sentence: str) -> str:
-    """The text with one occurrence of a sentence taken out, together with one space next to it."""
-
-    index = text.find(sentence)
-    if index < 0:
-        return text
-    before, after = text[:index], text[index + len(sentence) :]
-    if before.endswith(" "):
-        before = before[:-1]
-    elif after.startswith(" "):
-        after = after[1:]
-    return before + after
-
-
-def new_sentences(original: str, revised: str) -> List[str]:
-    """Sentences a rewrite adds to a paragraph, in order.
-
-    A sentence counts as added only when it is neither a source sentence nor
-    a source sentence edited: those belong to the paragraph they came from
-    and cannot be carried to another one.
-    """
-
-    source = [_fold_sentence(sentence) for sentence in _SENTENCE_SPLIT_RE.split(original.strip()) if sentence.strip()]
-    added: List[str] = []
-    for sentence in _SENTENCE_SPLIT_RE.split(revised.strip()):
-        folded = _fold_sentence(sentence)
-        if folded and not any(_is_same_or_edited(folded, known) for known in source):
-            added.append(sentence.strip())
-    return added
-
-
-def _is_same_or_edited(sentence: str, source: str) -> bool:
-    """True when a rewritten sentence is a source sentence, that sentence extended, or that sentence reworded."""
-
-    if sentence == source or sentence.startswith(source.rstrip(".;:")):
-        return True
-    # autojunk off: on long sentences difflib's shortcut discards common letters and misreads an edit as new text.
-    return SequenceMatcher(None, sentence, source, autojunk=False).ratio() >= _EDITED_SENTENCE_RATIO

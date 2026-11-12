@@ -1,34 +1,38 @@
-"""Determinism suite for the General Review on the Master Services Agreement fixture.
+"""The General Review on the Master Services Agreement fixture, offline.
 
-Three live runs on this agreement gave 23, 23 and 22 suggestions, with risk
-levels and sub-paragraph anchors that moved between runs. Everything below
-runs offline: the model is replaced by a script that reproduces the drift seen
-in those runs (a different anchor paragraph, the parties read backwards, a
-survival clause reported missing, address typos, a jurisdiction swapped), and
-the pipeline has to return the same paragraphs and risk levels every time.
+The first part checks what code decides before any model call: who the
+parties are, which paragraphs are clause content, where cross-document
+provisions live, and how a blank jurisdiction field is restored.
 
-What this proves is that the code settles those cases whatever the model
-does. It cannot prove the live model never drifts in a way not scripted here.
+The second part runs the whole pipeline with the model scripted. It shows that
+the outcome — which paragraphs are flagged, and at what risk level — follows
+from the majority of the checklist answers and the taxonomy, so answer sets
+that disagree at the margin, or a model that names the paragraphs in a
+different order, give the same review.
+
+What this cannot show is how the live model answers. For that, run
+scripts/eval_general_review_consistency.py, which measures run-to-run
+agreement against Bedrock.
 """
 
 import asyncio
 import io
 import json
 from pathlib import Path
-from typing import Any, Dict, List, Optional, Tuple
+from typing import Any, Dict, List, Tuple
 
 import docx
 import pytest
 from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls
 
-from src.schemas.general_review import GeneralReviewFindings, GeneralReviewRequest, TextInformation
+from src.schemas.general_review import GeneralReviewRequest, TextInformation
 from src.services.docx_text import paragraph_text
-from src.services.general_review import party_resolver as pr, segmentation as sg, taxonomy_gates
+from src.services.general_review import party_resolver as pr, segmentation as sg
 from src.services.general_review.clause_cache import ZDRClauseHashCache
 from src.services.general_review.document_facts import apply_blank_field_guard, build_document_facts
-from src.services.general_review.risk_matrix import compute_deterministic_risk_level, drop_direction_contradicted_flags
 from src.tools import general_review as gr
+from tests.test_general_review_engine import ScriptedModel
 
 FIXTURE = Path(__file__).parent / "fixtures" / "master_services_agreement.json"
 
@@ -37,26 +41,6 @@ HEADINGS = ["para_8", "para_11", "para_15", "para_19", "para_28", "para_34", "pa
 NEVER_FLAGGED = [f"para_{n}" for n in [*range(1, 7), *range(22, 28), *range(55, 63), *range(69, 75)]]
 # Routine clauses: Notices (and its deemed-receipt paragraph), Headings, Counterparts, Severability, Modification/Waiver.
 BOILERPLATE = ["para_54", "para_63", "para_64", "para_65", "para_66", "para_67"]
-# Triggers from clause_policies.json, generated from the criteria taxonomy.
-AMENDMENT_GATE = "No one-sided changes: A party may change terms alone without limit (AMD-02)"  # High gate, Balance
-FEE_INCREASE_TRIGGER = "Fee changes are limited: The change is unrestricted (FEE-06)"  # High gate, Balance
-WITHHOLD_TRIGGER = "Disputed invoices: No right to dispute is stated (FEE-07)"  # Medium gate
-ASSIGNMENT_TRIGGER = "Consent for assignment: It is not addressed (ASG-01)"  # Core, Balance
-COUNTERPARTS_TRIGGER = "Counterparts are allowed: This is not stated (CTP-01)"  # Core
-PERFORMANCE_TRIGGER = "Performance standard: No standard is stated (REP-02)"  # Core
-LIABILITY_BALANCE_TRIGGER = "The limit applies fairly: It protects one party only (LOL-02)"  # Core, Balance
-
-# Wordings from the policy set the taxonomy replaced. The model may still produce them; none is a trigger now.
-URL_AMENDMENT_TRIGGER = "unilateral amendment right allowing vendor to modify agreement terms by posting updated terms at a URL"
-EXPENSE_TRIGGER = "reimbursement of travel or out-of-pocket expenses without prior written approval by client"
-NON_COMPETE_TRIGGER = "restriction preventing client from engaging other vendors or building similar solutions internally"
-ONE_WAY_CONFIDENTIALITY_TRIGGER = "one-sided confidentiality protecting only counterparty's information"
-POWER_OF_ATTORNEY_TRIGGER = "broad power of attorney granted to counterparty without notice or failure-to-sign precondition"
-DEEMED_RECEIPT_TRIGGER = "deemed receipt immediately upon mailing rather than actual delivery/courier confirmation"
-
-CARVE_OUT = "Notwithstanding the foregoing, each Party retains its Background IP. Service Provider grants Accordor a perpetual, royalty-free license to any Background IP embedded in the Deliverables."
-WITHHOLD = "Accordor may withhold any amount it disputes in good faith, without interest, until the dispute is resolved."
-SURVIVAL_REASON = "The Entire Agreement clause does not include a survival provision identifying which obligations survive expiration or termination of the Agreement."
 
 
 @pytest.fixture(scope="module")
@@ -66,7 +50,15 @@ def msa() -> GeneralReviewRequest:
 
 @pytest.fixture(scope="module")
 def plan(msa: GeneralReviewRequest) -> gr.ReviewPlan:
-    return gr.build_review_plan(msa, len(gr._build_batches(msa.textinformation)), ZDRClauseHashCache(version_hash="plan"))
+    return gr.build_review_plan(msa, ZDRClauseHashCache(version_hash="plan"))
+
+
+@pytest.fixture
+def fresh(monkeypatch: pytest.MonkeyPatch) -> ZDRClauseHashCache:
+    cache = ZDRClauseHashCache(version_hash="msa")
+    monkeypatch.setattr(gr, "clause_cache", cache)
+    monkeypatch.setattr(gr, "_response_cache", gr.OrderedDict())
+    return cache
 
 
 def _text(request: GeneralReviewRequest, para_id: str) -> str:
@@ -77,50 +69,14 @@ def _position(request: GeneralReviewRequest, para_id: str) -> int:
     return next(idx for idx, para in enumerate(request.textinformation) if para.paraindetifier == para_id)
 
 
-def _finding(text: str, append: Optional[str] = None, **facts: Any) -> Dict[str, Any]:
-    """A model finding on a paragraph: by default a small edit to its wording, or with append, a sentence added to it."""
+def _pid(request: GeneralReviewRequest, para_id: str) -> str:
+    """The id a paragraph carries in the assessment prompt."""
 
-    base: Dict[str, Any] = {
-        "clause": "Clause",
-        "reason": "Reason.",
-        "original_text": text,
-        "suggested_fix": f"{text} {append}" if append else text.replace(" the ", " that ", 1),
-        "triggered_unacceptable_flags": [],
-        "falls_short_of_acceptable_standard": True,
-        "is_materially_one_sided_against_client": False,
-        "severity_category": "material_commercial_deviation",
-    }
-    base.update(facts)
-    return base
+    return f"P{_position(request, para_id) + 1}"
 
 
-def _shown(request: GeneralReviewRequest, plan: gr.ReviewPlan, para_id: str) -> str:
-    """The paragraph as the model is shown it — what a real finding's original_text is copied from."""
-
-    return plan.shown_text.get(_position(request, para_id), _text(request, para_id))
-
-
-def _validate(request: GeneralReviewRequest, plan: gr.ReviewPlan, script: Dict[str, Dict[str, Any]]) -> List[Tuple[str, str]]:
-    """Run scripted findings through grounding and the deterministic rules, with offline clause policies, over the whole document."""
-
-    return [(para_id, suggestion.risk_level) for para_id, suggestion in _suggestions(request, plan, script).items()]
-
-
-def _suggestions(request: GeneralReviewRequest, plan: gr.ReviewPlan, script: Dict[str, Dict[str, Any]]) -> Dict[str, Any]:
-    batch = [(idx, para) for idx, para in enumerate(request.textinformation) if para.text.strip()]
-    findings = GeneralReviewFindings.model_validate({"findings": [_finding(_shown(request, plan, para_id), **facts) for para_id, facts in script.items()]}).findings
-    return {suggestion.para_identifier: suggestion for _, suggestion in gr._validate_batch(findings, batch, set(), plan.titles, _offline_policies(request, plan), plan)}
-
-
-def _offline_policies(request: GeneralReviewRequest, plan: gr.ReviewPlan) -> gr.BatchPolicies:
-    """The policy each paragraph gets from its clause heading alone, with the vector path down."""
-
-    policy_of = {}
-    for position, clause_type in plan.structure.clause_type_of.items():
-        policy = gr.policy_for_clause(clause_type, request.agreement_type, plan.titles.get(request.textinformation[position].paraindetifier, ""))
-        if policy is not None:
-            policy_of[position] = policy
-    return gr.BatchPolicies(block="", policy_of=policy_of)
+def _review(request: GeneralReviewRequest) -> List[Tuple[str, str]]:
+    return [(suggestion.para_identifier, suggestion.risk_level) for suggestion in asyncio.run(gr.general_review_service(request, "msa")).suggestions]
 
 
 # --- 1. party alias and role resolution ---------------------------------------
@@ -161,9 +117,9 @@ def test_an_acronym_never_matches_the_wrong_party(msa: GeneralReviewRequest) -> 
     assert pr.resolve_party_context(None, msa.textinformation) is None
 
 
-def test_prompt_names_the_client_by_its_defined_term(msa: GeneralReviewRequest) -> None:
+def test_prompts_name_the_client_by_its_defined_term(msa: GeneralReviewRequest) -> None:
     request = msa.model_copy(update={"specific_concerns": "ACI wants to keep ownership of everything ACI pays for."})
-    plan = gr.build_review_plan(request, 5, ZDRClauseHashCache(version_hash="prompt"))
+    plan = gr.build_review_plan(request, ZDRClauseHashCache(version_hash="prompt"))
     assert "ACI" not in plan.reviewer_context
     assert 'Party the client represents: Accordor Inc. — referred to in this agreement as "Accordor"' in plan.reviewer_context
     assert "Accordor wants to keep ownership of everything Accordor pays for." in plan.reviewer_context
@@ -171,6 +127,8 @@ def test_prompt_names_the_client_by_its_defined_term(msa: GeneralReviewRequest) 
     assert 'Counterparty: Amtrino Technologies (defined as "Service Provider", Role: Vendor / Service Provider)' in plan.party_block
     # The shorthand survives only where the block says what it means.
     assert plan.party_block.count("ACI") == 1 and '"ACI" means this same party' in plan.party_block
+    # Both blocks are part of the reference every assessment call is given.
+    assert plan.reviewer_context in plan.reference and plan.party_block in plan.reference
 
 
 # --- 1b. directionality -------------------------------------------------------
@@ -190,29 +148,7 @@ def test_direction_reverses_with_the_represented_party(msa: GeneralReviewRequest
     assert pr.clause_direction(_text(msa, "para_9"), None) == pr.NEUTRAL
 
 
-def test_risk_matrix_enforces_the_directionality_rule() -> None:
-    assert compute_deterministic_risk_level("High", [], True, True, "material_commercial_deviation") == "High"
-    assert compute_deterministic_risk_level("High", [], True, True, "material_commercial_deviation", clause_favors_client=True) == "Medium"
-    assert compute_deterministic_risk_level("High", [NON_COMPETE_TRIGGER], True, True, "material_commercial_deviation", clause_favors_client=True) == "Medium"
-    # A trigger that is not about which party is bound still counts.
-    assert compute_deterministic_risk_level("High", [WITHHOLD_TRIGGER], True, False, "material_commercial_deviation", clause_favors_client=True) == "High"
-    # Balance criteria of the taxonomy (and the old against-the-client wordings) cannot be set off by a clause in the client's favor.
-    kept = drop_direction_contradicted_flags([NON_COMPETE_TRIGGER, ASSIGNMENT_TRIGGER, AMENDMENT_GATE, LIABILITY_BALANCE_TRIGGER, FEE_INCREASE_TRIGGER, WITHHOLD_TRIGGER, PERFORMANCE_TRIGGER])
-    assert kept == [WITHHOLD_TRIGGER, PERFORMANCE_TRIGGER]
-
-
-@pytest.mark.parametrize(
-    "para_id, trigger",
-    # The Assignment trigger is a real Balance criterion; the others are wordings the model may produce that no policy carries.
-    [("para_9", NON_COMPETE_TRIGGER), ("para_29", ONE_WAY_CONFIDENTIALITY_TRIGGER), ("para_38", POWER_OF_ATTORNEY_TRIGGER), ("para_52", ASSIGNMENT_TRIGGER)],
-)
-def test_a_clause_in_the_clients_favor_scores_the_same_however_the_model_reads_the_parties(msa: GeneralReviewRequest, plan: gr.ReviewPlan, para_id: str, trigger: str) -> None:
-    backwards = _validate(msa, plan, {para_id: {"triggered_unacceptable_flags": [trigger], "is_materially_one_sided_against_client": True}})
-    correct = _validate(msa, plan, {para_id: {}})
-    assert backwards == correct == [(para_id, "Medium")]
-
-
-# --- 2. global document facts -------------------------------------------------
+# --- 2. document facts --------------------------------------------------------
 
 
 def test_document_facts_locate_the_cross_document_provisions(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
@@ -222,11 +158,16 @@ def test_document_facts_locate_the_cross_document_provisions(msa: GeneralReviewR
     assert [location.para_identifier for location in facts.compliance_with_laws] == ["para_7"]
     assert [location.para_identifier for location in facts.return_of_advances] == ["para_17"]
     assert "para_18" in [location.para_identifier for location in facts.return_of_materials]
+    assert [location.para_identifier for location in facts.order_of_precedence] == ["para_14"] and facts.precedence_covers_orders
     assert facts.governing_law is not None and facts.governing_law.para_identifier == "para_48"
     assert facts.governing_state == "California"
     rendered = facts.render()
-    assert 'survival provision, in its "Term/Termination" clause, covering Sections 2, 4, 6, 7, 8, 9, 10, 11, 12, 14, 16 and 19' in rendered
-    assert "Entire Agreement" in rendered
+    assert 'a survival provision in its "Term/Termination" clause, covering Sections 2, 4, 6, 7, 8, 9, 10, 11, 12, 14, 16 and 19' in rendered
+    assert '- Order of precedence: the "Consulting Services" clause says which terms prevail when this Agreement and a Statement of Work conflict.' in rendered
+    assert "The governing state is California." in rendered
+    # The notes say where a provision is; they give the model no instruction.
+    assert "never" not in rendered.lower() and "do not" not in rendered.lower()
+    assert rendered in plan.reference
 
 
 def test_document_facts_are_the_same_on_every_scan(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
@@ -234,23 +175,13 @@ def test_document_facts_are_the_same_on_every_scan(msa: GeneralReviewRequest, pl
     assert again == plan.facts and again.digest == plan.facts.digest
 
 
-def test_entire_agreement_is_not_flagged_for_a_survival_clause_that_exists(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    assert plan.facts.contradicted_claim("para_68", SURVIVAL_REASON) == "survival"
-    assert _validate(msa, plan, {"para_68": {"reason": SURVIVAL_REASON}}) == []
-    # The survival clause's own paragraph, and an Entire Agreement finding about something else, are untouched.
-    assert plan.facts.contradicted_claim("para_16", SURVIVAL_REASON) is None
-    # Entire Agreement is a Low-tier type in the taxonomy (no Core criterion, no gate).
-    assert _validate(msa, plan, {"para_68": {"reason": "The clause does not state that no reliance is placed on pre-contractual statements."}}) == [("para_68", "Low")]
-
-
-def test_survival_is_only_suppressed_when_the_document_has_one(msa: GeneralReviewRequest) -> None:
+def test_no_survival_note_without_a_survival_provision(msa: GeneralReviewRequest) -> None:
     without = [para for para in msa.textinformation if para.paraindetifier != "para_16"]
     facts = build_document_facts(without, sg.build_clause_titles(without))
-    assert facts.survival is None
-    assert facts.contradicted_claim("para_68", SURVIVAL_REASON) is None
+    assert facts.survival is None and "Survival" not in facts.render()
 
 
-# --- 3. anchor locking ----------------------------------------------------------
+# --- 3. paragraph roles ---------------------------------------------------------
 
 
 def test_paragraph_roles(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
@@ -283,83 +214,11 @@ def test_roles_do_not_depend_on_the_vector_path(msa: GeneralReviewRequest, plan:
         assert again == plan.structure
 
 
-def test_role_tags_reach_the_prompt_and_never_the_output(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    batch = [(idx, para) for idx, para in enumerate(msa.textinformation)]
-    document = gr._format_document(batch, plan.structure)
-    assert "[HEADING] Intellectual Property Rights." in document
-    assert "[PRIMARY_OPERATIVE_ANCHOR] In exchange for valuable consideration" in document
-    assert "[SECONDARY] Service Provider agrees that any and all Intellectual Property" in document
-    assert "[CONTEXT_ONLY] MASTER SERVICES AGREEMENT" in document
-    # A tag the model copies back is stripped before grounding and from the fix.
-    tagged = "[PRIMARY_OPERATIVE_ANCHOR] " + _text(msa, "para_50")
-    suggestions = _suggestions(msa, plan, {"para_50": {"original_text": tagged, "suggested_fix": tagged + " Liability is capped at fees paid."}})
-    assert suggestions["para_50"].original_text == _text(msa, "para_50")
-    assert "[" not in suggestions["para_50"].suggested_fix
-
-
-IP_CARVE_OUT_REASON = "The assignment has no carve-out for Service Provider's pre-existing intellectual property or Background IP, and grants no license to it."
-DISPUTE_REASON = "The clause gives Accordor no right to withhold payment of invoice amounts it disputes in good faith."
-
-
-@pytest.mark.parametrize("raised_on", ["para_36", "para_37", "para_38", "para_39", "para_35"])
-def test_ip_clause_wide_finding_always_lands_on_para_37(msa: GeneralReviewRequest, plan: gr.ReviewPlan, raised_on: str) -> None:
-    script = {raised_on: {"reason": IP_CARVE_OUT_REASON, "append": CARVE_OUT, "severity_category": "uncapped_or_severe_exposure"}}
-    suggestions = _suggestions(msa, plan, script)
-    assert list(suggestions) == ["para_37"]
-    suggestion = suggestions["para_37"]
-    assert suggestion.risk_level == "High"
-    assert suggestion.original_text == _text(msa, "para_37")
-    assert suggestion.suggested_fix == _text(msa, "para_37") + " " + CARVE_OUT
-
-
-def test_ip_anchor_is_stable_when_both_paragraphs_are_flagged(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    on_secondary = {"reason": IP_CARVE_OUT_REASON, "append": CARVE_OUT, "severity_category": "uncapped_or_severe_exposure"}
-    on_anchor = {"reason": "The assignment omits a moral rights waiver.", "append": "Service Provider waives all moral rights.", "severity_category": "uncapped_or_severe_exposure"}
-    both = _suggestions(msa, plan, {"para_36": on_secondary, "para_37": on_anchor})
-    reverse = _suggestions(msa, plan, {"para_37": on_anchor, "para_36": on_secondary})
-    assert list(both) == list(reverse) == ["para_37"]
-    assert both["para_37"] == reverse["para_37"]
-    assert both["para_37"].reason == "The assignment omits a moral rights waiver."  # the anchor's own finding wins
-
-
-@pytest.mark.parametrize("raised_on", ["para_20", "para_21"])
-def test_fees_dispute_withholding_always_lands_on_para_20(msa: GeneralReviewRequest, plan: gr.ReviewPlan, raised_on: str) -> None:
-    script = {raised_on: {"reason": DISPUTE_REASON, "append": WITHHOLD, "triggered_unacceptable_flags": [WITHHOLD_TRIGGER]}}
-    assert _validate(msa, plan, script) == [("para_20", "High")]
-
-
-def test_model_declared_clause_wide_omission_is_locked_to_the_anchor(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    # No topic keyword here: the model's own finding_scope moves it.
-    reason = "The clause has no warranty that the Services will be performed in a workmanlike manner."
-    script = {"para_43": {"reason": reason, "append": "Service Provider warrants workmanlike performance.", "finding_scope": "clause_wide_omission"}}
-    assert [para_id for para_id, _ in _validate(msa, plan, script)] == ["para_41"]
-
-
-def test_secondary_paragraph_keeps_a_defect_in_its_own_wording(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    text = _text(msa, "para_13")
-    script = {"para_13": {"reason": "Thirty days to price a change is too long for the client.", "suggested_fix": text.replace("thirty (30) days", "ten (10) business days")}}
-    assert [para_id for para_id, _ in _validate(msa, plan, script)] == ["para_13"]
-
-
-def test_clause_wide_finding_with_nothing_to_carry_is_dropped_not_misplaced(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    text = _text(msa, "para_36")
-    script = {"para_36": {"reason": IP_CARVE_OUT_REASON, "suggested_fix": text.replace("any and all Intellectual Property", "any and all Intellectual Property (other than Background IP)")}}
-    assert _validate(msa, plan, script) == []
-
-
-@pytest.mark.parametrize("heading", HEADINGS)
-def test_a_heading_is_never_an_anchor(msa: GeneralReviewRequest, plan: gr.ReviewPlan, heading: str) -> None:
-    edited = {heading: {"suggested_fix": _text(msa, heading).rstrip(".") + " and Related Matters."}}
-    assert _validate(msa, plan, edited) == []
-    added = _validate(msa, plan, {heading: {"append": "The Parties shall act in good faith under this clause."}})
-    assert [para_id for para_id, _ in added] not in ([heading],)
-    assert all(para_id not in HEADINGS for para_id, _ in added)
-
-
-def test_overlapping_suggestions_in_one_clause_collapse_onto_the_anchor(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    reason = "The confidentiality obligations have no fixed survival period after termination, leaving the duration of protection uncertain."
-    script = {"para_32": {"reason": reason}, "para_29": {"reason": reason + " This creates uncertainty."}, "para_33": {"reason": "Destruction is not required to use a secure method."}}
-    assert [para_id for para_id, _ in _validate(msa, plan, script)] == ["para_29", "para_33"]
+def test_the_modification_clause_is_an_amendments_clause(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
+    amendments = gr.policy_for_clause("amendments-and-modifications", "MSA")
+    assert amendments is not None
+    assert gr.policy_for_clause(sg.clause_type_for_title("Modification, Waiver and Authorized Representative"), "MSA") == amendments
+    assert plan.structure.clause_type_of[_position(msa, "para_9")] == "non-compete"
 
 
 # --- 4. content controls and blank fields --------------------------------------
@@ -387,31 +246,16 @@ def test_blank_state_is_inferred_from_the_paragraph_itself(msa: GeneralReviewReq
     blank = plan.facts.blank_field_for("para_48")
     assert blank is not None and blank.inferred_value == "California"
     assert blank.blanks == ("State of ,", "courts of .")
-    assert "The governing state is California." in plan.facts_block
 
 
-def test_model_is_shown_the_governing_law_paragraph_with_the_state_restored(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
+def test_the_model_only_ever_sees_the_governing_law_paragraph_with_the_state_restored(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
     raw = _text(msa, "para_48")
     restored = raw.replace("State of ,", "State of California,").replace("courts of .", "courts of California.")
     assert plan.shown_text == {_position(msa, "para_48"): restored}
-    batch = [(idx, para) for idx, para in enumerate(msa.textinformation)]
-    document = gr._format_document(batch, plan.structure, plan.shown_text)
-    assert "laws of the State of California, without regard" in document and "state and federal courts of California." in document
-    assert "State of ," not in document and "courts of ." not in document
-    # Nothing about a blank reaches the model, so there is nothing for it to flag.
-    assert "blank" not in plan.facts_block.lower()
-
-
-def test_blank_governing_law_is_not_a_finding_and_a_real_finding_keeps_the_raw_paragraph(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    blank_reason = "The governing law clause contains a blank where the state name should appear, and the venue clause likewise contains a blank."
-    assert _validate(msa, plan, {"para_48": {"reason": blank_reason}}) == []
-    assert _validate(msa, plan, {"para_48": {"reason": "The governing state is not specified and the venue is left unspecified."}}) == []
-    # A finding about something else is raised; the add-in still gets the paragraph exactly as it sent it.
-    injunctive = "Either Party may seek injunctive relief in any court of competent jurisdiction."
-    suggestions = _suggestions(msa, plan, {"para_48": {"reason": "The clause has no carve-out for urgent injunctive relief.", "append": injunctive}})
-    assert suggestions["para_48"].original_text == _text(msa, "para_48")
-    assert suggestions["para_48"].suggested_fix == _shown(msa, plan, "para_48") + " " + injunctive
-    assert "State of California," in suggestions["para_48"].suggested_fix
+    assert restored in plan.reference
+    assert "State of ," not in plan.reference and "courts of ." not in plan.reference
+    # Nothing about a blank reaches the model, so there is nothing for it to report.
+    assert "blank" not in plan.facts.render().lower()
 
 
 @pytest.mark.parametrize(
@@ -429,11 +273,7 @@ def test_blank_field_guard_never_lets_another_jurisdiction_in(msa: GeneralReview
     fix = text.replace("State of ,", state_blank).replace("California law", law).replace("courts of .", court_blank)
     blank = plan.facts.blank_field_for("para_48")
     assert blank is not None
-    guarded = apply_blank_field_guard(fix, text, blank)
-    assert guarded == text.replace("State of ,", "State of California,").replace("courts of .", "courts of California.")
-    suggestions = _suggestions(msa, plan, {"para_48": {"suggested_fix": fix}})
-    assert suggestions["para_48"].suggested_fix == guarded
-    assert suggestions["para_48"].original_text == text
+    assert apply_blank_field_guard(fix, text, blank) == text.replace("State of ,", "State of California,").replace("courts of .", "courts of California.")
 
 
 def test_no_value_is_inferred_without_exactly_one_jurisdiction() -> None:
@@ -445,297 +285,17 @@ def test_no_value_is_inferred_without_exactly_one_jurisdiction() -> None:
     assert facts_for("Governing Law. This Agreement is governed by the laws of the State of Texas.").blank_fields == ()
 
 
-# --- 5. noise -----------------------------------------------------------------
+# --- 5. undefined terms ---------------------------------------------------------
 
 
-@pytest.mark.parametrize("para_id", NEVER_FLAGGED)
-def test_preamble_recitals_address_blocks_and_signature_block_are_never_flagged(msa: GeneralReviewRequest, plan: gr.ReviewPlan, para_id: str) -> None:
-    script = {para_id: {"reason": "Drafting defect.", "append": "Corrected.", "severity_category": "uncapped_or_severe_exposure", "finding_scope": "clause_wide_omission"}}
-    assert all(flagged != para_id for flagged, _ in _validate(msa, plan, script))
-    assert _validate(msa, plan, {para_id: {"reason": "Drafting defect.", "severity_category": "uncapped_or_severe_exposure"}}) == []
-    # Not even a trigger gets non-clause content flagged.
-    triggered = {"reason": "Drafting defect.", "triggered_unacceptable_flags": [URL_AMENDMENT_TRIGGER, AMENDMENT_GATE, DEEMED_RECEIPT_TRIGGER, WITHHOLD_TRIGGER]}
-    assert _validate(msa, plan, {para_id: triggered}) == []
-
-
-# --- 5b. boilerplate gating ---------------------------------------------------
-
-
-def test_taxonomy_gates_and_balance_criteria_are_read_from_the_taxonomy() -> None:
-    gates = taxonomy_gates.load_gates()
-    assert [(gate.criterion_id, gate.gate, gate.trigger) for gate in gates["Amendments and Modifications"]] == [("AMD-02", "High", AMENDMENT_GATE)]
-    assert "Severability" not in gates and "Notices" not in gates
-    assert taxonomy_gates.gate_level(AMENDMENT_GATE.upper() + ".") == "High"
-    assert taxonomy_gates.gate_level(WITHHOLD_TRIGGER) == "Medium"
-    assert taxonomy_gates.gate_level(URL_AMENDMENT_TRIGGER) is None and taxonomy_gates.gate_level(COUNTERPARTS_TRIGGER) is None
-    assert taxonomy_gates.is_balance_trigger(AMENDMENT_GATE) and not taxonomy_gates.is_balance_trigger(WITHHOLD_TRIGGER)
-    # Without the taxonomy file there are simply no gates.
-    assert taxonomy_gates.load_criteria(Path("no-such-taxonomy.json")) == {}
-
-
-def test_amendment_gate_is_a_trigger_of_the_amendments_clause_only(msa: GeneralReviewRequest) -> None:
-    amendments = gr.policy_for_clause("amendments-and-modifications", "MSA")
-    severability = gr.policy_for_clause("severability", "MSA")
-    entire = gr.policy_for_clause("entire-agreement", "MSA")
-    assert amendments is not None and severability is not None and entire is not None
-    assert amendments.unacceptable_triggers == [AMENDMENT_GATE]
-    assert severability.unacceptable_triggers == [] and entire.unacceptable_triggers == []
-    assert f"  * {AMENDMENT_GATE}" in "\n".join(gr._describe_policy(amendments))
-    # The MSA's "Modification, Waiver and Authorized Representative" clause is an amendments clause.
-    assert gr.policy_for_clause(sg.clause_type_for_title("Modification, Waiver and Authorized Representative"), "MSA") == amendments
-
-
-@pytest.mark.parametrize("para_id", BOILERPLATE)
-@pytest.mark.parametrize("severity", ["minor_drafting_hygiene", "material_commercial_deviation", "uncapped_or_severe_exposure"])
-def test_routine_clauses_are_silent_without_a_trigger_or_gate(msa: GeneralReviewRequest, plan: gr.ReviewPlan, para_id: str, severity: str) -> None:
-    # Completeness, clarity and drafting points never surface on a routine clause, whatever severity the model gives them.
-    assert _validate(msa, plan, {para_id: {"reason": "The clause does not address electronic signatures.", "severity_category": severity, "is_materially_one_sided_against_client": True}}) == []
-    assert _validate(msa, plan, {para_id: {"reason": "Incomplete.", "severity_category": severity, "append": "Added.", "finding_scope": "clause_wide_omission"}}) == []
-    # A trigger the model invents, or one that belongs to another clause, does not open the gate.
-    assert _validate(msa, plan, {para_id: {"reason": "Defect.", "triggered_unacceptable_flags": ["the clause is badly drafted", WITHHOLD_TRIGGER]}}) == []
-
-
-def test_routine_clause_is_flagged_on_a_policy_trigger_or_a_taxonomy_gate(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    # AMD-02 is a High gate: a unilateral right to change the terms is High, whatever else the model reports.
-    gate = {"reason": "Accordor's CEO may amend alone.", "triggered_unacceptable_flags": [AMENDMENT_GATE], "severity_category": "minor_drafting_hygiene", "falls_short_of_acceptable_standard": False}
-    assert _validate(msa, plan, {"para_67": gate}) == [("para_67", "High")]
-    # A Core criterion without a gate follows the risk matrix, and is never Low.
-    missing = {"reason": "Counterparts are not allowed for.", "triggered_unacceptable_flags": [COUNTERPARTS_TRIGGER], "severity_category": "minor_drafting_hygiene"}
-    assert _validate(msa, plan, {"para_65": missing}) == [("para_65", "Medium")]
-    # Wordings of the replaced policies are no longer triggers; Notices has no Core criterion or gate in the taxonomy, so it is never flagged.
-    assert _validate(msa, plan, {"para_67": {"reason": "Terms may be changed by posting.", "triggered_unacceptable_flags": [URL_AMENDMENT_TRIGGER]}}) == []
-    deemed = {"reason": "Notice is deemed received on mailing.", "triggered_unacceptable_flags": [DEEMED_RECEIPT_TRIGGER], "severity_category": "minor_drafting_hygiene"}
-    assert _validate(msa, plan, {"para_63": deemed}) == [] and _validate(msa, plan, {"para_54": deemed}) == []
-    # The amendment gate belongs to the amendments clause; on Severability it is not a trigger at all.
-    assert _validate(msa, plan, {"para_66": {"reason": "A party may change terms alone.", "triggered_unacceptable_flags": [AMENDMENT_GATE]}}) == []
-
-
-def _roles(*texts: str) -> List[str]:
-    paragraphs = [TextInformation(text=text, paraindetifier=f"p{number}") for number, text in enumerate(texts)]
-    structure = sg.build_clause_structure(paragraphs, sg.build_clause_titles(paragraphs))
-    return [structure.role(position) for position in range(len(paragraphs))]
-
-
-def test_suppression_stops_where_substance_starts() -> None:
-    body = "Provider shall perform the Services described in this Exhibit with qualified personnel and in a professional manner."
-    # An exhibit after the signature block is still reviewed.
-    roles = _roles(
-        "Payment. Client shall pay each invoice within thirty days of receipt.", "IN WITNESS WHEREOF, the Parties have executed this Agreement.", "By: ________", "Name: ________", "EXHIBIT A", body
-    )
-    assert roles[1:4] == [sg.ROLE_CONTEXT_ONLY] * 3
-    assert roles[0] == sg.ROLE_PRIMARY and roles[5] != sg.ROLE_CONTEXT_ONLY
-    # "agree as follows" inside an operative clause does not turn the clauses above it into preamble.
-    roles = _roles("Confidentiality. Each Party shall hold the other's Confidential Information in confidence.", "Payment. In consideration of the Services, the Parties agree as follows:", body)
-    assert sg.ROLE_CONTEXT_ONLY not in roles
-    # Clauses of substance that merely share a word with boilerplate stay reviewable; a sentence is not an address.
-    assert _roles("Waiver of Jury Trial. Each Party waives trial by jury in any proceeding arising out of this Agreement.") == [sg.ROLE_PRIMARY]
-    assert _roles("Amendments to the Agreement. Section 4 of the Agreement is deleted and replaced with the following text.") == [sg.ROLE_PRIMARY]
-    assert _roles("Support. Provider shall provide support during business hours.", "100 hours of support are included each month.")[1] == sg.ROLE_SECONDARY
-    assert _roles("Severability. If any provision is held invalid, the remainder continues in full force and effect.") == [sg.ROLE_BOILERPLATE]
-
-
-def test_notices_typo_and_address_points_are_suppressed(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    typo = {"reason": "'suit 200' should read 'Suite 200' and the Amtrino address has no zip code.", "severity_category": "minor_drafting_hygiene", "falls_short_of_acceptable_standard": False}
-    assert _validate(msa, plan, {"para_54": typo}) == []
-    # Nor is a Notices point raised for completeness alone, at any severity.
-    material = {"reason": "Legal notices are not required to be copied to the legal department.", "severity_category": "material_commercial_deviation"}
-    assert _validate(msa, plan, {"para_54": material}) == []
-
-
-# --- 5c. fees, confidentiality and warranties: the remaining drift ---------------
-
-EXPENSE_REASON = "The expense provision requires prior written approval but does not limit reimbursement to actual costs with receipts."
-
-
-def test_expense_paragraph_that_already_meets_the_standard_is_not_flagged(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    assert [location.para_identifier for location in plan.facts.expense_terms] == ["para_21"]
-    assert "Do not raise a finding on that expense paragraph" in plan.facts_block
-    text = _text(msa, "para_21")
-    in_place = {"reason": EXPENSE_REASON, "suggested_fix": text.replace("all reasonable documented", "the actual cost, supported by receipts, of all reasonable")}
-    assert _validate(msa, plan, {"para_21": in_place}) == []
-    assert _validate(msa, plan, {"para_21": {"reason": EXPENSE_REASON, "append": "Expenses are billed at cost."}}) == []
-    # The old expense-approval wording is not a trigger, and could not apply to a paragraph that requires approval anyway.
-    assert _validate(msa, plan, {"para_21": {"reason": EXPENSE_REASON, "triggered_unacceptable_flags": [EXPENSE_TRIGGER]}}) == []
-    # A different hard defect in the same paragraph is still raised, and the dispute right still goes to the payment paragraph.
-    assert _validate(msa, plan, {"para_21": {"reason": "Fees may be raised at will.", "triggered_unacceptable_flags": [FEE_INCREASE_TRIGGER]}}) == [("para_21", "High")]
-    assert _validate(msa, plan, {"para_21": {"reason": DISPUTE_REASON, "append": WITHHOLD, "triggered_unacceptable_flags": [WITHHOLD_TRIGGER]}}) == [("para_20", "High")]
-
-
-def test_expense_paragraph_without_prior_approval_is_still_reviewed() -> None:
-    paragraphs = [
-        TextInformation(text="Fees and Expenses.", paraindetifier="p0"),
-        TextInformation(text="Client shall pay invoices within thirty (30) days of receipt.", paraindetifier="p1"),
-        TextInformation(text="Client shall reimburse Provider for all reasonable documented expenses incurred in performing the Services.", paraindetifier="p2"),
-    ]
-    assert build_document_facts(paragraphs, sg.build_clause_titles(paragraphs)).expense_terms == ()
-
-
-# Reasons the model gave for para_29 in the live runs.
-ONE_WAY_RUN_1 = (
-    "The confidentiality obligations in this clause are entirely one-sided: they protect only Accordor's Confidential Information and impose obligations solely on Service Provider. "
-    "ACI receives no reciprocal protection for any of its own confidential information that it may share with Service Provider in the course of the engagement. "
-    "In a mutual services relationship, market standard requires mutual confidentiality obligations."
-)
-ONE_WAY_RUN_2 = (
-    "The confidentiality obligations run only one way: they bind Service Provider to protect Accordor's Confidential Information, but impose no reciprocal obligation on Accordor to protect any "
-    "confidential information that Service Provider may disclose in the course of performing the services. While ACI is the client and the primary disclosing party, a fully one-sided clause may be "
-    "challenged as unenforceable in some jurisdictions and does not reflect market standard for a mutual services relationship. Additionally, the definition of Confidential Information and the "
-    "exclusions apply only to Accordor's information, leaving no framework for any Service Provider confidential information that may be shared."
-)
-MISSING_EXCLUSION = (
-    "The definition of Confidential Information and its exclusions apply only to Accordor's information. "
-    "The exclusions list omits the standard 'received from a third party without restriction' exclusion. Only four exclusions are enumerated."
-)
-
-
-def test_a_reason_is_a_sole_mutuality_complaint_only_when_it_names_no_other_defect() -> None:
-    assert pr.is_sole_mutuality_complaint(ONE_WAY_RUN_1) and pr.is_sole_mutuality_complaint(ONE_WAY_RUN_2)
-    assert pr.is_sole_mutuality_complaint("The clause is one-sided.")
-    assert not pr.is_sole_mutuality_complaint(MISSING_EXCLUSION)
-    assert not pr.is_sole_mutuality_complaint("The obligations run one way. The clause also states no period for which the duty lasts.")
-    assert not pr.is_sole_mutuality_complaint("The clause states no period for which the duty lasts.")
-
-
-@pytest.mark.parametrize("reason", [ONE_WAY_RUN_1, ONE_WAY_RUN_2])
-def test_one_way_confidentiality_in_the_clients_favor_is_not_a_finding(msa: GeneralReviewRequest, plan: gr.ReviewPlan, reason: str) -> None:
-    for facts in ({}, {"triggered_unacceptable_flags": [ONE_WAY_CONFIDENTIALITY_TRIGGER], "is_materially_one_sided_against_client": True, "severity_category": "uncapped_or_severe_exposure"}):
-        assert _validate(msa, plan, {"para_29": {"reason": reason, **facts}}) == []
-        # The same complaint raised on another paragraph of the clause is the same non-finding.
-        assert _validate(msa, plan, {"para_32": {"reason": reason, **facts}}) == []
-    # The clause's real findings are untouched: the missing exclusion and the return window stay where they are.
-    kept = _validate(msa, plan, {"para_29": {"reason": reason}, "para_31": {"reason": MISSING_EXCLUSION}, "para_33": {"reason": "No deadline is set for return or destruction."}})
-    assert [para_id for para_id, _ in kept] == ["para_31", "para_33"]
-    assert [para_id for para_id, _ in _validate(msa, plan, {"para_29": {"reason": "The clause states no period for which the duty lasts."}})] == ["para_29"]
-
-
-def test_one_way_complaint_stands_when_the_clause_binds_the_client(msa: GeneralReviewRequest) -> None:
-    # Acting for Amtrino, the same clause binds the client alone: one-sidedness is then exactly the finding.
-    other_side = msa.model_copy(update={"party_represented": "Amtrino"})
-    plan = gr.build_review_plan(other_side, 4, ZDRClauseHashCache(version_hash="other-side"))
-    assert [para_id for para_id, _ in _validate(other_side, plan, {"para_29": {"reason": ONE_WAY_RUN_1}})] == ["para_29"]
-
-
-# Representations & Warranties is a Medium-tier type: the anchor is High only with its Core criterion (REP-02) and severe exposure.
-WORKMANLIKE = {
-    "reason": "There is no warranty that the Services will be performed in a workmanlike manner.",
-    "severity_category": "uncapped_or_severe_exposure",
-    "triggered_unacceptable_flags": [PERFORMANCE_TRIGGER],
-}
-VAGUE = {"reason": "'Reasonably related to the Services' is vague.", "severity_category": "minor_drafting_hygiene", "falls_short_of_acceptable_standard": False}
-
-
-def test_low_finding_on_a_secondary_paragraph_is_dropped_when_the_anchor_is_high(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    assert _validate(msa, plan, {"para_41": WORKMANLIKE, "para_43": VAGUE}) == [("para_41", "High")]
-    assert _validate(msa, plan, {"para_43": VAGUE, "para_41": WORKMANLIKE}) == [("para_41", "High")]
-    # It stays when the anchor is not High, when the anchor is not flagged, and when it is itself more than Low.
-    assert _validate(msa, plan, {"para_41": {"reason": "The warranty is narrow."}, "para_43": VAGUE}) == [("para_41", "Medium"), ("para_43", "Low")]
-    assert _validate(msa, plan, {"para_43": VAGUE}) == [("para_43", "Low")]
-    assert _validate(msa, plan, {"para_41": WORKMANLIKE, "para_43": {"reason": "The warranty excludes the employer's rights."}}) == [("para_41", "High"), ("para_43", "Medium")]
-
-
-# --- 5d. the four diffs and two mapping issues of the taxonomy runs ---------------
-
-# Reasons the model gave in the three runs saved as GR_output_1..3.json.
-PROMPTLY_ADVANCES = (
-    'The obligation to return unused advances is expressed as "promptly" without specifying a definite timeframe. "Promptly" is legally ambiguous and, in practice, '
-    'could allow Service Provider to delay repayment indefinitely while disputing what constitutes an "unused" amount. '
-    "Accordor should have a fixed deadline for repayment to protect its cash position."
-)
-PROMPTLY_MATERIALS = (
-    'The obligation to return materials and Confidential Information is expressed as "promptly" without a definite deadline, creating the same ambiguity as in the Return of Advances clause. '
-    "Additionally, the clause does not address destruction as an alternative to return, nor does it require certification of return or destruction."
-)
-ANTI_CORRUPTION = (
-    "The clause prohibits corrupt payments but does not identify any specific anti-corruption laws or frameworks by name (such as the U.S. Foreign Corrupt Practices Act or the UK Bribery Act), "
-    "leaving the scope of 'Anti-Corruption Laws' uncertain. It also contains no obligation on either party to notify the other if it becomes aware of a breach or suspected breach."
-)
-NOTIFY = "Each party shall promptly notify the other in writing if it becomes aware of any actual or suspected breach of this section."
-FORUM_CONFLICT = (
-    "The clause designates California courts as the exclusive litigation forum, but the Mediation and Arbitration clause immediately following requires all disputes to be resolved by binding "
-    "arbitration. These two provisions directly conflict: one mandates court litigation, the other mandates arbitration."
-)
-FORUM_FIX = "Any dispute arising under this Agreement shall be resolved in accordance with the Mediation and Arbitration clause of this Agreement."
-FORUM_TRIGGER = "No conflicting provisions: There is a conflict (LAW-03)"
-SOW_CONFLICT = (
-    "The clause describes what each Statement of Work must contain. However, it does not state that the master agreement prevails when it conflicts with a Statement of Work, "
-    "and it does not state whether termination of one Statement of Work ends the master agreement."
-)
-PRECEDENCE_SENTENCE = "In the event of a conflict between the terms of this Agreement and those of a Statement of Work, the terms of this Agreement shall prevail."
-SOW_TERMINATION = "Termination or expiration of any individual Statement of Work shall not, by itself, terminate this Agreement or any other Statement of Work then in effect."
-DRAFTING = {"severity_category": "minor_drafting_hygiene", "falls_short_of_acceptable_standard": False}
-
-
-def _promptly_fix(msa: GeneralReviewRequest, para_id: str) -> str:
-    return _text(msa, para_id).replace("shall promptly return", "shall within thirty (30) days return")
-
-
-@pytest.mark.parametrize("para_id, reason", [("para_17", PROMPTLY_ADVANCES), ("para_18", PROMPTLY_MATERIALS)])
-def test_promptly_nitpick_on_a_clause_in_the_clients_favor_is_not_a_finding(msa: GeneralReviewRequest, plan: gr.ReviewPlan, para_id: str, reason: str) -> None:
-    assert pr.clause_direction(_text(msa, para_id), plan.parties) == pr.FAVORS_REPRESENTED
-    assert _validate(msa, plan, {para_id: {"reason": reason, "suggested_fix": _promptly_fix(msa, para_id), **DRAFTING}}) == []
-    # A shortfall the model stands behind, or a fix that adds a protection, is still raised.
-    material = {"reason": reason, "suggested_fix": _promptly_fix(msa, para_id), "severity_category": "material_commercial_deviation", "falls_short_of_acceptable_standard": True}
-    assert [p for p, _ in _validate(msa, plan, {para_id: material})] == [para_id]
-    certified = {"reason": reason, "append": "Service Provider shall certify the return in writing.", **DRAFTING}
-    assert [p for p, _ in _validate(msa, plan, {para_id: certified})] == [para_id]
-
-
-def test_promptly_point_on_a_clause_that_binds_the_client_is_still_raised(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    assert pr.clause_direction(_text(msa, "para_20"), plan.parties) == pr.BURDENS_REPRESENTED
-    text = _text(msa, "para_20")
-    script = {"para_20": {"reason": "The payment deadline should run from receipt of an undisputed invoice.", "suggested_fix": text.replace("of receipt", "of receipt of an undisputed"), **DRAFTING}}
-    assert _validate(msa, plan, script) == [("para_20", "Low")]
-
-
-def test_a_fix_that_adds_an_obligation_on_a_medium_tier_clause_is_never_low(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    # Run 3 called the same notification duty a clarity point; it scores Medium like runs 1 and 2.
-    for facts in (DRAFTING, {"severity_category": "material_commercial_deviation", "falls_short_of_acceptable_standard": True}):
-        assert _validate(msa, plan, {"para_47": {"reason": ANTI_CORRUPTION, "append": NOTIFY, **facts}}) == [("para_47", "Medium")]
-    # A wording edit that adds nothing stays a drafting point, and a Low-tier clause stays Low.
-    in_place = _text(msa, "para_47").replace("local and other anti-corruption laws", "local and other anti-corruption laws, including the FCPA")
-    assert _validate(msa, plan, {"para_47": {"reason": ANTI_CORRUPTION, "suggested_fix": in_place, **DRAFTING}}) == [("para_47", "Low")]
-    assert _validate(msa, plan, {"para_68": {"reason": "The clause does not exclude reliance.", "append": "Neither Party relies on any statement not set out here.", **DRAFTING}}) == [
-        ("para_68", "Low")
-    ]
-
-
-def test_a_trigger_copied_without_its_criterion_name_still_counts(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    # In the runs saved at 12:12-12:16 the model reported every taxonomy trigger in this short form, and all were dropped.
-    for para_id, short, level in [
-        ("para_48", "There is a conflict (LAW-03)", "High"),
-        ("para_51", "No way out is stated (FOR-07)", "High"),
-        ("para_50", "It is not stated, or the wording is contradictory (LOL-01)", "High"),
-    ]:
-        script = {para_id: {"reason": "Defect.", "append": "Corrected.", "triggered_unacceptable_flags": [short], "severity_category": "material_commercial_deviation"}}
-        assert _validate(msa, plan, script) == [(para_id, level)], para_id
-    policy = gr.policy_for_clause("governing-law-and-dispute-resolution", "MSA")
-    assert gr._matching_triggers(["There is a conflict (LAW-03)", "there is a conflict (law-03)."], policy, "Governing Law") == [FORUM_TRIGGER]
-    # An id that belongs to another clause type, or no id at all, is still not a trigger of this clause.
-    assert gr._matching_triggers(["No right to dispute is stated (FEE-07)", "There is a conflict"], policy, "Governing Law") == []
-
-
-def test_forum_conflict_is_a_trigger_and_scores_high(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    flagged = {"reason": FORUM_CONFLICT, "append": FORUM_FIX, "triggered_unacceptable_flags": [FORUM_TRIGGER]}
-    assert _validate(msa, plan, {"para_48": flagged}) == [("para_48", "High")]
-    assert _validate(msa, plan, {"para_48": {"reason": FORUM_CONFLICT, "append": FORUM_FIX}}) == [("para_48", "Medium")]  # the trigger is what makes it High
-
-
-def test_non_compete_maps_to_its_own_policy_not_non_exclusivity(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    assert plan.structure.clause_type_of[_position(msa, "para_9")] == "non-compete"
-    policy = _offline_policies(msa, plan).policy_of[_position(msa, "para_9")]
-    assert policy.canonical_type == "non-compete" and "minimum volume" not in policy.acceptable_standard
-    # NCP-04 is a Balance criterion: a non-compete that restricts only Service Provider cannot set it off.
-    backwards = {"reason": "Restricts the client.", "triggered_unacceptable_flags": ["Client is not restricted: The client is restricted (NCP-04)"], "is_materially_one_sided_against_client": True}
-    assert _validate(msa, plan, {"para_9": backwards}) == _validate(msa, plan, {"para_9": {}}) == [("para_9", "Medium")]
-
-
-def test_undefined_capitalised_terms_are_document_facts(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
+def test_undefined_capitalised_terms_are_found_in_code(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
     # Only the mismatch the agreement itself resolves. "Purchase Order" (para_12) has no defined counterpart, and
     # "Proprietary Information" in para_43 is what Service Provider owes a third party, not Accordor's Confidential Information.
     found = [(item.para_identifier, item.term, item.defined_term) for item in plan.facts.undefined_terms]
     assert found == [("para_10", "Accordor Proprietary Information", "Confidential Information")]
-    assert '- Undefined terms in operative clauses: "Accordor Proprietary Information" in the "Non-Compete" clause (the defined term is "Confidential Information").' in plan.facts_block
-    assert "Purchase Order" not in plan.facts_block
+    # The agreement's defined terms are listed for the drafter, so a redraft uses them as defined.
+    assert '"Confidential Information"' in plan.agreement_context and '"Statement of Work"' in plan.agreement_context
+    assert "Governing law: California" in plan.agreement_context
 
 
 def test_defined_terms_proper_names_and_sentence_openers_are_not_undefined_terms() -> None:
@@ -759,91 +319,7 @@ def test_defined_terms_proper_names_and_sentence_openers_are_not_undefined_terms
     assert [(item.term, item.defined_term) for item in facts.undefined_terms] == [("Customer Confidential Data", "Customer Data")]
 
 
-def test_undefined_term_with_a_known_replacement_is_flagged_on_every_run(msa: GeneralReviewRequest, plan: gr.ReviewPlan, container_stub: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(gr, "clause_cache", ZDRClauseHashCache(version_hash="terms"))
-    monkeypatch.setattr(gr, "_response_cache", gr.OrderedDict())
-    container_stub(model=ScriptedModel(msa, plan, {}), search=None)  # a model that raises nothing at all
-    response = asyncio.run(gr.general_review_service(msa, "terms"))
-    assert [(s.para_identifier, s.risk_level) for s in response.suggestions] == [("para_10", "Low")]
-    suggestion = response.suggestions[0]
-    assert suggestion.original_text == _text(msa, "para_10")
-    assert suggestion.suggested_fix == _text(msa, "para_10").replace("Accordor Proprietary Information", "Confidential Information")
-    assert suggestion.clause == "Non-Compete"
-    # When the model raises para_10 itself, its own finding is kept and nothing is added.
-    monkeypatch.setattr(gr, "_response_cache", gr.OrderedDict())
-    monkeypatch.setattr(gr, "clause_cache", ZDRClauseHashCache(version_hash="terms-2"))
-    fix = {"reason": "Undefined term.", "suggested_fix": _text(msa, "para_10").replace("Accordor Proprietary Information", "Confidential Information"), **DRAFTING}
-    container_stub(model=ScriptedModel(msa, plan, {"para_10": fix}), search=None)
-    response = asyncio.run(gr.general_review_service(msa, "terms-2"))
-    assert [(s.para_identifier, s.risk_level, s.reason) for s in response.suggestions] == [("para_10", "Low", "Undefined term.")]
-
-
-# Confidentiality findings from the live runs: run 1 raised the exclusion gap on para_30, runs 2 and 3 the duration on para_29.
-EXCLUSION_GAP = (
-    "The definition of Confidential Information does not include a standalone exception for information received from a third party without restriction. "
-    "The existing exceptions cover public domain, post-disclosure public knowledge, prior possession, and independent development."
-)
-# The sentence run 1 actually proposed.
-EXCLUSION_FIX = (
-    "Notwithstanding the foregoing, Confidential Information shall not include information that was received by the receiving party from a third party who was not, "
-    "to the receiving party's knowledge, under any obligation of confidentiality to Accordor with respect to such information."
-)
-DURATION = (
-    "The clause does not state a fixed duration for the confidentiality obligation; it says at all times during the term and thereafter, which is an indefinite, perpetual obligation. "
-    "A perpetual obligation may be unenforceable under California law."
-)
-DURATION_FIX = "The obligations in this Section continue for five (5) years after termination, and for trade secrets for as long as they remain trade secrets."
-
-
-def test_confidentiality_paragraph_roles_and_exclusions_paragraph(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    structure = plan.structure
-    assert structure.role(_position(msa, "para_29")) == sg.ROLE_PRIMARY
-    unit = structure.unit_of[_position(msa, "para_29")]
-    assert structure.topic_anchor_of == {(unit, "exclusions"): _position(msa, "para_31")}  # the paragraph with "shall not, however, include"
-
-
-@pytest.mark.parametrize("raised_on", ["para_29", "para_30", "para_31", "para_32", "para_33"])
-def test_missing_exclusion_always_lands_on_the_exclusions_paragraph(msa: GeneralReviewRequest, plan: gr.ReviewPlan, raised_on: str) -> None:
-    suggestions = _suggestions(msa, plan, {raised_on: {"reason": EXCLUSION_GAP, "append": EXCLUSION_FIX}})
-    assert list(suggestions) == ["para_31"]
-    assert suggestions["para_31"].original_text == _text(msa, "para_31")
-    assert suggestions["para_31"].suggested_fix == _text(msa, "para_31") + " " + EXCLUSION_FIX
-    assert suggestions["para_31"].risk_level == "Medium"
-
-
-@pytest.mark.parametrize("raised_on", ["para_29", "para_30", "para_32", "para_33"])
-def test_duration_and_nondisclosure_findings_always_land_on_the_operative_paragraph(msa: GeneralReviewRequest, plan: gr.ReviewPlan, raised_on: str) -> None:
-    suggestions = _suggestions(msa, plan, {raised_on: {"reason": DURATION, "append": DURATION_FIX}})
-    assert list(suggestions) == ["para_29"]
-    assert suggestions["para_29"].suggested_fix == _text(msa, "para_29") + " " + DURATION_FIX
-    # A reason that also mentions the missing exclusion is still about the duty, so it stays with the operative paragraph.
-    mixed = _suggestions(msa, plan, {raised_on: {"reason": DURATION + " It also omits the third-party exclusion.", "append": DURATION_FIX}})
-    assert list(mixed) == ["para_29"]
-
-
-def test_both_confidentiality_findings_land_on_their_own_paragraphs(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    script = {"para_30": {"reason": EXCLUSION_GAP, "append": EXCLUSION_FIX}, "para_29": {"reason": DURATION, "append": DURATION_FIX}}
-    assert _validate(msa, plan, script) == [("para_29", "Medium"), ("para_31", "Medium")]
-    # Return and destruction stay on the return paragraph.
-    assert [p for p, _ in _validate(msa, plan, {"para_33": {"reason": "No deadline is set for return or destruction."}})] == ["para_33"]
-
-
-def test_order_of_precedence_is_a_document_fact(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    assert [location.para_identifier for location in plan.facts.order_of_precedence] == ["para_14"]
-    assert plan.facts.precedence_covers_orders
-    assert '- Order of precedence: the "Consulting Services" clause already says which terms prevail when this Agreement and a Statement of Work conflict.' in plan.facts_block
-
-
-def test_a_fix_never_re_adds_a_sentence_the_agreement_already_has(msa: GeneralReviewRequest, plan: gr.ReviewPlan) -> None:
-    # Runs 2 and 3 proposed para_14's own sentence for para_12; it is taken out and the real addition stays.
-    suggestions = _suggestions(msa, plan, {"para_12": {"reason": SOW_CONFLICT, "append": f"{PRECEDENCE_SENTENCE} {SOW_TERMINATION}"}})
-    assert suggestions["para_12"].suggested_fix == _text(msa, "para_12") + " " + SOW_TERMINATION
-    assert suggestions["para_12"].risk_level == "Medium"
-    # A fix whose only addition is already in the agreement is no finding at all.
-    assert _validate(msa, plan, {"para_12": {"reason": SOW_CONFLICT, "append": PRECEDENCE_SENTENCE}}) == []
-
-
-# --- 6. cache key and end-to-end determinism ------------------------------------
+# --- 6. cache keys --------------------------------------------------------------
 
 
 def test_cache_key_uses_text_resolved_parties_and_policy_version(msa: GeneralReviewRequest) -> None:
@@ -863,135 +339,159 @@ def test_cache_key_uses_text_resolved_parties_and_policy_version(msa: GeneralRev
 
 def test_plan_cache_keys_do_not_depend_on_how_the_client_is_named(msa: GeneralReviewRequest) -> None:
     cache = ZDRClauseHashCache(version_hash="keys")
-    as_acronym = gr.build_review_plan(msa, 5, cache)
-    as_name = gr.build_review_plan(msa.model_copy(update={"party_represented": "Accordor"}), 5, cache)
-    other_side = gr.build_review_plan(msa.model_copy(update={"party_represented": "Amtrino"}), 5, cache)
+    as_acronym = gr.build_review_plan(msa, cache)
+    as_name = gr.build_review_plan(msa.model_copy(update={"party_represented": "Accordor"}), cache)
+    other_side = gr.build_review_plan(msa.model_copy(update={"party_represented": "Amtrino"}), cache)
     assert as_acronym.cache_keys == as_name.cache_keys
     assert set(as_acronym.cache_keys.values()).isdisjoint(other_side.cache_keys.values())
 
 
-class ScriptedModel:
-    """Stands in for the Bedrock model: for each batch, returns the scripted findings whose paragraph is in that batch.
+# --- 7. the pipeline on the whole agreement -------------------------------------
 
-    Like the real model it copies original_text from the document it is shown,
-    so a paragraph normalised before the prompt comes back in its shown form.
-    """
-
-    def __init__(self, request: GeneralReviewRequest, plan: gr.ReviewPlan, script: Dict[str, Dict[str, Any]]) -> None:
-        self.texts = {para.paraindetifier: plan.shown_text.get(idx, para.text) for idx, para in enumerate(request.textinformation)}
-        self.script = script
-        self.calls: List[Dict[str, Any]] = []
-
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Any, session_id: str, system_message: Optional[str] = None, temperature: float = 0.0) -> Any:
-        self.calls.append(context)
-        findings = [_finding(self.texts[para_id], **facts) for para_id, facts in self.script.items() if self.texts[para_id].strip() in context["document"]]
-        return response_model.model_validate({"findings": findings})
+# What a scripted answer set fails. Keys may be scoped to a clause by its title.
+CAP = {"LOL-01": "not_met", "LOL-04": "not_met"}
+DISPUTES = {"FEE-07": "not_met"}
+EXPECTED_BASE = [("para_10", "Low"), ("para_20", "High"), ("para_50", "High")]  # para_10: the undefined term, found in code
 
 
-def _drifting_runs(text_of: Dict[str, str]) -> List[Dict[str, Dict[str, Any]]]:
-    """Three model behaviours for the same document, reproducing the drift seen across the three live runs."""
-
-    ip = {"reason": IP_CARVE_OUT_REASON, "append": CARVE_OUT, "severity_category": "uncapped_or_severe_exposure"}
-    fees = {"reason": DISPUTE_REASON, "append": WITHHOLD, "triggered_unacceptable_flags": [WITHHOLD_TRIGGER]}
-    survival = {"reason": SURVIVAL_REASON, "append": "Sections 6 and 7 survive termination."}
-    blank = "The governing law clause contains a blank where the state name should appear."
-    typo = {"reason": "'suit 200' should read 'Suite 200'.", "severity_category": "minor_drafting_hygiene", "falls_short_of_acceptable_standard": False}
-    exclusion = {"reason": MISSING_EXCLUSION}
-    confused = {"triggered_unacceptable_flags": [ONE_WAY_CONFIDENTIALITY_TRIGGER], "is_materially_one_sided_against_client": True, "severity_category": "uncapped_or_severe_exposure"}
-    run_1: Dict[str, Dict[str, Any]] = {
-        "para_9": {"reason": "Restricts ACI from engaging other vendors.", "triggered_unacceptable_flags": [NON_COMPETE_TRIGGER], "is_materially_one_sided_against_client": True},
-        "para_20": fees,
-        "para_29": {"reason": ONE_WAY_RUN_1, **confused},
-        "para_31": exclusion,
-        "para_37": ip,
-        "para_41": WORKMANLIKE,
-        "para_43": VAGUE,
-        "para_48": {"reason": blank},
-        "para_52": {"reason": "The clause is one-sided against ACI (the Service Provider).", "triggered_unacceptable_flags": [ASSIGNMENT_TRIGGER], "is_materially_one_sided_against_client": True},
-        "para_67": {"reason": "The clause does not say that oral agreements cannot vary the Agreement."},
-        "para_68": survival,
-    }
-    run_2: Dict[str, Dict[str, Any]] = {
-        "para_2": {"reason": "The Amtrino address has no zip code."},
-        "para_9": {"reason": "No geographic limit; may be unenforceable."},
-        "para_21": fees,
-        "para_29": {"reason": ONE_WAY_RUN_2},
-        "para_31": exclusion,
-        "para_36": ip,
-        "para_41": WORKMANLIKE,
-        "para_43": VAGUE,
-        "para_52": {"reason": "The assignment right is not mutual."},
-        "para_54": typo,
-        "para_57": typo,
-        "para_68": survival,
-        "para_71": {"reason": "Signature line is malformed."},
-    }
-    run_3: Dict[str, Dict[str, Any]] = {
-        "para_8": {"reason": "Heading should describe the scope.", "append": "The restriction applies worldwide."},
-        "para_9": {"reason": "Acceptable in scope and duration, but unlimited in geography."},
-        "para_19": {"reason": DISPUTE_REASON, "append": WITHHOLD, "triggered_unacceptable_flags": [WITHHOLD_TRIGGER]},
-        "para_20": fees,
-        "para_21": {"reason": EXPENSE_REASON},
-        "para_31": exclusion,
-        "para_32": {"reason": "The obligations run only one way."},
-        "para_36": ip,
-        "para_37": ip,
-        "para_41": WORKMANLIKE,
-        "para_48": {"reason": "The venue is left blank."},
-        "para_63": {"reason": "No rule for changing an email address is stated."},
-        "para_64": {"reason": "Headings clause is redundant."},
-        "para_68": survival,
-    }
-    return [run_1, run_2, run_3]
+def _clauses_text(model: ScriptedModel) -> str:
+    return "\n\n".join(call["context"]["clauses"] for call in model.assess_calls)
 
 
-# para_10 is never raised by the scripted model: the undefined-term backstop adds it on every run.
-EXPECTED = [("para_9", "Medium"), ("para_10", "Low"), ("para_20", "High"), ("para_31", "Medium"), ("para_37", "High"), ("para_41", "High")]
+def test_only_clause_content_is_put_to_the_model(msa: GeneralReviewRequest, container_stub: Any, fresh: ZDRClauseHashCache) -> None:
+    model = ScriptedModel()
+    container_stub(model=model, search=None)
+    _review(msa)
+    shown = _clauses_text(model)
+    # Preamble, recitals, address blocks and the signature block carry no id, so no answer can point at them; nor can a heading.
+    for para_id in [*NEVER_FLAGGED, *HEADINGS]:
+        assert f"[{_pid(msa, para_id)}]" not in shown, para_id
+    assert "[heading] Intellectual Property Rights." in shown and "[context] Attn.: Accounts Payable" in shown
+    for para_id in ("para_9", "para_20", "para_37", "para_48", "para_54", "para_68"):
+        assert f"[{_pid(msa, para_id)}] " in shown, para_id
+    # Every call works from the same reference: the client, the located provisions, and the whole agreement with the state restored.
+    references = {call["reference"] for call in model.assess_calls}
+    assert len(references) == 1
+    (reference,) = references
+    assert "Represented Party (your client): Accordor Inc." in reference and "ACI" not in reference.split("Parties to this agreement")[0]
+    assert "laws of the State of California," in reference and "State of ," not in reference
+    assert model.warmups == 1  # the reference is written to the prompt cache once, before the calls fan out
 
 
-def test_three_cold_runs_give_identical_paragraphs_and_risk_levels(msa: GeneralReviewRequest, plan: gr.ReviewPlan, container_stub: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    text_of = {para.paraindetifier: para.text for para in msa.textinformation}
+def test_sub_clauses_under_one_heading_type_share_one_checklist(msa: GeneralReviewRequest, container_stub: Any, fresh: ZDRClauseHashCache) -> None:
+    model = ScriptedModel()
+    container_stub(model=model, search=None)
+    _review(msa)
+    shown = _clauses_text(model)
+    one_set = "\n\n".join(call["context"]["clauses"] for call in model.assess_calls[:: gr.CONSENSUS_VOTES])
+    # Term/Termination, Return of Advances and Return of Materials: one clause, one Term checklist.
+    assert one_set.count("- TER-01 |") == 1
+    term = shown.split('"Term/Termination" ===')[1].split("Checklist for")[0]
+    assert f"[{_pid(msa, 'para_17')}] Return of Advances." in term and f"[{_pid(msa, 'para_18')}] Return of Materials." in term
+    # Governing law and the arbitration clause likewise, so a conflict between them is one finding.
+    assert one_set.count("- LAW-03 |") == 1
+    assert one_set.count("- CMP-01 |") == 1  # Compliance with Laws + Anti-Corruption Compliance
+
+
+def test_three_cold_runs_with_drifting_answers_give_one_review(msa: GeneralReviewRequest, container_stub: Any, monkeypatch: pytest.MonkeyPatch) -> None:
+    # Each run's three answer sets agree on the cap and the dispute right; around them, single answer sets drift.
+    runs = [
+        [{**CAP, **DISPUTES}, {**CAP, **DISPUTES, "IND-05": "not_met"}, {**CAP, **DISPUTES, "NOT-01": "not_met"}],
+        [{**CAP, **DISPUTES, "CON-03": "not_met"}, {**CAP, **DISPUTES}, {**CAP, "FEE-07": ("not_met", [_pid(msa, "para_21")]), "ENT-02": "partly_met"}],
+        [{**CAP, "FEE-07": ("not_met", ["P999"])}, {**CAP, **DISPUTES, "FOR-02": "not_met", "ASG-02": "not_met"}, {"LOL-01": ("not_met", [_pid(msa, "para_50")]), "LOL-04": "not_met", **DISPUTES}],
+    ]
     outcomes = []
-    fixes = []
-    for number, script in enumerate(_drifting_runs(text_of), start=1):
+    for number, scripts in enumerate(runs):
         # Cold: nothing carried over from the previous run.
-        monkeypatch.setattr(gr, "clause_cache", ZDRClauseHashCache(version_hash="cold"))
+        monkeypatch.setattr(gr, "clause_cache", ZDRClauseHashCache(version_hash=f"cold-{number}"))
         monkeypatch.setattr(gr, "_response_cache", gr.OrderedDict())
-        model = ScriptedModel(msa, plan, script)
-        container_stub(model=model, search=None)
-        response = asyncio.run(gr.general_review_service(msa, f"run-{number}"))
-        outcomes.append([(suggestion.para_identifier, suggestion.risk_level) for suggestion in response.suggestions])
-        fixes.append({suggestion.para_identifier: suggestion.suggested_fix for suggestion in response.suggestions})
-
-        # Every batch was told who the parties are and what the document contains elsewhere, and none was shown a blank state.
-        assert model.calls
-        for context in model.calls:
-            assert "Represented Party (your client): Accordor Inc." in context["party_context"]
-            assert 'survival provision, in its "Term/Termination" clause' in context["document_facts"]
-            assert "ACI" not in context["reviewer_context"]
-            assert "State of ," not in context["document"] and "courts of ." not in context["document"]
-        assert any("laws of the State of California," in context["document"] for context in model.calls)
-        assert any(f"  * {AMENDMENT_GATE}" in context["policy_context"] for context in model.calls)
-
-    assert outcomes[0] == outcomes[1] == outcomes[2] == EXPECTED
-    for fix in fixes:
-        assert fix["para_37"].startswith(text_of["para_37"]) and fix["para_37"].endswith(CARVE_OUT)
-        assert fix["para_20"].startswith(text_of["para_20"]) and fix["para_20"].endswith(WITHHOLD)
+        # The batches run concurrently, so each answer set is scripted per batch rather than per call.
+        container_stub(model=_PerBatchModel(scripts), search=None)
+        outcomes.append(_review(msa))
+    assert outcomes[0] == outcomes[1] == outcomes[2] == EXPECTED_BASE
 
 
-def test_a_warm_run_replays_the_first_outcome_even_when_the_model_changes_its_mind(msa: GeneralReviewRequest, plan: gr.ReviewPlan, container_stub: Any, monkeypatch: pytest.MonkeyPatch) -> None:
-    text_of = {para.paraindetifier: para.text for para in msa.textinformation}
-    first, second, _ = _drifting_runs(text_of)
-    monkeypatch.setattr(gr, "clause_cache", ZDRClauseHashCache(version_hash="warm"))
-    monkeypatch.setattr(gr, "_response_cache", gr.OrderedDict())
-    model = ScriptedModel(msa, plan, first)
+class _PerBatchModel(ScriptedModel):
+    """A scripted model whose n-th answer set for any one batch uses the n-th script, whatever order the batches' calls arrive in."""
+
+    def __init__(self, scripts: List[Dict[str, Any]]) -> None:
+        super().__init__(scripts)
+        self._seen: Dict[str, int] = {}
+
+    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Any, session_id: str, system_message: Any = None, temperature: float = 0.0, **options: Any) -> Any:
+        if response_model.__name__ != "BatchAssessment":
+            return await super().generate(prompt, context, response_model, session_id, system_message, temperature, **options)
+        number = self._seen.get(context["clauses"], 0)
+        self._seen[context["clauses"]] = number + 1
+        self.assess_calls.append({"context": context, "reference": options.get("cached_prefix"), "system": system_message})
+        return response_model.model_validate({"clauses": self._answers(context["clauses"], self.scripts[number % len(self.scripts)]), "drafting_defects": []})
+
+
+def test_a_warm_run_replays_the_first_outcome_even_when_the_model_changes_its_mind(msa: GeneralReviewRequest, container_stub: Any, fresh: ZDRClauseHashCache) -> None:
+    model = ScriptedModel([{**CAP, **DISPUTES}])
     container_stub(model=model, search=None)
     cold = asyncio.run(gr.general_review_service(msa, "cold"))
-    calls = len(model.calls)
+    calls = (len(model.assess_calls), len(model.draft_calls))
+    assert [(s.para_identifier, s.risk_level) for s in cold.suggestions] == EXPECTED_BASE
 
     # Same document, the client named differently, the document-level cache emptied, a model that now answers differently.
-    monkeypatch.setattr(gr, "_response_cache", gr.OrderedDict())
-    model.script = second
+    gr._response_cache.clear()
+    model.scripts = [{"IND-05": "not_met"}]
     warm = asyncio.run(gr.general_review_service(msa.model_copy(update={"party_represented": "Accordor"}), "warm"))
-    assert len(model.calls) == calls  # every paragraph replayed from the clause cache
+    assert (len(model.assess_calls), len(model.draft_calls)) == calls  # every paragraph replayed from the clause cache
     assert warm == cold
+
+
+def test_the_undefined_term_is_raised_on_every_run_whatever_the_model_notices(msa: GeneralReviewRequest, container_stub: Any, fresh: ZDRClauseHashCache) -> None:
+    model = ScriptedModel(revise=lambda paragraph: paragraph.replace("Accordor Proprietary Information", "Confidential Information"))  # a model that fails nothing
+    container_stub(model=model, search=None)
+    response = asyncio.run(gr.general_review_service(msa, "terms"))
+    assert [(s.para_identifier, s.risk_level, s.clause) for s in response.suggestions] == [("para_10", "Low", "Non-Compete")]
+    suggestion = response.suggestions[0]
+    assert suggestion.original_text == _text(msa, "para_10")
+    assert suggestion.suggested_fix == _text(msa, "para_10").replace("Accordor Proprietary Information", "Confidential Information")
+    (draft,) = model.draft_calls
+    assert '"Accordor Proprietary Information" is used as a defined term but the agreement never defines it' in draft["context"]["points"]
+    assert 'the agreement\'s defined term for this is "Confidential Information"' in draft["context"]["points"]
+
+
+def test_a_one_sidedness_point_is_not_raised_on_a_clause_that_favors_the_client(msa: GeneralReviewRequest, container_stub: Any, fresh: ZDRClauseHashCache) -> None:
+    # ASG-01 and ASG-04 are Balance criteria. Assignment binds only Service Provider, in Accordor's favor.
+    one_sided = [{"ASG-01": "not_met", "ASG-04": "not_met"}]
+    container_stub(model=ScriptedModel(one_sided), search=None)
+    assert _review(msa) == [("para_10", "Low")]
+    # Acting for Service Provider, the same answers are a finding: the clause now runs against the client.
+    gr.clause_cache.clear()
+    gr._response_cache.clear()
+    container_stub(model=ScriptedModel(one_sided), search=None)
+    assert ("para_52", "Medium") in _review(msa.model_copy(update={"party_represented": "Amtrino"}))
+
+
+def test_a_forum_conflict_is_high_and_lands_on_the_governing_law_paragraph(msa: GeneralReviewRequest, container_stub: Any, fresh: ZDRClauseHashCache) -> None:
+    law, arbitration = _pid(msa, "para_48"), _pid(msa, "para_49")
+    # The answer sets name the two conflicting paragraphs in different orders; the finding lands on the first of them.
+    scripts = [{"LAW-03": ("not_met", [law, arbitration])}, {"LAW-03": ("not_met", [arbitration, law])}, {"LAW-03": ("not_met", [arbitration, law])}]
+    model = ScriptedModel(scripts, revise=lambda paragraph: paragraph.replace("California law", "Delaware law") + " Arbitration under the Mediation and Arbitration clause prevails.")
+    container_stub(model=model, search=None)
+    response = asyncio.run(gr.general_review_service(msa, "forum"))
+    by_id = {s.para_identifier: s for s in response.suggestions}
+    assert set(by_id) == {"para_10", "para_48"} and by_id["para_48"].risk_level == "High"
+    suggestion = by_id["para_48"]
+    # The add-in gets the paragraph exactly as it sent it; the redraft keeps the state the paragraph itself names.
+    assert suggestion.original_text == _text(msa, "para_48") and "State of ," in suggestion.original_text
+    assert "State of California," in suggestion.suggested_fix and "courts of California." in suggestion.suggested_fix
+    assert "Delaware" not in suggestion.suggested_fix
+    # The drafter was shown the paragraph with the state restored, and the clause's other paragraph for context.
+    (draft,) = [call["context"] for call in model.draft_calls if call["context"]["clause_title"] == "Governing Law and Choice of Venue"]
+    assert "State of California," in draft["paragraph"] and "Mediation and Arbitration." in draft["clause_text"]
+
+
+def test_a_redraft_keeps_the_agreements_own_typography(msa: GeneralReviewRequest, container_stub: Any, fresh: ZDRClauseHashCache) -> None:
+    original = _text(msa, "para_37")
+    assert "Service Provider’s" in original
+    # The model returns the paragraph retyped with straight apostrophes, plus one new sentence.
+    retyped = lambda paragraph: paragraph.replace("’", "'") + " Service Provider waives all moral rights in Accordor's favor."  # noqa: E731
+    container_stub(model=ScriptedModel([{"IPR-03": "not_met"}], revise=retyped), search=None)
+    response = asyncio.run(gr.general_review_service(msa, "typography"))
+    suggestion = next(s for s in response.suggestions if s.para_identifier == "para_37")
+    assert suggestion.suggested_fix == original + " Service Provider waives all moral rights in Accordor’s favor."

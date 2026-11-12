@@ -41,3 +41,10 @@ class LLMModelError(AppException):
 
     def __init__(self, message: str) -> None:
         super().__init__(message)
+
+
+class LLMOutputTruncatedError(AppException):
+    """Exception raised when the model stopped at its output token limit before finishing its response."""
+
+    def __init__(self, message: str) -> None:
+        super().__init__(message)

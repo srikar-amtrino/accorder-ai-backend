@@ -1,24 +1,40 @@
+"""General review of a contract, or of the clauses a user selected.
+
+The review runs in four stages, and the model is asked only what code cannot decide:
+
+1. Plan (code). The paragraphs are grouped into clauses, the parties are
+   resolved from the preamble, non-clause content is set aside, and each clause
+   is mapped to its clause type and that type's checklist of criteria.
+2. Assessment (model, several independent answer sets). For each clause the
+   model answers its checklist: every criterion is Met, Partly met, Not met or
+   Not applicable, with the words it rests on. A closed question has a stable
+   answer in a way that "find whatever is wrong" does not.
+3. Findings (code). A criterion fails only when every answer set reports a
+   shortfall on it. Which paragraph carries the finding, whether a one-sidedness point
+   survives on a clause that favors the client, and the risk level all follow
+   from the answers and the taxonomy in plain code.
+4. Drafting (model, one call per flagged paragraph). The model is given the
+   paragraph, its clause, and the points already settled, and redrafts the
+   paragraph as counsel would mark it up. Its text is returned as written.
+"""
+
 import asyncio
 import hashlib
 import json
 import re
+import time
 from collections import Counter, OrderedDict
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
+from difflib import SequenceMatcher
 from pathlib import Path
-from typing import AsyncIterator, Dict, FrozenSet, List, Optional, Sequence, Set, Tuple, cast
+from typing import Any, AsyncIterator, Dict, FrozenSet, List, Optional, Sequence, Set, Tuple, Type, TypeAlias, TypeVar, cast
+
+from pydantic import BaseModel
 
 from src.config.logging import get_logger
 from src.core.container import get_bedrock_model, get_clause_search
 from src.schemas.clause_mapping import ClauseMatch, ClausePolicy
-from src.schemas.general_review import (
-    CLAUSE_WIDE_OMISSION,
-    GeneralReviewFindings,
-    GeneralReviewRequest,
-    GeneralReviewResponse,
-    ReviewFinding,
-    Suggestion,
-    TextInformation,
-)
+from src.schemas.general_review import BatchAssessment, DraftedRevision, DraftingDefect, GeneralReviewRequest, GeneralReviewResponse, Suggestion, TextInformation
 from src.services.clause_mapping.policy_store import get_clause_policy_store
 from src.services.clause_mapping.resilient_classifier import (
     HEADING_MATCH_CONFIDENCE,
@@ -26,6 +42,7 @@ from src.services.clause_mapping.resilient_classifier import (
     LAYER2_QDRANT,
     LAYER3_FALLBACK,
     MIN_CLAUSE_WORDS,
+    MISCELLANEOUS_TYPE,
     SKIPPED_SHORT,
     UNCLASSIFIED,
     ResolvedClause,
@@ -33,80 +50,86 @@ from src.services.clause_mapping.resilient_classifier import (
     classify_layer1_heading,
 )
 from src.services.clause_mapping.search import BaseClauseSearch
-from src.services.general_review.clause_cache import NO_FINDING, ClauseAssessment, ZDRClauseHashCache, clause_cache
-from src.services.general_review.document_facts import (
-    DocumentFacts,
-    apply_blank_field_guard,
-    build_document_facts,
-    claims_blank_field,
-    is_expense_approval_trigger,
-    restore_blank_fields,
+from src.services.general_review.assessment import (
+    GENERIC_CRITERIA,
+    GENERIC_TIER,
+    GENERIC_TYPE_LABEL,
+    ClauseView,
+    Point,
+    answers_by_clause,
+    render_clause,
+    render_points,
+    select_points,
+    tally_criteria,
+    tally_defects,
+    type_fits_by_clause,
+    undefined_term_points,
 )
-from src.services.general_review.party_resolver import FAVORS_REPRESENTED, PartyContext, clause_direction, is_sole_mutuality_complaint, resolve_party_context
-from src.services.general_review.risk_matrix import (
-    MATERIAL_DEVIATION,
-    MINOR_HYGIENE,
-    RiskLevel,
-    apply_gate_floor,
-    compute_deterministic_risk_level,
-    drop_direction_contradicted_flags,
-    tier_for_unmapped,
-)
+from src.services.general_review.clause_cache import NO_FINDING, ClauseAssessment, ZDRClauseHashCache, cache_ttl_seconds, clause_cache
+from src.services.general_review.defined_terms import quoted_defined_terms
+from src.services.general_review.document_facts import DocumentFacts, apply_blank_field_guard, build_document_facts, restore_blank_fields
+from src.services.general_review.party_resolver import FAVORS_REPRESENTED, ROLE_CLIENT, PartyContext, clause_direction, resolve_party_context
+from src.services.general_review.risk_matrix import RiskLevel, highest
 from src.services.general_review.segmentation import (
-    ROLE_BOILERPLATE,
     ROLE_CONTEXT_ONLY,
-    ROLE_DEFINITION,
     ROLE_HEADING,
-    ROLE_PRIMARY,
-    ROLE_SECONDARY,
-    TITLE_STOP_WORDS,
     ClauseStructure,
     build_clause_structure,
     build_clause_titles,
     build_clause_units,
     build_smart_embedding_query,
-    detect_clause_start,
-    extract_defined_terms,
-    fold_sentence,
-    format_with_role,
-    is_clause_wide_topic,
-    new_sentences,
-    remove_sentence,
-    sentence_keys,
-    strip_role_tags,
+    clause_number,
+    runs_on_into,
 )
-from src.services.general_review.taxonomy_gates import criterion_id_of, strongest_gate
+from src.services.general_review.taxonomy_gates import criteria_for_type, provider_protective_criteria, relocation_criteria
+from src.services.general_review.typography import restore_typography, uses_curly_apostrophes, uses_curly_quotes
 
 logger = get_logger(__name__)
 
 # Caps parallel Bedrock calls so large documents don't exhaust the client pool.
 MAX_CONCURRENT_CALLS = 6
 
-# Parallel review votes per batch; a finding needs a majority to survive. Raise to 3 for
-# stronger run-to-run consistency at ~3x the per-review cost.
-CONSENSUS_VOTES = 1
+# Independent answer sets per assessment batch. A criterion fails only when every set that came back reports a
+# shortfall on it: a point the model answers both ways is left out on every run instead of coming and going.
+# At least a majority of the sets must come back for the batch to be decided at all.
+# The answers are short and enumerated, so three sets cost little and settle the borderline items.
+CONSENSUS_VOTES = 3
 _MAJORITY = CONSENSUS_VOTES // 2 + 1
 
-# Character budget per review batch; keeps each LLM call focused and well under limits.
+# Character budget per assessment batch. A batch always holds whole clauses, so it may run over.
 BATCH_CHAR_BUDGET = 6000
 
-# Absolute batch ceiling for documents with no detectable headings.
-BATCH_HARD_LIMIT = BATCH_CHAR_BUDGET * 3
+# The whole agreement is given to every assessment call as read-only reference up to this size, so a
+# criterion is judged by what the agreement provides anywhere. A longer agreement is given as its outline.
+REFERENCE_FULL_TEXT_LIMIT = 150_000
 
-# Read-only context carried into the next batch when a forced cut is unavoidable.
-CONTEXT_TAIL_CHARS = 1200
+# A reference shorter than this is below the model's minimum cacheable prompt; no cache warm-up is made for it.
+_MIN_CACHEABLE_REFERENCE_CHARS = 8000
 
-# Leading words of a clause quoted in its policy entry, so the model can tell
-# which clause each legal-team policy belongs to.
-_POLICY_ANCHOR_WORDS = 15
+ASSESS_MAX_TOKENS = 8000
+DRAFT_MAX_TOKENS = 4000
 
-_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "general_review"
-_GENERAL_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
-_GENERAL_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
+_OUTLINE_MAX_ENTRIES = 120
 
-# Identical documents always return the identical review (LRU, per process).
+# A document with at least this many numbered paragraphs is taken to show its clause numbers.
+_NUMBERED_DOCUMENT_MIN_PARAGRAPHS = 3
+
+_PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v3" / "general_review"
+_ASSESS_SYSTEM = (_PROMPTS_DIR / "assess_system.mustache").read_text(encoding="utf-8")
+_ASSESS_USER = (_PROMPTS_DIR / "assess_user.mustache").read_text(encoding="utf-8")
+_DRAFT_SYSTEM = (_PROMPTS_DIR / "draft_system.mustache").read_text(encoding="utf-8")
+_DRAFT_USER = (_PROMPTS_DIR / "draft_user.mustache").read_text(encoding="utf-8")
+
+# Identical requests return the identical review (LRU, per process). A stored review is contract text, so it is
+# discarded once it is older than the configured time to live, like the clause cache's entries.
 _CACHE_MAX_ENTRIES = 32
-_response_cache: "OrderedDict[str, GeneralReviewResponse]" = OrderedDict()
+_response_cache: "OrderedDict[str, Tuple[float, GeneralReviewResponse]]" = OrderedDict()
+
+# A clause: the positions of its paragraphs, in order. A batch: whole clauses, in order.
+_Unit = Tuple[int, ...]
+_Batch = List[_Unit]
+
+ResponseT = TypeVar("ResponseT", bound=BaseModel)
 
 
 def _request_fingerprint(request: GeneralReviewRequest) -> str:
@@ -120,11 +143,36 @@ def _request_fingerprint(request: GeneralReviewRequest) -> str:
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
 
 
-def _build_reviewer_context(request: GeneralReviewRequest, parties: Optional[PartyContext] = None) -> str:
-    """Render the questionnaire answers as the prompt's reviewer-context block.
+def _cache_get(key: str) -> Optional[GeneralReviewResponse]:
+    cached = _response_cache.get(key)
+    if cached is None:
+        return None
+    stored_at, response = cached
+    if time.monotonic() - stored_at >= cache_ttl_seconds():
+        del _response_cache[key]
+        return None
+    _response_cache.move_to_end(key)
+    return response
 
-    Returns an empty string when the user skipped every field, which keeps the
-    rendered prompt byte-identical to the questionnaire-less flow.
+
+def _cache_put(key: str, response: GeneralReviewResponse) -> None:
+    ttl = cache_ttl_seconds()
+    if ttl <= 0:
+        return
+    now = time.monotonic()
+    for expired in [stored for stored, (stored_at, _) in _response_cache.items() if now - stored_at >= ttl]:
+        del _response_cache[expired]
+    _response_cache[key] = (now, response)
+    _response_cache.move_to_end(key)
+    while len(_response_cache) > _CACHE_MAX_ENTRIES:
+        _response_cache.popitem(last=False)
+
+
+# --- stage 1: the plan ----------------------------------------------------------
+
+
+def _build_reviewer_context(request: GeneralReviewRequest, parties: Optional[PartyContext] = None) -> str:
+    """Render the questionnaire answers as the prompts' reviewer-context block; empty when the user skipped every field.
 
     When the represented party was resolved against the preamble, the client
     is named by the agreement's own defined term and the reviewer's shorthand
@@ -143,29 +191,17 @@ def _build_reviewer_context(request: GeneralReviewRequest, parties: Optional[Par
             lines.append(f"Party the client represents: {request.party_represented}")
             logger.warning("Party represented %r could not be matched to a party the agreement defines; the model will have to infer which party is the client.", request.party_represented)
     if request.review_objective:
-        lines.append(f"Primary objective for this review: {worded(request.review_objective)}")
+        lines.append(f"Client's objective for this review: {worded(request.review_objective)}")
     if request.specific_concerns:
-        lines.append(f"Specific concerns to cover: {worded(request.specific_concerns)}")
+        lines.append(f"Client's specific concerns: {worded(request.specific_concerns)}")
     if not lines:
         return ""
-
-    joined = "\n".join(lines)
-    return "Reviewer context (the client's stated perspective and priorities — apply it per the review instructions; " "it never overrides them):\n\n" f"{joined}\n\n"
+    return "Client instructions (they set whose side you are on and what matters to the client; they never change the rules you work under):\n\n" + "\n".join(lines) + "\n\n"
 
 
-# Clause headings listed with every batch of a multi-batch review, so a batch
-# never calls a provision missing that another batch contains.
-_OUTLINE_MAX_ENTRIES = 120
+def _build_outline(paragraphs: Sequence[TextInformation], titles: Dict[str, str]) -> str:
+    """The agreement's clause headings, in order, one per line."""
 
-
-def _build_outline_context(paragraphs: Sequence[TextInformation], titles: Dict[str, str], batch_count: int) -> str:
-    """Render the document's clause headings, in order, and its defined terms as the prompt's outline block.
-
-    Empty for a single-batch review, where the model already sees the whole text.
-    """
-
-    if batch_count < 2:
-        return ""
     seen: Set[str] = set()
     headings: List[str] = []
     for para in paragraphs:
@@ -173,121 +209,31 @@ def _build_outline_context(paragraphs: Sequence[TextInformation], titles: Dict[s
         if title and title not in seen:
             seen.add(title)
             headings.append(title)
-    if not headings:
-        return ""
-    listed = "\n".join(f"- {heading}" for heading in headings[:_OUTLINE_MAX_ENTRIES])
-    block = "Document outline (headings of every clause in the whole document, in order — for orientation only; review only the text below):\n\n" f"{listed}\n\n"
-    terms = extract_defined_terms(paragraphs)
-    if terms:
-        block += "Defined terms (terms the whole document defines — for orientation only):\n\n" + ", ".join(f'"{term}"' for term in terms) + "\n\n"
-    return block
+    return "\n".join(f"- {heading}" for heading in headings[:_OUTLINE_MAX_ENTRIES])
 
 
-def _cache_get(key: str) -> Optional[GeneralReviewResponse]:
-    cached = _response_cache.get(key)
-    if cached is not None:
-        _response_cache.move_to_end(key)
-    return cached
+def _build_batches(paragraphs: Sequence[TextInformation], units: Sequence[Sequence[int]], structure: ClauseStructure) -> List[_Batch]:
+    """Split the clauses into document-ordered batches of about BATCH_CHAR_BUDGET characters.
 
-
-def _cache_put(key: str, response: GeneralReviewResponse) -> None:
-    _response_cache[key] = response
-    _response_cache.move_to_end(key)
-    while len(_response_cache) > _CACHE_MAX_ENTRIES:
-        _response_cache.popitem(last=False)
-
-
-# (document position, paragraph) pairs — position drives final ordering.
-_Batch = List[Tuple[int, TextInformation]]
-
-
-def _is_clause_start(text: str) -> bool:
-    """A paragraph where a new clause begins — the only safe place to cut a batch."""
-
-    return detect_clause_start(text)[0]
-
-
-def _context_tail(batch: _Batch) -> str:
-    """Trailing paragraphs of a batch, carried as read-only context after a forced cut."""
-
-    tail: List[str] = []
-    size = 0
-    for _, para in reversed(batch):
-        text = para.text.strip()
-        if size + len(text) > CONTEXT_TAIL_CHARS and tail:
-            break
-        tail.insert(0, text)
-        size += len(text)
-    return "\n\n".join(tail)
-
-
-def _build_batches(paragraphs: Sequence[TextInformation]) -> List[Tuple[_Batch, str]]:
-    """Split paragraphs into document-ordered (batch, context) pairs, cutting only at clause starts.
-
-    Once a batch exceeds the char budget it closes at the next clause start
-    (heading, inline lead-in, or numbered paragraph), so a clause's paragraphs
-    always stay together. If a document has no detectable clause starts, the
-    hard limit forces a cut and the next batch carries the previous tail as
-    read-only context so nothing is judged without its surroundings.
+    A clause is never split: its checklist is answered against the whole
+    clause. Nor are consecutive clauses whose headings name the same clause
+    type ("Term/Termination", "Return of Advances", "Return of Materials"):
+    they are assessed together as one clause (see _clause_views).
     """
 
-    indexed = [(idx, para) for idx, para in enumerate(paragraphs) if para.text.strip()]
-
-    batches: List[Tuple[_Batch, str]] = []
+    batches: List[_Batch] = []
     current: _Batch = []
-    current_size = 0
-    pending_context = ""
-
-    for item in indexed:
-        clean_cut = current_size >= BATCH_CHAR_BUDGET and _is_clause_start(item[1].text)
-        forced_cut = current_size >= BATCH_HARD_LIMIT
-        if current and (clean_cut or forced_cut):
-            batches.append((current, pending_context))
-            pending_context = _context_tail(current) if forced_cut else ""
-            current = []
-            current_size = 0
-        current.append(item)
-        current_size += len(item[1].text)
-
+    size = 0
+    for unit in units:
+        same_type = bool(current) and structure.clause_type_of.get(unit[0]) is not None and structure.clause_type_of.get(unit[0]) == structure.clause_type_of.get(current[-1][0])
+        if current and size >= BATCH_CHAR_BUDGET and not same_type:
+            batches.append(current)
+            current, size = [], 0
+        current.append(tuple(unit))
+        size += sum(len(paragraphs[idx].text) for idx in unit)
     if current:
-        batches.append((current, pending_context))
+        batches.append(current)
     return batches
-
-
-def _format_document(batch: _Batch, structure: Optional[ClauseStructure] = None, shown_text: Optional[Dict[int, str]] = None) -> str:
-    """Render a batch as paragraphs, each led by its role tag — identifiers stay out of the prompt.
-
-    shown_text holds the paragraphs the model is shown in normalised form (a
-    blank field restored); every other paragraph is rendered as it was sent.
-    """
-
-    shown = shown_text or {}
-    if structure is None:
-        return "\n\n".join(shown.get(position, para.text).strip() for position, para in batch)
-    return "\n\n".join(format_with_role(shown.get(position, para.text).strip(), structure.role(position)) for position, para in batch)
-
-
-@dataclass(frozen=True)
-class ReviewPlan:
-    """Everything decided about a document in code before any model call.
-
-    Built once per review from the paragraphs alone, so every batch — and
-    every run — works from the same parties, facts, and paragraph roles.
-    """
-
-    titles: Dict[str, str]
-    structure: ClauseStructure
-    facts: DocumentFacts
-    parties: Optional[PartyContext] = None
-    reviewer_context: str = ""
-    party_block: str = ""
-    facts_block: str = ""
-    outline_context: str = ""
-    cache_keys: Dict[int, str] = field(default_factory=dict)
-    # Position -> the text the model is shown, for the paragraphs normalised before the prompt is built.
-    shown_text: Dict[int, str] = field(default_factory=dict)
-    # Every sentence of the agreement, folded, -> the positions of the paragraphs it appears in.
-    known_sentences: Dict[str, FrozenSet[int]] = field(default_factory=dict)
 
 
 def _clause_digests(paragraphs: Sequence[TextInformation], structure: ClauseStructure) -> Dict[int, str]:
@@ -305,8 +251,65 @@ def _clause_digests(paragraphs: Sequence[TextInformation], structure: ClauseStru
     return digests
 
 
-def build_review_plan(request: GeneralReviewRequest, batch_count: int, cache: ZDRClauseHashCache) -> ReviewPlan:
-    """Resolve the parties, scan the document facts, and assign paragraph roles for one review."""
+@dataclass(frozen=True)
+class ReviewPlan:
+    """Everything decided about a document in code before any model call.
+
+    Built once per review from the paragraphs alone, so every batch — and
+    every run — works from the same clauses, parties, and reference text.
+    """
+
+    titles: Dict[str, str]
+    structure: ClauseStructure
+    facts: DocumentFacts
+    batches: List[_Batch] = field(default_factory=list)
+    parties: Optional[PartyContext] = None
+    reviewer_context: str = ""
+    party_block: str = ""
+    # Read-only reference given to every assessment call: client, parties, located provisions, and the agreement's text.
+    reference: str = ""
+    # What the drafting call is told about the agreement as a whole: defined terms, governing law, clause headings.
+    agreement_context: str = ""
+    cache_keys: Dict[int, str] = field(default_factory=dict)
+    # Position -> the text the model is shown, for the paragraphs normalised before the prompts are built.
+    shown_text: Dict[int, str] = field(default_factory=dict)
+    # Whether the paragraphs carry their clause numbers. Automatic numbering is often lost on the way from Word.
+    numbered: bool = False
+    # How the agreement types its apostrophes and quotation marks; new wording in a redraft is typed the same way.
+    curly_apostrophes: bool = False
+    curly_quotes: bool = False
+    # Positions of the paragraphs whose last sentence carries on in the next paragraph (a paragraph break inside a sentence).
+    runs_on: FrozenSet[int] = frozenset()
+
+
+def _build_reference(paragraphs: Sequence[TextInformation], shown_text: Dict[int, str], reviewer_context: str, party_block: str, facts_block: str, outline: str, terms: Sequence[str]) -> str:
+    parts = ["Reference (read-only: use it to understand the clauses under assessment; never assess or revise anything in it).\n\n", reviewer_context, party_block, facts_block]
+    full_text = "\n\n".join(shown_text.get(idx, para.text).strip() for idx, para in enumerate(paragraphs) if para.text.strip())
+    if len(full_text) <= REFERENCE_FULL_TEXT_LIMIT:
+        parts.append(f"Full text of the agreement:\n\n<agreement>\n{full_text}\n</agreement>\n\n")
+    else:
+        if outline:
+            parts.append(f"The agreement is long, so its clause headings are listed in place of its full text:\n\n{outline}\n\n")
+        if terms:
+            parts.append("Terms the agreement defines: " + ", ".join(f'"{term}"' for term in terms) + "\n\n")
+    return "".join(parts)
+
+
+def _build_agreement_context(facts: DocumentFacts, outline: str, terms: Sequence[str]) -> str:
+    parts: List[str] = []
+    if terms:
+        parts.append("Defined terms of the agreement: " + ", ".join(f'"{term}"' for term in terms) + "\n\n")
+    if facts.governing_state:
+        parts.append(f"Governing law: {facts.governing_state}\n\n")
+    if facts.attachments_not_supplied:
+        parts.append(f"{facts.attachments_note()}\n\n")
+    if outline:
+        parts.append(f"Clause headings of the agreement, in order:\n\n{outline}\n\n")
+    return "".join(parts)
+
+
+def build_review_plan(request: GeneralReviewRequest, cache: ZDRClauseHashCache) -> ReviewPlan:
+    """Group the paragraphs into clauses and batches, resolve the parties, scan the document facts, and build the shared prompt blocks."""
 
     paragraphs = request.textinformation
     titles = build_clause_titles(paragraphs)
@@ -314,6 +317,7 @@ def build_review_plan(request: GeneralReviewRequest, batch_count: int, cache: ZD
     facts = build_document_facts(paragraphs, titles, structure)
     parties = resolve_party_context(request.party_represented, paragraphs)
     reviewer_context = _build_reviewer_context(request, parties)
+    party_block = parties.render_block() if parties is not None else ""
     clause_digests = _clause_digests(paragraphs, structure)
     party_key = parties if parties is not None else request.party_represented
     cache_keys = {
@@ -321,154 +325,111 @@ def build_review_plan(request: GeneralReviewRequest, batch_count: int, cache: ZD
         for idx, para in enumerate(paragraphs)
         if para.text.strip()
     }
-    # Pre-LLM normalisation: a blank field whose value the paragraph itself supplies is shown with the value restored.
+    # A blank field whose value the paragraph itself supplies is shown with the value restored.
     shown_text: Dict[int, str] = {}
     for idx, para in enumerate(paragraphs):
         blank = facts.blank_field_for(para.paraindetifier)
         if blank is not None:
             shown_text[idx] = restore_blank_fields(para.text, blank)
-    known: Dict[str, Set[int]] = {}
-    for idx, para in enumerate(paragraphs):
-        for key in sentence_keys(shown_text.get(idx, para.text)):
-            known.setdefault(key, set()).add(idx)
+    outline = _build_outline(paragraphs, titles)
+    terms = quoted_defined_terms(paragraphs)
+    document_text = "\n".join(para.text for para in paragraphs)
+    filled = [idx for idx, para in enumerate(paragraphs) if para.text.strip()]
     return ReviewPlan(
-        shown_text=shown_text,
-        known_sentences={key: frozenset(positions) for key, positions in known.items()},
+        runs_on=frozenset(idx for idx, following in zip(filled, filled[1:]) if runs_on_into(paragraphs[idx].text, paragraphs[following].text)),
         titles=titles,
         structure=structure,
         facts=facts,
+        batches=_build_batches(paragraphs, build_clause_units(paragraphs, titles), structure),
+        numbered=sum(1 for para in paragraphs if clause_number(para.text) is not None) >= _NUMBERED_DOCUMENT_MIN_PARAGRAPHS,
+        curly_apostrophes=uses_curly_apostrophes(document_text),
+        curly_quotes=uses_curly_quotes(document_text),
         parties=parties,
         reviewer_context=reviewer_context,
-        party_block=parties.render_block() if parties is not None else "",
-        facts_block=facts.render(),
-        outline_context=_build_outline_context(paragraphs, titles, batch_count),
+        party_block=party_block,
+        reference=_build_reference(paragraphs, shown_text, reviewer_context, party_block, facts.render(), outline, terms),
+        agreement_context=_build_agreement_context(facts, outline, terms),
         cache_keys=cache_keys,
+        shown_text=shown_text,
     )
 
 
-@dataclass
-class BatchPolicies:
-    """One batch's legal-team policies: the prompt block, and the policy behind each paragraph position."""
-
-    block: str = ""
-    policy_of: Dict[int, ClausePolicy] = field(default_factory=dict)
-
-
-_NO_POLICIES = BatchPolicies()
-
-
-def _clause_type_label(canonical_type: str) -> str:
-    """Readable name for a clause type slug: 'fees-and-payment' -> 'Fees and Payment'."""
-
-    words = canonical_type.replace("-", " ").replace("_", " ").split()
-    return " ".join(word if word in TITLE_STOP_WORDS else word.capitalize() for word in words)
-
-
-def _describe_policy(policy: ClausePolicy) -> List[str]:
-    """Render one policy as prompt lines, leaving out fields the legal team has not filled in yet."""
-
-    type_label = _clause_type_label(policy.canonical_type)
-    label = f"{type_label} — {policy.sub_type}" if policy.sub_type else type_label
-    lines = [f"{label} (inherent risk tier: {policy.inherent_risk_tier})"]
-    if policy.acceptable_standard:
-        lines.append(f"Acceptable standard: {policy.acceptable_standard}")
-    if policy.unacceptable_triggers:
-        lines.append("Unacceptable triggers (copy any that the clause's wording triggers, verbatim, into triggered_unacceptable_flags):")
-        lines.extend(f"  * {trigger}" for trigger in policy.unacceptable_triggers)
-    if policy.fallback_guidelines:
-        lines.append(f"Fallback position: {policy.fallback_guidelines}")
-    return lines
-
-
-def _render_policy_block(batch: _Batch, mapped: Dict[int, ClausePolicy]) -> str:
-    """Render the policy entries for the clauses in one batch, in document order.
-
-    mapped is keyed by a clause's first paragraph position.
-    """
-
-    entries: List[str] = []
-    for idx, para in batch:
-        policy = mapped.get(idx)
-        if policy is None:
-            continue
-        words = para.text.split()
-        anchor = " ".join(words[:_POLICY_ANCHOR_WORDS]) + ("..." if len(words) > _POLICY_ANCHOR_WORDS else "")
-        first, *rest = _describe_policy(policy)
-        lines = [f'Clause beginning "{anchor}"', "Clause type:", f"- {first}"]
-        lines.extend(f"  {line}" for line in rest)
-        entries.append("\n".join(lines))
-
-    if not entries:
-        return ""
-    return "Legal team policies for clauses in the text below (apply each only to the clause it names):\n\n" + "\n\n".join(entries) + "\n\n"
-
+# --- stage 1, continued: clause types -------------------------------------------
 
 # Total time the vector path (embedding + Qdrant) may spend per review. Past
 # this budget the remaining clauses are classified offline (layers 1 and 3).
 POLICY_MAPPING_BUDGET_SECONDS = 240.0
 
-# One policy set per batch, resolved as that batch's clauses are mapped.
-_PolicyContexts = List["asyncio.Future[BatchPolicies]"]
+
+@dataclass
+class _UnitPolicies:
+    """One batch's clause types, keyed by the position of each clause's first paragraph."""
+
+    # The policy (clause type and inherent risk tier) of each clause that mapped to a type.
+    policies: Dict[int, ClausePolicy] = field(default_factory=dict)
+    # The clauses whose own heading names their type. Any other type was inferred, from the clause's opening words
+    # or from similar clauses in the vector DB, and is confirmed by the model before its checklist counts.
+    named_by_heading: Set[int] = field(default_factory=set)
 
 
-def _start_policy_mapping(request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str) -> Tuple[_PolicyContexts, "asyncio.Task[None]"]:
-    """Begin mapping clauses to the legal team's policies, one batch at a time, ahead of the review.
+_PolicyContexts = List["asyncio.Future[_UnitPolicies]"]
 
-    Returns a future per batch that resolves to that batch's policies, and
-    the background task doing the mapping. Each batch's review awaits only
-    its own policies, so the first LLM call starts after the first batch's
-    clauses are mapped rather than after the whole document is. The mapping
-    never blocks or fails a review: when the vector path is unavailable the
-    offline classifier still supplies every clause it can name a type for.
+
+def policy_for_clause(canonical_type: Optional[str], agreement_type: Optional[str]) -> Optional[ClausePolicy]:
+    """The legal team's policy for a clause type (its inherent risk tier), or None when the type is unknown."""
+
+    if not canonical_type:
+        return None
+    return get_clause_policy_store().get(canonical_type, None, agreement_type)
+
+
+def _start_policy_mapping(request: GeneralReviewRequest, plan: ReviewPlan, session_id: str) -> Tuple[_PolicyContexts, "asyncio.Task[None]"]:
+    """Begin mapping clauses to clause types, one batch at a time, ahead of the review.
+
+    Returns a future per batch that resolves to that batch's clause types, and
+    the background task doing the mapping. Each batch's review awaits only its
+    own, so the first model call starts after the first batch's clauses are
+    mapped rather than after the whole document is. The mapping never blocks
+    or fails a review: when the vector path is unavailable the offline
+    classifier still names every clause type it can.
     """
 
     loop = asyncio.get_running_loop()
-    contexts: _PolicyContexts = [loop.create_future() for _ in batches]
-    task = asyncio.create_task(_map_policies(get_clause_search(), request, batches, titles, session_id, contexts))
+    contexts: _PolicyContexts = [loop.create_future() for _ in plan.batches]
+    task = asyncio.create_task(_map_policies(get_clause_search(), request, plan.batches, plan.titles, session_id, contexts))
     return contexts, task
 
 
 @dataclass
 class _ClauseQuery:
-    """A clause unit prepared for classification."""
+    """A clause prepared for classification."""
 
-    unit: List[int]
+    unit: _Unit
     heading: str
     query: str
     word_count: int
     needs_vector: bool
 
 
-async def _map_policies(
-    search: Optional[BaseClauseSearch], request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str, contexts: _PolicyContexts
-) -> None:
-    """Map each batch's clauses to one clause type each, in document order, and resolve its policies.
+async def _map_policies(search: Optional[BaseClauseSearch], request: GeneralReviewRequest, batches: Sequence[_Batch], titles: Dict[str, str], session_id: str, contexts: _PolicyContexts) -> None:
+    """Map each batch's clauses to one clause type each, in document order.
 
     Layer 1 locks clauses whose heading names their type without any network
     call. The rest of a batch's clauses go to the vector DB in one request;
     if that path is disabled, fails, or exhausts its budget, every remaining
-    clause is classified offline instead, so a policy block is still rendered.
+    clause is classified offline instead.
     """
 
     paragraphs = request.textinformation
-    units = build_clause_units(paragraphs, titles)
-    # A clause belongs to the batch holding its first paragraph.
-    batch_of: Dict[int, int] = {idx: number for number, (batch, _) in enumerate(batches) for idx, _ in batch}
-    batch_units: List[List[List[int]]] = [[] for _ in batches]
-    for unit in units:
-        number = batch_of.get(unit[0])
-        if number is not None:
-            batch_units[number].append(unit)
-
-    mapped: Dict[int, ClausePolicy] = {}
+    mapped = 0
     source_counts: Counter = Counter()
     vector_available = search is not None
     started = asyncio.get_running_loop().time()
     completed = 0
     try:
-        for number, ((batch, _), units_here) in enumerate(zip(batches, batch_units)):
+        for number, batch in enumerate(batches):
             prepared: List[_ClauseQuery] = []
-            for unit in units_here:
+            for unit in batch:
                 texts = [paragraphs[idx].text.strip() for idx in unit]
                 heading = titles.get(paragraphs[unit[0]].paraindetifier, "")
                 query = build_smart_embedding_query(heading, texts)
@@ -494,29 +455,29 @@ async def _map_policies(
                         vector_available = False
                         logger.exception("Clause search failed on batch %d of %d; classifying the remaining clauses offline.", number + 1, len(batches))
 
-            policy_of: Dict[int, ClausePolicy] = {}
+            policies = _UnitPolicies()
             for clause in prepared:
                 resolved = classify_clause_resilient(clause.heading, clause.query, clause.word_count, hits_of.get(clause.unit[0]) if vector_available else None)
                 source_counts[resolved.source] += 1
-                policy = policy_for_clause(resolved.canonical_type, request.agreement_type, clause.heading)
+                policy = policy_for_clause(resolved.canonical_type, request.agreement_type)
                 if policy is None:
                     continue
                 _log_resolution(session_id, clause, resolved)
-                mapped[clause.unit[0]] = policy
-                for idx in clause.unit:
-                    policy_of[idx] = policy
-
-            contexts[number].set_result(BatchPolicies(_render_policy_block(batch, mapped), policy_of))
+                policies.policies[clause.unit[0]] = policy
+                if resolved.source == LAYER1_HEADING:
+                    policies.named_by_heading.add(clause.unit[0])
+            mapped += len(policies.policies)
+            contexts[number].set_result(policies)
             completed = number + 1
     except Exception:
-        logger.exception("Clause mapping failed after %d of %d batch(es); reviewing the rest without clause policies.", completed, len(batches))
+        logger.exception("Clause mapping failed after %d of %d batch(es); the remaining clauses are reviewed against the general checklist.", completed, len(batches))
     finally:
         for context in contexts:
             if not context.done():
-                context.set_result(_NO_POLICIES)
+                context.set_result(_UnitPolicies())
         logger.info(
-            "Clause mapping: %d of %d clause(s) mapped to legal-team policies across %d of %d batch(es) in %.1fs (%s).",
-            len(mapped),
+            "Clause mapping: %d of %d clause(s) mapped to a clause type across %d of %d batch(es) in %.1fs (%s).",
+            mapped,
             sum(source_counts.values()),
             completed,
             len(batches),
@@ -536,482 +497,321 @@ def _log_resolution(session_id: str, clause: _ClauseQuery, resolved: ResolvedCla
     )
 
 
-# Character families the model tends to normalize while copying; each matches all variants.
-_APOSTROPHES = "'’‘"
-_QUOTES = '"“”'
-_DASHES = "-–—"
+def _clause_views(batch: _Batch, plan: ReviewPlan, paragraphs: Sequence[TextInformation], policies: _UnitPolicies) -> List[ClauseView]:
+    """The clauses of a batch that are assessed, each with its checklist.
 
-
-def _tolerant_pattern(needle: str) -> str:
-    """Regex matching needle while tolerating whitespace runs and quote/dash variants."""
-
-    tokens = []
-    for token in needle.split():
-        chars = []
-        for char in token:
-            if char in _APOSTROPHES:
-                chars.append(f"[{_APOSTROPHES}]")
-            elif char in _QUOTES:
-                chars.append(f"[{_QUOTES}]")
-            elif char in _DASHES:
-                chars.append(f"[{re.escape(_DASHES)}]")
-            else:
-                chars.append(re.escape(char))
-        tokens.append("".join(chars))
-    return r"\s+".join(tokens)
-
-
-def _ground(original_text: str, batch: _Batch) -> Optional[Tuple[int, TextInformation, str]]:
-    """Find original_text inside a single paragraph and return (position, paragraph, exact source text).
-
-    Exact match first; then a whitespace/quote-tolerant match that recovers the
-    true verbatim substring, so the returned text always applies cleanly.
+    A clause of a known type gets that type's criteria and inherent risk tier;
+    any other clause of substance gets the general checklist. A type the
+    clause's own heading does not name is marked unconfirmed: a wrong type
+    would have the review ask for terms the clause has no business containing.
+    A clause made only of non-clause content (preamble, signature block) or
+    of a few words is not assessed.
     """
 
-    needle = original_text.strip()
-    if not needle:
-        return None
+    # Consecutive clauses of one clause type are one clause for assessment: "Return of Advances" and "Return of
+    # Materials" are part of Term/Termination, and the type's checklist is answered once for all of them. The
+    # catch-all type is left out: two miscellaneous clauses side by side have nothing in common.
+    groups: List[Tuple[List[int], Optional[ClausePolicy], List[bool]]] = []
+    for unit in batch:
+        policy = policies.policies.get(unit[0])
+        named = unit[0] in policies.named_by_heading
+        previous = groups[-1][1] if groups else None
+        if policy is not None and previous is not None and policy.canonical_type == previous.canonical_type and policy.canonical_type != MISCELLANEOUS_TYPE:
+            groups[-1][0].extend(unit)
+            groups[-1][2].append(named)
+        else:
+            groups.append((list(unit), policy, [named]))
 
-    for idx, para in batch:
-        if needle in para.text:
-            return idx, para, needle
+    views: List[ClauseView] = []
+    for members, policy, named_flags in groups:
+        assessable = frozenset(idx for idx in members if plan.structure.reviewable(idx))
+        if not assessable:
+            continue
+        criteria = criteria_for_type(policy.canonical_type) if policy is not None else ()
+        tier: str
+        fallback = ""
+        if policy is not None and criteria:
+            tier, label, fallback = policy.inherent_risk_tier, criteria[0].clause_type, policy.fallback_guidelines
+        elif sum(len(paragraphs[idx].text.split()) for idx in members) >= MIN_CLAUSE_WORDS:
+            criteria, tier, label = GENERIC_CRITERIA, GENERIC_TIER, GENERIC_TYPE_LABEL
+        else:
+            continue
+        anchor = plan.structure.anchor_of.get(min(assessable))
+        view = ClauseView(
+            clause_id=f"C{len(views) + 1}",
+            title=plan.titles.get(paragraphs[members[0]].paraindetifier, ""),
+            type_label=label,
+            positions=tuple(members),
+            assessable=assessable,
+            anchor=anchor if anchor in assessable else min(assessable),
+            criteria=criteria,
+            tier=tier,
+            type_confirmed=any(named_flags),
+            fallback=fallback,
+        )
+        if view.asked:
+            views.append(view)
+    return views
 
-    pattern = _tolerant_pattern(needle)
-    for idx, para in batch:
-        match = re.search(pattern, para.text)
-        if match:
-            return idx, para, match.group(0)
-    return None
+
+# --- stages 2 and 4: the model calls --------------------------------------------
 
 
-def _expand_to_paragraph(suggested_fix: str, para: TextInformation, exact_text: str) -> Tuple[str, str]:
-    """Return (original, fix) covering the complete paragraph, splicing a partial fix if needed."""
+async def _generate(response_model: Type[ResponseT], prompt: str, context: Dict[str, Any], system_message: str, session_id: str, max_tokens: int, cached_prefix: Optional[str] = None) -> ResponseT:
+    """One schema-enforced model call at temperature 0, retried once on failure."""
 
-    if exact_text.strip() == para.text.strip():
-        return para.text, suggested_fix
+    llm_model = get_bedrock_model()
+    for attempt in (1, 2):
+        try:
+            return await llm_model.generate(
+                prompt=prompt,
+                context=context,
+                response_model=response_model,
+                system_message=system_message,
+                session_id=session_id,
+                temperature=0.0,
+                max_tokens=max_tokens,
+                cached_prefix=cached_prefix,
+                fail_on_truncation=True,
+            )
+        except Exception:
+            if attempt == 2:
+                raise
+            logger.exception("%s call failed on attempt %d; retrying once.", response_model.__name__, attempt)
+            await asyncio.sleep(2)
+    raise RuntimeError("unreachable")
 
-    span = para.text.find(exact_text)
-    prefix = para.text[:span]
-    suffix = para.text[span + len(exact_text) :]
 
-    # If the model already returned a full-paragraph rewrite, splicing would duplicate text.
-    already_full = (len(prefix.strip()) < 20 or prefix.strip()[:30] in suggested_fix) and (len(suffix.strip()) < 20 or suffix.strip()[-30:] in suggested_fix)
-    full_fix = suggested_fix if already_full else prefix + suggested_fix + suffix
-    return para.text, full_fix
+class _ReferenceWarmup:
+    """Writes the shared reference to the model's prompt cache once, before the assessment calls fan out.
 
-
-def _fold_trigger(text: str) -> str:
-    return " ".join(text.split()).casefold().rstrip(".")
-
-
-def _matching_triggers(reported: Sequence[str], policy: Optional[ClausePolicy], clause: str) -> List[str]:
-    """Keep only the reported triggers that exist in the clause's policy, returned in the policy's own wording.
-
-    A trigger matches when the model copied it verbatim, or when it ends with
-    the criterion id of one of this policy's triggers — the model often copies
-    only the part after the criterion's name ("There is a conflict (LAW-03)"
-    for "No conflicting provisions: There is a conflict (LAW-03)"). Anything
-    else (a paraphrase, an id belonging to another clause type, or a trigger
-    for a clause with no policy) carries no weight in the risk computation,
-    so the same wording cannot score differently run to run.
+    Calls that start together all miss the cache, because an entry exists only
+    once a first response has begun. One request limited to a single output
+    token writes the entry in a second or two; every assessment call after it
+    reads the reference from the cache instead of paying for it again.
     """
 
-    if not reported:
-        return []
-    if policy is None:
-        logger.warning("Dropping %d trigger flag(s) for clause '%s' — the clause has no legal-team policy.", len(reported), clause)
-        return []
-    known = {_fold_trigger(trigger): trigger for trigger in policy.unacceptable_triggers}
-    by_id = {criterion_id: trigger for trigger in policy.unacceptable_triggers for criterion_id in (criterion_id_of(trigger),) if criterion_id}
-    kept: List[str] = []
-    for flag in reported:
-        trigger = known.get(_fold_trigger(flag))
-        if trigger is None:
-            criterion_id = criterion_id_of(flag)
-            trigger = by_id.get(criterion_id) if criterion_id else None
-        if trigger is None:
-            logger.warning("Dropping trigger flag %r for clause '%s' — not a trigger of its %s policy.", flag, clause, policy.canonical_type)
-        elif trigger not in kept:
-            kept.append(trigger)
-    return kept
+    def __init__(self, reference: str, session_id: str) -> None:
+        self._reference = reference
+        self._session_id = session_id
+        self._task: Optional["asyncio.Task[None]"] = None
+
+    async def ensure(self) -> None:
+        if len(self._reference) < _MIN_CACHEABLE_REFERENCE_CHARS:
+            return
+        if self._task is None:
+            self._task = asyncio.create_task(self._warm())
+        await self._task
+
+    async def _warm(self) -> None:
+        try:
+            await get_bedrock_model().warm_prompt_cache(self._reference, BatchAssessment, self._session_id, _ASSESS_SYSTEM)
+        except Exception:
+            # The warm-up only saves cost; the assessment calls run the same without it.
+            logger.warning("Prompt cache warm-up failed; the assessment calls will each send the reference in full.", exc_info=True)
 
 
-def policy_for_clause(canonical_type: Optional[str], agreement_type: Optional[str], heading: str = "") -> Optional[ClausePolicy]:
-    """The legal team's policy for a clause type, or None when the type is unknown.
+@dataclass
+class _ReviewRun:
+    """What every batch of one review shares."""
 
-    Policies are generated from the criteria taxonomy, so a type's gating
-    criteria (AMD-02 for an amendments clause) are already among its triggers.
-    """
-
-    if not canonical_type:
-        return None
-    return get_clause_policy_store().get(canonical_type, None, agreement_type)
-
-
-def _risk_level(finding: ReviewFinding, policy: Optional[ClausePolicy], clause_favors_client: bool = False, flags: Optional[Sequence[str]] = None, adds_obligation: bool = False) -> RiskLevel:
-    """Compute the finding's risk level in code from its structured facts, the clause type's inherent tier, and which party the clause binds.
-
-    flags are the reported triggers already verified against the clause's
-    policy; they are verified here when not supplied. A verified trigger that
-    is a taxonomy gate sets a floor under the computed level.
-
-    A finding on a Medium- or High-tier clause that supplies something the
-    clause lacks — a clause-wide omission, or a fix that adds a sentence —
-    falls short of the standard by definition, and is never mere drafting
-    hygiene. Those two facts are set in code, so the model calling the same
-    addition a clarity point in one run cannot drop it to Low.
-    """
-
-    verified = list(flags) if flags is not None else _matching_triggers(finding.triggered_unacceptable_flags, policy, finding.clause)
-    tier = policy.inherent_risk_tier if policy is not None else tier_for_unmapped(finding.severity_category)
-    falls_short = finding.falls_short_of_acceptable_standard
-    severity: str = finding.severity_category
-    if policy is not None and tier in ("High", "Medium") and (finding.finding_scope == CLAUSE_WIDE_OMISSION or adds_obligation):
-        falls_short = True
-        severity = MATERIAL_DEVIATION if severity == MINOR_HYGIENE else severity
-    level = compute_deterministic_risk_level(tier, verified, falls_short, finding.is_materially_one_sided_against_client, severity, clause_favors_client=clause_favors_client)
-    return apply_gate_floor(level, strongest_gate(verified))
-
-
-@dataclass(frozen=True)
-class _Candidate:
-    """A grounded finding on its way to becoming a suggestion."""
-
-    position: int  # paragraph the suggestion is anchored on
-    order: int  # the model's own output order
-    finding: ReviewFinding
-    original: str
-    fix: str
-    flags: Tuple[str, ...] = ()  # reported triggers that exist, verbatim, in the clause's policy or taxonomy gates
-    relocated: bool = False  # moved onto its clause's primary anchor by anchor locking
-    adds_text: bool = False  # the fix adds a sentence the agreement does not already contain
-
-
-@dataclass(frozen=True)
-class _BatchView:
-    """One batch as the rules see it: each paragraph as sent, as shown to the model, and its policy."""
-
-    raw: Dict[int, TextInformation]
-    shown: Dict[int, TextInformation]
-    policies: BatchPolicies
+    request: GeneralReviewRequest
     plan: ReviewPlan
+    cache: ZDRClauseHashCache
+    semaphore: asyncio.Semaphore
+    warmup: _ReferenceWarmup
+    session_id: str
+    trace: Optional[List[Dict[str, Any]]] = None
+    # Set when an answer set or a redraft was lost: the review is returned but not stored as this document's review.
+    incomplete: bool = False
 
 
-# Reasons sharing this much of their wording, in one clause, describe the same issue.
-_DUPLICATE_REASON_OVERLAP = 0.6
-_REASON_WORD_RE = re.compile(r"[a-z]{4,}")
+async def _assess(clauses_text: str, run: _ReviewRun) -> BatchAssessment:
+    """One independent set of checklist answers for a batch."""
+
+    await run.warmup.ensure()
+    async with run.semaphore:
+        context = {"clauses": clauses_text, "attachments": run.plan.facts.attachments_reminder()}
+        return await _generate(BatchAssessment, _ASSESS_USER, context, _ASSESS_SYSTEM, run.session_id, ASSESS_MAX_TOKENS, cached_prefix=run.plan.reference)
 
 
-def _clause_favors_client(position: int, view: _BatchView) -> bool:
-    """True when the paragraph, or its clause's primary operative paragraph, binds only the counterparty."""
+_COPIED_ID_RE = re.compile(r"^\s*\[P\d+\]\s*")
 
-    parties = view.plan.parties
-    anchor = view.plan.structure.anchor_of.get(position)
-    for candidate in (position, anchor):
-        if candidate is not None and candidate in view.raw and clause_direction(view.raw[candidate].text, parties) == FAVORS_REPRESENTED:
-            return True
+# Shown to the assessment after a paragraph whose last sentence carries on in the next paragraph.
+_RUNS_ON_MARK = "[the sentence continues in the next paragraph]"
+
+# A placeholder with nothing in it ("[*]", "[ ]", "____"): what belongs there is for the parties, never for a redraft.
+_EMPTY_PLACEHOLDER_RE = re.compile(r"\[[\s*●•_.…-]*\]|_{3,}")
+
+# How many words a redraft may add: a base and an allowance for each point it has to resolve, up to a ceiling. The
+# ceiling is what keeps a redraft a markup: a schedule of service levels or a set of data-processing terms does not
+# fit in it, so the drafter has to leave that detail to the document that should hold it.
+_ADDED_WORDS_BASE = 40
+_ADDED_WORDS_PER_POINT = 15
+_ADDED_WORDS_CEILING = 100
+# A redraft that runs past its allowance by more than this share is sent back once to be cut down.
+_ADDED_WORDS_TOLERANCE = 0.25
+
+
+def _added_words_allowed(points: Sequence[Point]) -> int:
+    return min(_ADDED_WORDS_CEILING, _ADDED_WORDS_BASE + _ADDED_WORDS_PER_POINT * len(points))
+
+
+def _words_added(original: str, revised: str) -> int:
+    """How many words the redraft writes into the paragraph (insertions and replacements; deletions do not count)."""
+
+    before, after = original.split(), revised.split()
+    return sum(j2 - j1 for tag, _, _, j1, j2 in SequenceMatcher(None, before, after, autojunk=False).get_opcodes() if tag in ("insert", "replace"))
+
+
+def _paragraph_notes(position: int, run: "_ReviewRun") -> str:
+    """What the drafter is told about the paragraph beyond its words: how it is laid out, and whom it binds."""
+
+    plan = run.plan
+    paragraphs = run.request.textinformation
+    notes: List[str] = []
+    if position in plan.runs_on:
+        notes.append("The paragraph stops in the middle of a sentence; the sentence carries on in the next paragraph of the clause. Leave its last words as they are and do not complete the sentence.")
+    if _follows_a_run_on(position, run):
+        notes.append("The paragraph opens in the middle of a sentence begun in the paragraph above it. Leave its opening words as they are.")
+    if plan.parties is not None and plan.parties.resolved and clause_direction(paragraphs[position].text, plan.parties) == FAVORS_REPRESENTED:
+        counterparty = plan.parties.counterparty.alias if plan.parties.counterparty is not None else "the Counterparty"
+        notes.append(
+            f"As it stands the paragraph places obligations on {counterparty} alone. Keep it that way: do not extend any of them to your client, "
+            'and do not rewrite them as obligations of "each Party" or "either Party", whatever a point says about both parties.'
+        )
+    if _EMPTY_PLACEHOLDER_RE.search(paragraphs[position].text):
+        notes.append("The paragraph contains an entry left blank or redacted. Leave every such entry exactly as it is.")
+    relied_on = plan.facts.attachments_relied_on(paragraphs[position].text)
+    if relied_on:
+        documents = " and ".join(relied_on)
+        notes.append(
+            f"The paragraph relies on {documents}, whose text was not provided. What that document covers is taken to be provided for there. "
+            "Do not write its content into the paragraph (no tables of service levels, severity categories, response times, security measures or processing terms); "
+            "where a point concerns such a matter, require it by reference to that document."
+        )
+    return "".join(f"- {note}\n" for note in notes)
+
+
+def _follows_a_run_on(position: int, run: "_ReviewRun") -> bool:
+    paragraphs = run.request.textinformation
+    for earlier in range(position - 1, -1, -1):
+        if paragraphs[earlier].text.strip():
+            return earlier in run.plan.runs_on
     return False
 
 
-def _relocate_to_anchor(candidate: _Candidate, view: _BatchView, target: Optional[int] = None) -> Optional[_Candidate]:
-    """Move a finding from the paragraph the model chose onto the paragraph it belongs on.
+def _same_text(left: str, right: str) -> bool:
+    return " ".join(left.split()) == " ".join(right.split())
 
-    The target is the clause's primary anchor for a clause-wide finding, or
-    the paragraph that deals with the finding's topic (TOPIC_ROUTES). The
-    sentences the model's fix added are carried over and appended to the
-    target paragraph. A fix that only edits its own paragraph's wording has
-    nothing to carry, and a heading has nothing to keep, so those are dropped;
-    a body paragraph whose target sits outside this batch stays where it is.
+
+# A redraft must still be the paragraph it revises. One that keeps less than this share of the paragraph's words has
+# put something else in its place (the definition of another term, a different clause) and is not offered.
+_MIN_RETAINED_SHARE = 0.3
+_MIN_WORDS_FOR_RETENTION_CHECK = 8
+
+
+def _retained_share(original: str, revised: str) -> float:
+    """The share of the original paragraph's words that the redraft keeps, in order."""
+
+    before, after = original.split(), revised.split()
+    if len(before) < _MIN_WORDS_FOR_RETENTION_CHECK:
+        return 1.0
+    kept = sum(block.size for block in SequenceMatcher(None, before, after, autojunk=False).get_matching_blocks())
+    return kept / len(before)
+
+
+# A redraft that takes this many words out and puts none in has removed a provision rather than revised one.
+_MIN_WORDS_FOR_A_REMOVED_PROVISION = 8
+
+
+def _only_deletes(original: str, revised: str) -> bool:
+    """True when the redraft is the paragraph with a provision removed and nothing written in its place.
+
+    Striking a sentence that binds a party gives up the provision; where it
+    should go instead is for counsel to decide, not for a one-paragraph redraft.
     """
 
-    structure = view.plan.structure
-    position = candidate.position
-    is_heading = structure.role(position) == ROLE_HEADING
-    anchor = target if target is not None else structure.anchor_of.get(position)
-    if anchor is None or anchor not in view.raw:
-        return None if is_heading else candidate
-    additions = new_sentences(view.shown[position].text, candidate.fix)
-    if not additions:
-        logger.warning("Dropping finding for clause '%s' — it was raised off the paragraph it belongs on and adds nothing that can be carried there.", candidate.finding.clause)
-        return None
-    logger.info("Anchor lock: finding for clause '%s' moved to the paragraph it belongs on.", candidate.finding.clause)
-    return replace(candidate, position=anchor, relocated=True, original=view.raw[anchor].text, fix=view.shown[anchor].text.rstrip() + " " + " ".join(additions))
+    before, after = original.split(), revised.split()
+    operations = [code for code in SequenceMatcher(None, before, after, autojunk=False).get_opcodes() if code[0] != "equal"]
+    removed = sum(i2 - i1 for tag, i1, i2, _, _ in operations if tag == "delete")
+    return bool(operations) and all(tag == "delete" for tag, *_ in operations) and removed >= _MIN_WORDS_FOR_A_REMOVED_PROVISION
 
 
-def _silence_reason(candidate: _Candidate, view: _BatchView) -> Optional[str]:
-    """Why a finding must not be emitted where it was raised, or None when it may be.
+async def _draft(position: int, points: Sequence[Point], clause: ClauseView, run: _ReviewRun) -> Optional[Suggestion]:
+    """Redraft one paragraph to resolve its points; None when no usable redraft came back.
 
-    Non-clause content is never flagged; a finding that contradicts a
-    document fact, or reports a blank the paragraph itself fills, is wrong; a
-    routine clause is flagged only on a trigger or gate; and a clause that
-    runs in the client's favor is not flagged for being one-sided.
+    The redraft's wording is returned as the model wrote it. Code changes
+    two things only, neither of them a word: wherever the redraft repeats the
+    source paragraph, the source's own characters (curly quotes, spacing) are
+    put back so they do not show as edits; and a paragraph whose jurisdiction
+    field arrived blank keeps the value the paragraph itself supplies.
     """
 
-    plan = view.plan
-    position = candidate.position
-    para = view.raw[position]
-    role = plan.structure.role(position)
-    reason = candidate.finding.reason
-    if role == ROLE_CONTEXT_ONLY:
-        return f"the paragraph is {plan.structure.zone_of.get(position, 'context only')} and is never flagged"
-    contradicted = plan.facts.contradicted_claim(para.paraindetifier, reason)
-    if contradicted is not None:
-        return f"it reports a {contradicted} provision as missing, and the document has one elsewhere"
-    if plan.facts.blank_field_for(para.paraindetifier) is not None and claims_blank_field(reason):
-        return "it reports a blank field whose value the paragraph itself supplies"
-    if role == ROLE_BOILERPLATE and not candidate.flags:
-        return "it is a routine clause and no unacceptable trigger or taxonomy gate is set off"
-    if _clause_favors_client(position, view) and is_sole_mutuality_complaint(reason) and not drop_direction_contradicted_flags(candidate.flags):
-        return "its only complaint is that the clause is one-sided, and the clause runs in the client's favor"
-    if _is_timing_nitpick_in_clients_favor(candidate, view):
-        return "it only tightens a timing word ('promptly') in an obligation that binds the counterparty alone, in the client's favor"
-    return None
-
-
-# Imprecise timing in an obligation: "promptly", "immediately", "as soon as practicable", "without undue delay".
-_VAGUE_TIMING_RE = re.compile(
-    r"\b(promptly|immediately|forthwith|as\s+soon\s+as\s+(reasonably\s+)?(practicable|possible)|without\s+(undue\s+)?delay|reasonable\s+time|timeframe|time\s+frame|deadline)\b", re.IGNORECASE
-)
-
-
-def _is_timing_nitpick_in_clients_favor(candidate: _Candidate, view: _BatchView) -> bool:
-    """A drafting point that only tightens a timing word in a paragraph binding the counterparty alone.
-
-    The paragraph itself must run in the client's favor, the finding must
-    set off no trigger and be a drafting point by the model's own account
-    (no shortfall, or drafting hygiene), its reason must be about timing,
-    and its fix must edit wording in place rather than add a sentence.
-    """
-
-    finding = candidate.finding
-    para = view.raw[candidate.position]
-    if candidate.flags or clause_direction(para.text, view.plan.parties) != FAVORS_REPRESENTED:
-        return False
-    if finding.falls_short_of_acceptable_standard and finding.severity_category != MINOR_HYGIENE:
-        return False
-    return bool(_VAGUE_TIMING_RE.search(finding.reason)) and not new_sentences(view.shown[candidate.position].text, candidate.fix)
-
-
-def _without_known_sentences(candidate: _Candidate, view: _BatchView) -> Optional[_Candidate]:
-    """Take out of a fix any sentence it adds that the agreement already contains in another paragraph.
-
-    A fix never re-adds a provision the agreement already has — "the terms of
-    this Agreement shall prevail" proposed for the Consulting Services
-    clause when its own last paragraph says exactly that. When nothing of the
-    fix is left, the finding is dropped. Records whether the fix still adds
-    a sentence of its own.
-    """
-
-    position = candidate.position
-    shown = view.shown[position].text
-    additions = new_sentences(shown, candidate.fix)
-    elsewhere = [sentence for sentence in additions if view.plan.known_sentences.get(fold_sentence(sentence), frozenset()) - {position}]
-    if not elsewhere:
-        return replace(candidate, adds_text=bool(additions))
-    fix = candidate.fix
-    for sentence in elsewhere:
-        fix = remove_sentence(fix, sentence)
-    if sentence_keys(fix) == sentence_keys(shown):
-        logger.info("Dropping finding for clause '%s' — its fix only adds text the agreement already contains in another paragraph.", candidate.finding.clause)
-        return None
-    logger.info("Removed %d sentence(s) from the fix for clause '%s' — the agreement already contains them in another paragraph.", len(elsewhere), candidate.finding.clause)
-    return replace(candidate, fix=fix, adds_text=len(additions) > len(elsewhere))
-
-
-def _apply_review_rules(candidate: _Candidate, view: _BatchView) -> Optional[_Candidate]:
-    """Apply the deterministic rules to one grounded finding; None when the finding must not be emitted.
-
-    In order: the finding is checked against the rules that silence it where
-    it was raised; a clause-wide finding is locked to its clause's primary
-    anchor; an expense paragraph that already meets the standard is left
-    alone; and a fix on a paragraph with a blank field keeps the value the
-    paragraph supplies.
-    """
-
-    plan = view.plan
-    structure = plan.structure
-    finding = candidate.finding
-    silenced = _silence_reason(candidate, view)
-    if silenced is not None:
-        logger.info("Dropping finding for clause '%s' — %s.", finding.clause, silenced)
+    plan = run.plan
+    paragraphs = run.request.textinformation
+    para = paragraphs[position]
+    shown = plan.shown_text.get(position, para.text).strip()
+    if len(clause.positions) > 1:
+        clause_text = "\n\n".join(plan.shown_text.get(idx, paragraphs[idx].text).strip() for idx in clause.positions)
+    else:
+        clause_text = "(The clause consists of the paragraph below.)"
+    title = plan.titles.get(para.paraindetifier, "") or clause.title
+    context = {
+        "reviewer_context": plan.reviewer_context,
+        "party_context": plan.party_block,
+        "agreement_context": plan.agreement_context,
+        "clause_title": title or clause.type_label,
+        "clause_text": clause_text,
+        "paragraph": shown,
+        "paragraph_notes": _paragraph_notes(position, run),
+        "points": render_points(points),
+        "fallback": clause.fallback,
+        "added_words": _added_words_allowed(points),
+    }
+    try:
+        async with run.semaphore:
+            revision = await _generate(DraftedRevision, _DRAFT_USER, context, _DRAFT_SYSTEM, run.session_id, DRAFT_MAX_TOKENS)
+            added = _words_added(shown, revision.revised_paragraph)
+            if added > _added_words_allowed(points) * (1 + _ADDED_WORDS_TOLERANCE):
+                # Too long to be a markup: asked once more, told how far over it ran. Whatever comes back is used.
+                logger.info("Redraft for clause '%s' added %d words against an allowance of %d; asking once for a shorter one.", title, added, _added_words_allowed(points))
+                revision = await _generate(DraftedRevision, _DRAFT_USER, {**context, "over_length": added}, _DRAFT_SYSTEM, run.session_id, DRAFT_MAX_TOKENS)
+    except Exception:
+        logger.exception("Drafting failed for clause '%s'; the paragraph is left without a suggestion on this run.", title)
+        run.incomplete = True
         return None
 
-    role = structure.role(candidate.position)
-    policy = view.policies.policy_of.get(candidate.position)
-    clause_type = structure.clause_type_of.get(candidate.position) or (policy.canonical_type if policy is not None else None)
-    clause_wide = finding.finding_scope == CLAUSE_WIDE_OMISSION or is_clause_wide_topic(finding.reason, clause_type)
-    topic_target = structure.topic_target(candidate.position, finding.reason)
-    if topic_target is not None:
-        # A finding on a routed topic (Confidentiality exclusions) belongs on that topic's paragraph, wherever it was raised.
-        if topic_target != candidate.position:
-            relocated = _relocate_to_anchor(candidate, view, topic_target)
-            if relocated is None:
-                return None
-            candidate = relocated
-    elif role == ROLE_HEADING or (role in (ROLE_SECONDARY, ROLE_DEFINITION) and clause_wide):
-        relocated = _relocate_to_anchor(candidate, view)
-        if relocated is None:
-            return None
-        candidate = relocated
-
-    para_id = view.raw[candidate.position].paraindetifier
-    if plan.facts.expense_terms_met(para_id) and not [flag for flag in candidate.flags if not is_expense_approval_trigger(flag)]:
-        logger.info("Dropping finding for clause '%s' — the expense paragraph already requires prior written approval of reasonable, documented expenses.", finding.clause)
-        return None
-    without_known = _without_known_sentences(candidate, view)
-    if without_known is None:
-        return None
-    candidate = without_known
-    blank = plan.facts.blank_field_for(para_id)
+    fix = _COPIED_ID_RE.sub("", revision.revised_paragraph).strip()
+    blank = plan.facts.blank_field_for(para.paraindetifier)
     if blank is not None:
-        candidate = replace(candidate, fix=apply_blank_field_guard(candidate.fix, candidate.original, blank))
-    return candidate
+        fix = apply_blank_field_guard(fix, para.text, blank)
+    if fix:
+        fix = restore_typography(plan.shown_text.get(position, para.text), fix, plan.curly_apostrophes, plan.curly_quotes)
+    if not fix or not revision.comment:
+        logger.warning("Dropping suggestion for clause '%s': the redraft came back empty.", title)
+        run.incomplete = True
+        return None
+    if _same_text(fix, shown) or _same_text(fix, para.text):
+        # The drafter leaves a paragraph as it is when none of its points can be resolved in the client's favour.
+        logger.info("No suggestion for clause '%s': the redraft leaves the paragraph as it stands.", title)
+        return None
+    if _retained_share(shown, fix) < _MIN_RETAINED_SHARE:
+        logger.warning("Dropping suggestion for clause '%s': the redraft keeps too little of the paragraph to be a revision of it.", title)
+        run.incomplete = True
+        return None
+    if len(_EMPTY_PLACEHOLDER_RE.findall(fix)) < len(_EMPTY_PLACEHOLDER_RE.findall(shown)):
+        logger.warning("Dropping suggestion for clause '%s': the redraft filled in an entry the agreement leaves blank or redacted.", title)
+        run.incomplete = True
+        return None
+    if _only_deletes(shown, fix):
+        logger.info("No suggestion for clause '%s': the redraft only deletes wording from the paragraph.", title)
+        return None
+    risk_level: RiskLevel = highest(point.risk_level for point in points)
+    return Suggestion(clause=title or clause.type_label, reason=revision.comment, risk_level=risk_level, original_text=para.text, suggested_fix=fix, para_identifier=para.paraindetifier)
 
 
-def _drop_minor_secondary(valid: List[Tuple[int, Suggestion]], structure: ClauseStructure) -> List[Tuple[int, Suggestion]]:
-    """Drop a Low suggestion on a clause's secondary paragraph when the clause's primary anchor is already flagged High.
-
-    The clause is already in front of the reviewer at its highest level; a
-    minor point on one of its other paragraphs is the kind of finding that
-    comes and goes between runs.
-    """
-
-    level_at = {position: suggestion.risk_level for position, suggestion in valid}
-    kept: List[Tuple[int, Suggestion]] = []
-    for position, suggestion in valid:
-        anchor = structure.anchor_of.get(position)
-        minor = structure.role(position) in (ROLE_SECONDARY, ROLE_DEFINITION) and suggestion.risk_level == "Low"
-        if minor and anchor is not None and level_at.get(anchor) == "High":
-            logger.info("Dropping Low suggestion for clause '%s' — the clause's primary paragraph is already flagged High.", suggestion.clause)
-            continue
-        kept.append((position, suggestion))
-    return kept
-
-
-def _reason_words(reason: str) -> Set[str]:
-    return set(_REASON_WORD_RE.findall(reason.casefold()))
-
-
-def _dedupe_within_clauses(valid: List[Tuple[int, Suggestion]], structure: ClauseStructure) -> List[Tuple[int, Suggestion]]:
-    """Collapse suggestions in one clause that describe the same issue, keeping the primary anchor's (else the earliest).
-
-    Two suggestions overlap when their reasons share most of their wording.
-    The result depends only on the suggestions themselves, never on the order
-    the model produced them in.
-    """
-
-    ranked = sorted(valid, key=lambda pair: (structure.role(pair[0]) != ROLE_PRIMARY, pair[0]))
-    kept: List[Tuple[int, Suggestion]] = []
-    for position, suggestion in ranked:
-        words = _reason_words(suggestion.reason)
-        duplicate = False
-        for other_position, other in kept:
-            if structure.unit_of.get(other_position) is None or structure.unit_of.get(other_position) != structure.unit_of.get(position):
-                continue
-            other_words = _reason_words(other.reason)
-            union = words | other_words
-            if union and len(words & other_words) / len(union) >= _DUPLICATE_REASON_OVERLAP:
-                duplicate = True
-                break
-        if duplicate:
-            logger.info("Dropping overlapping suggestion for clause '%s' — the same issue is already raised in this clause.", suggestion.clause)
-        else:
-            kept.append((position, suggestion))
-    kept.sort(key=lambda pair: pair[0])
-    return kept
-
-
-def _validate_batch(
-    findings: List[ReviewFinding], batch: _Batch, seen_positions: Set[int], titles: Dict[str, str], policies: BatchPolicies, plan: Optional[ReviewPlan] = None
-) -> List[Tuple[int, Suggestion]]:
-    """Ground each finding to one paragraph, apply the deterministic review rules, compute its risk level, and build the suggestion.
-
-    With a plan, the paragraph a suggestion ends on, and whether it is
-    emitted at all, is settled here in code: role tags, document facts,
-    anchor locking, and the one-suggestion-per-paragraph and per-issue filters.
-    """
-
-    paragraph_at: Dict[int, TextInformation] = dict(batch)
-    # The model was shown some paragraphs normalised (a blank field restored); it copies what it was shown.
-    shown_text = plan.shown_text if plan is not None else {}
-    shown_batch: _Batch = [(position, TextInformation(text=shown_text[position], paraindetifier=para.paraindetifier) if position in shown_text else para) for position, para in batch]
-    view = _BatchView(raw=paragraph_at, shown=dict(shown_batch), policies=policies, plan=plan) if plan is not None else None
-
-    candidates: List[_Candidate] = []
-    for order, finding in enumerate(findings):
-        needle = strip_role_tags(finding.original_text)
-        grounded = _ground(needle, shown_batch) or _ground(needle, batch)
-        if grounded is None:
-            logger.warning("Dropping finding for clause '%s' — original_text could not be grounded in a single source paragraph.", finding.clause)
-            continue
-        position, grounded_para, exact_text = grounded
-        _, full_fix = _expand_to_paragraph(strip_role_tags(finding.suggested_fix), grounded_para, exact_text)
-        flags = tuple(_matching_triggers(finding.triggered_unacceptable_flags, policies.policy_of.get(position), finding.clause))
-        # original_text is always the paragraph exactly as the frontend sent it.
-        candidate: Optional[_Candidate] = _Candidate(position, order, finding, paragraph_at[position].text, full_fix, flags)
-        if view is not None and candidate is not None:
-            candidate = _apply_review_rules(candidate, view)
-        if candidate is not None:
-            candidates.append(candidate)
-
-    # One suggestion per paragraph: a paragraph's own finding wins over one moved onto it, then the model's order.
-    candidates.sort(key=lambda item: (item.position, item.relocated, item.order))
-    valid: List[Tuple[int, Suggestion]] = []
-    for item in candidates:
-        if item.position in seen_positions:
-            continue
-        seen_positions.add(item.position)
-        para = paragraph_at[item.position]
-        # The document's own clause title keeps names identical across whole-doc
-        # and selection runs; the model's label only fills in when the payload
-        # carries no heading for this paragraph.
-        clause = titles.get(para.paraindetifier, item.finding.clause)
-        favors_client = plan is not None and clause_direction(para.text, plan.parties) == FAVORS_REPRESENTED
-        risk_level = _risk_level(item.finding, policies.policy_of.get(item.position), favors_client, item.flags, item.adds_text)
-        suggestion = Suggestion(clause=clause, reason=item.finding.reason, risk_level=risk_level, original_text=item.original, suggested_fix=item.fix, para_identifier=para.paraindetifier)
-        valid.append((item.position, suggestion))
-
-    if plan is None:
-        return valid
-    return _drop_minor_secondary(_dedupe_within_clauses(valid, plan.structure), plan.structure)
-
-
-async def _review_batch(batch: _Batch, context: str, plan: ReviewPlan, policy_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewFindings:
-    """Run the schema-enforced review call for one batch, with a single retry."""
-
-    llm_model = get_bedrock_model()
-    document = _format_document(batch, plan.structure, plan.shown_text)
-    if context:
-        document = f"Preceding portion of the document (read-only context — never raise suggestions for it):\n\n{context}\n\n--- TEXT TO REVIEW ---\n\n{document}"
-
-    async with semaphore:
-        # The retry resamples at a higher temperature: at temp 0 a malformed
-        # response (e.g. the array serialized as a broken JSON string) would
-        # just be reproduced verbatim.
-        for attempt, temperature in ((1, 0.0), (2, 0.4)):
-            try:
-                return await llm_model.generate(
-                    prompt=_GENERAL_REVIEW_USER,
-                    context={
-                        "document": document,
-                        "reviewer_context": plan.reviewer_context,
-                        "party_context": plan.party_block,
-                        "document_facts": plan.facts_block,
-                        "outline_context": plan.outline_context,
-                        "policy_context": policy_context,
-                    },
-                    response_model=GeneralReviewFindings,
-                    system_message=_GENERAL_REVIEW_SYSTEM,
-                    session_id=session_id,
-                    temperature=temperature,
-                )
-            except Exception:
-                if attempt == 2:
-                    raise
-                logger.exception("Batch review failed on attempt %d; retrying once.", attempt)
-                await asyncio.sleep(2)
-
-    raise RuntimeError("unreachable")
+# --- stage 3: findings, and one batch end to end --------------------------------
 
 
 def _replay(para: TextInformation, cached: ClauseAssessment) -> Suggestion:
@@ -1020,133 +820,145 @@ def _replay(para: TextInformation, cached: ClauseAssessment) -> Suggestion:
     )
 
 
-def _required_term_fixes(batch: _Batch, plan: ReviewPlan, picked: Dict[int, Suggestion]) -> Dict[int, Suggestion]:
-    """Low suggestions for undefined terms the model left unflagged, where the agreement names the defined term to use.
+_NUMBERED_REFERENCE_RE = re.compile(r"\b(?:Sections?|Clauses?|Articles?|Paragraphs?)\s+\d", re.IGNORECASE)
 
-    The prompt asks the model to flag every undefined term the document
-    facts list; this guarantees it for the ones with a known replacement
-    ("Accordor Proprietary Information" -> "Confidential Information"), so the
-    suggestion appears on every run. A paragraph the model already flagged
-    keeps the model's own finding.
+
+def _without_unverifiable_defects(vote: BatchAssessment, plan: ReviewPlan) -> BatchAssessment:
+    """An answer set without the cross-reference defects that cannot be checked.
+
+    When the paragraphs arrived without their clause numbers, "Section 2.1"
+    cannot be shown to point at the wrong clause, so a numbered reference is
+    never reported as broken. Nor is a reference to an exhibit or schedule
+    whose text was not among the paragraphs sent.
     """
 
-    added: Dict[int, Suggestion] = {}
-    positions = {para.paraindetifier: position for position, para in batch}
-    for item in plan.facts.undefined_terms:
-        position = positions.get(item.para_identifier)
-        if position is None or position in picked or position in added:
-            continue
-        para = dict(batch)[position]
-        shown = plan.shown_text.get(position, para.text)
-        reason = (
-            f'The paragraph uses "{item.term}", a capitalised term this agreement never defines; the defined term for this concept is "{item.defined_term}". '
-            "An undefined term leaves open what the obligation covers and invites a dispute over its scope."
-        )
-        added[position] = Suggestion(
-            clause=plan.titles.get(para.paraindetifier, item.clause),
-            reason=reason,
-            risk_level="Low",
-            original_text=para.text,
-            suggested_fix=shown.replace(item.term, item.defined_term),
-            para_identifier=para.paraindetifier,
-        )
-        logger.info("Undefined term '%s' in clause '%s' was not raised by the model; added the replacement with the defined term.", item.term, item.clause)
-    return added
+    attachments = plan.facts.attachments_not_supplied
+
+    def unverifiable(defect: DraftingDefect) -> bool:
+        if defect.defect_type != "broken_cross_reference":
+            return False
+        if not plan.numbered and _NUMBERED_REFERENCE_RE.search(defect.evidence):
+            return True
+        # An exhibit whose text was not sent for review is attached to the agreement, not missing from it.
+        return any(re.search(rf"\b{re.escape(name)}\b", defect.evidence, re.IGNORECASE) for name in attachments)
+
+    kept = [defect for defect in vote.drafting_defects if not unverifiable(defect)]
+    return vote if len(kept) == len(vote.drafting_defects) else vote.model_copy(update={"drafting_defects": kept})
 
 
-def _settled_without_model(batch: _Batch, plan: ReviewPlan, cache: ZDRClauseHashCache, cached: Dict[int, Optional[ClauseAssessment]]) -> Optional[List[Tuple[int, Suggestion]]]:
-    """The batch's outcome when no model call is needed, else None.
+def _points_for_batch(clauses: Sequence[ClauseView], votes: Sequence[BatchAssessment], run: _ReviewRun, positions: Sequence[int]) -> Dict[int, List[Point]]:
+    """The points each paragraph of a batch must resolve, decided from the answer sets in code."""
 
-    Either every paragraph was reviewed before and is replayed from the
-    clause cache, or the batch holds nothing reviewable at all.
+    plan = run.plan
+    paragraphs = run.request.textinformation
+
+    def favors_client(position: int) -> bool:
+        return clause_direction(paragraphs[position].text, plan.parties) == FAVORS_REPRESENTED
+
+    client_is_customer = plan.parties is not None and plan.parties.represented is not None and plan.parties.represented.role == ROLE_CLIENT
+    indexed = [answers_by_clause(vote) for vote in votes]
+    fits = [type_fits_by_clause(vote) for vote in votes]
+    points: List[Point] = []
+    assessable: Set[int] = set()
+    shown = {position: plan.shown_text.get(position, paragraphs[position].text) for position in positions}
+    for asked in clauses:
+        assessable |= asked.assessable
+        # An inferred clause type counts only when every answer set says the clause really is of that type.
+        clause = asked.settled(all(vote.get(asked.clause_id, False) for vote in fits))
+        if clause is not asked:
+            logger.info("Clause '%s' is not a %s clause on the model's reading; assessed against the general checklist.", asked.title, asked.type_label)
+        clause_votes = [vote.get(clause.clause_id, {}) for vote in indexed]
+        failed = tally_criteria(clause, clause_votes, _MAJORITY, favors_client, required=len(votes), text_of=shown)
+        failed = [point for point in failed if point.key not in relocation_criteria()]
+        if client_is_customer:
+            # A term that would protect only the service provider is not something the customer's counsel asks for.
+            failed = [point for point in failed if point.key not in provider_protective_criteria()]
+        points.extend(failed)
+        if run.trace is not None:
+            run.trace.append(
+                {
+                    "clause": clause.title or clause.type_label,
+                    "verdicts": {criterion.criterion_id: [vote[criterion.criterion_id].verdict if criterion.criterion_id in vote else None for vote in clause_votes] for criterion in clause.asked},
+                }
+            )
+    in_batch = {paragraphs[position].paraindetifier: position for position in positions if position in assessable}
+    points.extend(undefined_term_points(plan.facts.undefined_terms, in_batch))
+    text_of = {position: shown[position] for position in assessable}
+    points.extend(tally_defects([_without_unverifiable_defects(vote, plan) for vote in votes], text_of, frozenset(assessable), len(votes)))
+    return select_points(points)
+
+
+async def _review_batch(batch: _Batch, policy_context: "asyncio.Future[_UnitPolicies]", run: _ReviewRun) -> List[Tuple[int, Suggestion]]:
+    """Review one batch of clauses: assess, decide the findings, draft, and remember the outcome.
+
+    A paragraph reviewed before (same text, clause, resolved parties, client
+    instructions and document facts, under the same taxonomy and prompts)
+    keeps its earlier outcome. When every paragraph of the batch is cached, or
+    none of its clauses is assessable, no model call is made. An outcome is
+    remembered only when the batch was reviewed in full: every answer set came
+    back, and — for a flagged paragraph — its redraft did too.
     """
+
+    plan, cache = run.plan, run.cache
+    paragraphs = run.request.textinformation
+    positions = [idx for unit in batch for idx in unit]
+    cached: Dict[int, Optional[ClauseAssessment]] = {position: cache.get(plan.cache_keys[position]) for position in positions}
+
+    def replayed() -> Dict[int, Suggestion]:
+        return {position: _replay(paragraphs[position], assessment) for position, assessment in cached.items() if assessment is not None and assessment.flagged}
 
     if all(assessment is not None for assessment in cached.values()):
-        logger.info("Batch of %d paragraph(s) replayed from the clause cache.", len(batch))
-        return [(position, _replay(para, assessment)) for position, para in batch for assessment in (cached[position],) if assessment is not None and assessment.flagged]
-    if not any(plan.structure.reviewable(position) for position, _ in batch):
-        logger.info("Batch of %d paragraph(s) holds nothing reviewable (headings, party details, signature block); no model call made.", len(batch))
-        for position, _ in batch:
-            cache.set(plan.cache_keys[position], NO_FINDING)
-        return []
-    return None
+        logger.info("Batch of %d paragraph(s) replayed from the clause cache.", len(positions))
+        return sorted(replayed().items())
 
+    # Wait for this batch's clause types before any model call.
+    clauses = _clause_views(batch, plan, paragraphs, await policy_context)
+    if not clauses:
+        logger.info("Batch of %d paragraph(s) holds nothing to assess (headings, party details, signature block); no model call made.", len(positions))
+        for position in positions:
+            if cached[position] is None:
+                cache.set(plan.cache_keys[position], NO_FINDING)
+        return sorted(replayed().items())
 
-async def _review_batch_consensus(
-    batch: _Batch,
-    context: str,
-    plan: ReviewPlan,
-    policy_context: "asyncio.Future[BatchPolicies]",
-    semaphore: asyncio.Semaphore,
-    session_id: str,
-    cache: ZDRClauseHashCache,
-) -> List[Tuple[int, Suggestion]]:
-    """Review one batch, replaying cached outcomes for unchanged paragraphs and keeping only majority-backed findings.
-
-    A paragraph reviewed before (same text, clause, resolved parties,
-    reviewer context, and document facts, under the same policies and
-    prompts) keeps its earlier outcome, so an unchanged clause never changes
-    its suggestion or risk level between runs. When every paragraph of the
-    batch is cached, or none of them is reviewable, no model call is made.
-    """
-
-    titles = plan.titles
-    cache_keys = plan.cache_keys
-    cached: Dict[int, Optional[ClauseAssessment]] = {position: cache.get(cache_keys[position]) for position, _ in batch}
-    settled = _settled_without_model(batch, plan, cache, cached)
-    if settled is not None:
-        return settled
-
-    # Wait for this batch's clauses to be mapped before taking a model slot.
-    policies = await policy_context
-    outcomes = await asyncio.gather(*[_review_batch(batch, context, plan, policies.block, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
-
-    # A majority of votes must succeed; one lost vote never fails the review.
-    votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewFindings)]
+    # A sentence broken across two paragraphs is marked, so the break is not read as a truncated sentence.
+    text_of = {position: plan.shown_text.get(position, paragraphs[position].text).strip() + (f" {_RUNS_ON_MARK}" if position in plan.runs_on else "") for position in positions}
+    headings = frozenset(position for position in positions if plan.structure.role(position) == ROLE_HEADING)
+    clauses_text = "\n\n\n".join(render_clause(clause, text_of, headings) for clause in clauses)
+    outcomes = await asyncio.gather(*[_assess(clauses_text, run) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+    votes = [outcome for outcome in outcomes if isinstance(outcome, BatchAssessment)]
     if len(votes) < _MAJORITY:
         raise next(outcome for outcome in outcomes if isinstance(outcome, BaseException))
-    if len(votes) < CONSENSUS_VOTES:
-        logger.warning("Batch consensus proceeding with %d of %d votes.", len(votes), CONSENSUS_VOTES)
+    complete = len(votes) == CONSENSUS_VOTES
+    if not complete:
+        run.incomplete = True
+        logger.warning("Batch assessed with %d of %d answer sets; its outcome is not cached.", len(votes), CONSENSUS_VOTES)
 
-    # One grounded finding per paragraph per vote, so vote counts stay honest.
-    per_vote: List[Dict[int, Suggestion]] = []
-    for vote in votes:
-        grounded: Dict[int, Suggestion] = {}
-        for position, suggestion in _validate_batch(vote.findings, batch, set(), titles, policies, plan):
-            grounded.setdefault(position, suggestion)
-        per_vote.append(grounded)
+    points = _points_for_batch(clauses, votes, run, positions)
+    clause_of = {position: clause for clause in clauses for position in clause.positions}
+    to_draft = [position for position in points if cached.get(position) is None and position in clause_of]
+    drafted = await asyncio.gather(*[_draft(position, points[position], clause_of[position], run) for position in to_draft])
+    fresh: Dict[int, Suggestion] = {position: suggestion for position, suggestion in zip(to_draft, drafted) if suggestion is not None}
+    if run.trace is not None:
+        run.trace.append({"points": {paragraphs[position].paraindetifier: [point.key for point in points[position]] for position in to_draft}})
 
-    counts = Counter(position for grounded in per_vote for position in grounded)
-    picked: Dict[int, Suggestion] = {}
-    for grounded in per_vote:
-        for position, suggestion in grounded.items():
-            if counts[position] >= _MAJORITY and position not in picked:
-                picked[position] = suggestion
-    picked.update(_required_term_fixes(batch, plan, picked))
-
-    # Cached outcomes win for paragraphs reviewed before; fresh ones are remembered.
-    result: Dict[int, Suggestion] = {}
-    replayed = 0
-    for position, para in batch:
-        assessment = cached[position]
-        if assessment is not None:
-            replayed += 1
-            if assessment.flagged:
-                result[position] = _replay(para, assessment)
+    result = replayed()
+    for position in positions:
+        if cached[position] is not None:
             continue
-        fresh = picked.get(position)
-        if fresh is None:
-            cache.set(cache_keys[position], NO_FINDING)
-        else:
-            cache.set(cache_keys[position], ClauseAssessment(True, fresh.clause, fresh.risk_level, fresh.reason, fresh.suggested_fix))
-            result[position] = fresh
-    if replayed:
-        logger.info("Batch: %d of %d paragraph(s) replayed from the clause cache.", replayed, len(batch))
-
+        suggestion = fresh.get(position)
+        if suggestion is not None:
+            result[position] = suggestion
+            if complete:
+                cache.set(plan.cache_keys[position], ClauseAssessment(True, suggestion.clause, suggestion.risk_level, suggestion.reason, suggestion.suggested_fix))
+        elif complete and position not in points:
+            cache.set(plan.cache_keys[position], NO_FINDING)
     return sorted(result.items())
 
 
-def _log_plan(plan: ReviewPlan) -> None:
+# --- the service ----------------------------------------------------------------
+
+
+def _log_plan(plan: ReviewPlan, paragraph_count: int) -> None:
     """Record what was decided in code before the model was called."""
 
     parties = plan.parties
@@ -1154,14 +966,61 @@ def _log_plan(plan: ReviewPlan) -> None:
         logger.info("General review parties: %r resolved by %s to %s; counterparty %s.", parties.raw, parties.method, parties.represented.describe(), parties.counterparty.describe())
     roles = Counter(plan.structure.roles.values())
     logger.info(
-        "General review plan: %d reviewable paragraph(s), %d routine (trigger-gated), %d heading(s), %d context-only; survival provision %s; %d paragraph(s) shown with a blank field restored.",
-        sum(roles[role] for role in (ROLE_PRIMARY, ROLE_SECONDARY, ROLE_DEFINITION)),
-        roles[ROLE_BOILERPLATE],
+        "General review plan: %d paragraph(s) in %d clause(s) and %d batch(es), %d answer sets each; %d heading(s), %d context-only; %d paragraph(s) shown with a blank field restored.",
+        paragraph_count,
+        sum(len(batch) for batch in plan.batches),
+        len(plan.batches),
+        CONSENSUS_VOTES,
         roles[ROLE_HEADING],
         roles[ROLE_CONTEXT_ONLY],
-        "found" if plan.facts.survival is not None else "not found",
         len(plan.shown_text),
     )
+
+
+_BatchTask: TypeAlias = "asyncio.Task[List[Tuple[int, Suggestion]]]"
+
+
+def _start_review(request: GeneralReviewRequest, session_id: str, trace: Optional[List[Dict[str, Any]]] = None) -> Tuple[List[_BatchTask], Optional["asyncio.Task[None]"], _ReviewRun]:
+    """Plan the review and start one task per batch; returns the batch tasks, in document order, the clause-mapping task, and the run they share."""
+
+    cache = clause_cache
+    plan = build_review_plan(request, cache)
+    run = _ReviewRun(request, plan, cache, asyncio.Semaphore(MAX_CONCURRENT_CALLS), _ReferenceWarmup(plan.reference, session_id), session_id, trace)
+    if not plan.batches:
+        return [], None, run
+    _log_plan(plan, len(request.textinformation))
+    policy_contexts, mapping = _start_policy_mapping(request, plan, session_id)
+    tasks = [asyncio.create_task(_review_batch(batch, policy_context, run)) for batch, policy_context in zip(plan.batches, policy_contexts)]
+    return tasks, mapping, run
+
+
+async def review_with_trace(request: GeneralReviewRequest, session_id: str) -> Tuple[GeneralReviewResponse, List[Dict[str, Any]]]:
+    """Run the review without the response cache and return it with a trace of every checklist answer and every point raised.
+
+    For evaluation: the trace shows which criteria each answer set failed and
+    which points each flagged paragraph was redrafted to resolve.
+    """
+
+    trace: List[Dict[str, Any]] = []
+    response, _ = await _run_review(request, session_id, trace)
+    return response, trace
+
+
+async def _run_review(request: GeneralReviewRequest, session_id: str, trace: Optional[List[Dict[str, Any]]] = None) -> Tuple[GeneralReviewResponse, bool]:
+    """Run every batch and return the review, and whether it is complete (no answer set or redraft was lost)."""
+
+    tasks, mapping, run = _start_review(request, session_id, trace)
+    try:
+        results = await asyncio.gather(*tasks)
+    except BaseException:
+        for task in tasks:
+            task.cancel()
+        raise
+    finally:
+        if mapping is not None:
+            mapping.cancel()
+    positioned = sorted((pair for batch_result in results for pair in batch_result), key=lambda pair: pair[0])
+    return GeneralReviewResponse(suggestions=[suggestion for _, suggestion in positioned]), not run.incomplete
 
 
 async def general_review_service(request: GeneralReviewRequest, session_id: str) -> GeneralReviewResponse:
@@ -1172,57 +1031,23 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
     if cached is not None:
         logger.info("General review: cache hit — returning the stored review for this document.")
         return cached
-
-    batches = _build_batches(request.textinformation)
-    if not batches:
-        return GeneralReviewResponse(suggestions=[])
-
-    cache = clause_cache
-    plan = build_review_plan(request, len(batches), cache)
-    policy_contexts, mapping = _start_policy_mapping(request, batches, plan.titles, session_id)
-    logger.info(
-        "General review: %d paragraph(s) split into %d batch(es), %d votes each%s.",
-        len(request.textinformation),
-        len(batches),
-        CONSENSUS_VOTES,
-        ", with reviewer context" if plan.reviewer_context else "",
-    )
-    _log_plan(plan)
-
-    semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    try:
-        results = await asyncio.gather(
-            *[_review_batch_consensus(batch, context, plan, policy_context, semaphore, session_id, cache) for (batch, context), policy_context in zip(batches, policy_contexts)]
-        )
-    finally:
-        mapping.cancel()
-
-    seen_positions: Set[int] = set()
-    positioned: List[Tuple[int, Suggestion]] = []
-    for batch_result in results:
-        for position, suggestion in batch_result:
-            if position in seen_positions:
-                continue
-            seen_positions.add(position)
-            positioned.append((position, suggestion))
-
-    positioned.sort(key=lambda pair: pair[0])
-    response = GeneralReviewResponse(suggestions=[suggestion for _, suggestion in positioned])
-    _cache_put(fingerprint, response)
+    response, complete = await _run_review(request, session_id)
+    if complete:
+        _cache_put(fingerprint, response)
     return response
 
 
 async def general_review_streaming_service(request: GeneralReviewRequest, session_id: str) -> AsyncIterator[str]:
     """Stream the review as SSE text fragments that concatenate into one valid JSON response.
 
-    Batches run in parallel; each batch's validated suggestions are emitted in
-    document order as soon as that batch completes.
+    Batches run in parallel; each batch's suggestions are emitted in document
+    order as soon as that batch completes.
     """
 
     def frame(fragment: str) -> str:
         return f"data: {json.dumps(fragment)}\n\n"
 
-    tasks: List[asyncio.Task] = []
+    tasks: List[_BatchTask] = []
     mapping: Optional["asyncio.Task[None]"] = None
     try:
         fingerprint = _request_fingerprint(request)
@@ -1231,50 +1056,31 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
             logger.info("General review stream: cache hit — streaming the stored review for this document.")
             yield frame('{"suggestions": [')
             for index, suggestion in enumerate(cached.suggestions):
-                separator = "" if index == 0 else ","
-                yield frame(separator + suggestion.model_dump_json())
+                yield frame(("" if index == 0 else ",") + suggestion.model_dump_json())
             yield frame("]}")
             yield "data: [DONE]\n\n"
             return
 
-        batches = _build_batches(request.textinformation)
-        cache = clause_cache
-        plan = build_review_plan(request, len(batches), cache)
-        policy_contexts, mapping = _start_policy_mapping(request, batches, plan.titles, session_id)
-        logger.info(
-            "General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.",
-            len(request.textinformation),
-            len(batches),
-            CONSENSUS_VOTES,
-            ", with reviewer context" if plan.reviewer_context else "",
-        )
-        _log_plan(plan)
-
-        semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-        tasks = [asyncio.create_task(_review_batch_consensus(batch, context, plan, policy_context, semaphore, session_id, cache)) for (batch, context), policy_context in zip(batches, policy_contexts)]
-
+        tasks, mapping, run = _start_review(request, session_id)
         yield frame('{"suggestions": [')
-
         emitted: List[Suggestion] = []
-        seen_positions: Set[int] = set()
         for task in tasks:
-            for position, suggestion in await task:
-                if position in seen_positions:
-                    continue
-                seen_positions.add(position)
-                separator = "" if not emitted else ","
-                yield frame(separator + suggestion.model_dump_json())
+            for _, suggestion in await task:
+                yield frame(("" if not emitted else ",") + suggestion.model_dump_json())
                 emitted.append(suggestion)
-
         yield frame("]}")
-        _cache_put(fingerprint, GeneralReviewResponse(suggestions=emitted))
+        if not run.incomplete:
+            _cache_put(fingerprint, GeneralReviewResponse(suggestions=emitted))
 
     except Exception as exc:
         logger.exception("General review stream failed: %s", exc)
+        yield f"data: {json.dumps({'error': 'General review failed. Please try again.'})}\n\n"
+    finally:
+        # Also reached when the client disconnects mid-stream: nothing is left running for a response no one reads.
         for task in tasks:
-            task.cancel()
+            if not task.done():
+                task.cancel()
         if mapping is not None:
             mapping.cancel()
-        yield f"data: {json.dumps({'error': 'General review failed. Please try again.'})}\n\n"
 
     yield "data: [DONE]\n\n"

@@ -226,3 +226,9 @@ postman/
 # General review output samples (contain client contract text) and the v3 upgrade package.
 GR_output_*.json
 _v3_upgrade_pack/
+
+# Output of scripts/eval_general_review_consistency.py (contains contract text).
+eval_output/
+
+# Agent responses saved for the legal review page (contain contract text).
+review_outputs/

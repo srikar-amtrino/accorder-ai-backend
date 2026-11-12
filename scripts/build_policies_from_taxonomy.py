@@ -15,9 +15,11 @@ types (preamble, recitals, party identification, signature block, ...) get no
 row: the general review never flags non-clause content.
 
     canonical_type        the type's name as a slug ("Term & Termination" -> "term-and-termination").
-    inherent_risk_tier    from the type's gates: High when failing a criterion gates at High or Critical,
-                          Medium when the strongest gate is Medium. A type with no gate is Medium when it has
-                          a Core criterion and Low when it has none.
+    inherent_risk_tier    the risk allocation the legal team gives the clause type in
+                          src/services/clause_mapping/legal_clause_standards.json. For a type the legal team has
+                          not classified it is inferred from the type's gates: High when failing a criterion gates
+                          at High or Critical, Medium when the strongest gate is Medium; with no gate, Medium when
+                          the type has a Core criterion and Low when it has none.
     acceptable_standard   the type's criteria as numbered checks, each in the taxonomy's own question wording;
                           a conditional criterion is prefixed with the condition it applies under, and a
                           Balance criterion is marked [Balance] (the review prompt treats it as met whenever
@@ -25,7 +27,8 @@ row: the general review never flags non-clause content.
     unacceptable_triggers the criteria whose failure is a hard defect — every gate, every Core criterion, and
                           any criterion the overrides' extra_triggers name (LAW-03) — worded
                           "<criterion>: <not met when> (<id>)".
-    fallback_guidelines   empty: the taxonomy carries no fallback positions.
+    fallback_guidelines   the legal team's fallback position for the clause type, from the same file; empty for a
+                          type the legal team has not classified.
 """
 
 import argparse
@@ -37,7 +40,7 @@ from typing import Any, Dict, List, Optional
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.services.clause_mapping.policy_store import POLICIES_PATH  # noqa: E402
-from src.services.general_review.taxonomy_gates import BALANCE, GATE_LEVELS, TAXONOMY_PATH, load_overrides, taxonomy_slug, trigger_text  # noqa: E402
+from src.services.general_review.taxonomy_gates import BALANCE, GATE_LEVELS, TAXONOMY_PATH, load_legal_standards, load_overrides, taxonomy_slug, trigger_text  # noqa: E402
 
 CLAUSE_GROUP = "Clause"
 ALWAYS = "Always"
@@ -59,10 +62,15 @@ def _check(number: int, criterion: Dict[str, Any]) -> str:
     return f"({number}) {balance}{scope}{criterion['question_for_llm'].strip()}"
 
 
-def build_policies(taxonomy: Dict[str, Any], overrides: Optional[Dict[str, Any]] = None) -> List[Dict[str, Any]]:
-    """One policy row per clause type of the taxonomy, in the taxonomy's own order, then the overrides' extra types."""
+def build_policies(taxonomy: Dict[str, Any], overrides: Optional[Dict[str, Any]] = None, standards: Optional[Dict[str, Dict[str, str]]] = None) -> List[Dict[str, Any]]:
+    """One policy row per clause type of the taxonomy, in the taxonomy's own order, then the overrides' extra types.
+
+    standards is the legal team's classification by canonical_type (load_legal_standards): a type it lists takes its
+    risk tier and fallback position from there.
+    """
 
     overrides = overrides or {}
+    standards = standards or {}
     extra_triggers: Dict[str, List[str]] = overrides.get("extra_triggers", {})
     types = {**taxonomy["types"], **overrides.get("extra_types", {})}
     unknown = sorted(set(extra_triggers) - set(types))
@@ -78,13 +86,14 @@ def build_policies(taxonomy: Dict[str, Any], overrides: Optional[Dict[str, Any]]
         if missing:
             raise SystemExit(f"taxonomy_overrides.json names criteria {name} does not have: {missing}")
         hard = [criterion for criterion in criteria if criterion["gate_if_not_met"] in GATE_LEVELS or criterion["weight"] == CORE or criterion["criterion_id"] in extra_triggers.get(name, [])]
+        standard = standards.get(taxonomy_slug(name), {})
         rows.append(
             {
                 "canonical_type": taxonomy_slug(name),
-                "inherent_risk_tier": _tier(criteria),
+                "inherent_risk_tier": standard.get("risk_allocation") or _tier(criteria),
                 "acceptable_standard": "The clause should satisfy each of these checks. " + " ".join(_check(number, criterion) for number, criterion in enumerate(criteria, start=1)),
                 "unacceptable_triggers": [trigger_text(criterion["criterion_id"], criterion["criterion"], criterion["not_met_when"]) for criterion in hard],
-                "fallback_guidelines": "",
+                "fallback_guidelines": standard.get("fallback_guidelines", ""),
             }
         )
     return rows
@@ -99,7 +108,7 @@ def main() -> None:
     parser.add_argument("--check", action="store_true", help="Exit non-zero if clause_policies.json differs from what the taxonomy produces; write nothing.")
     args = parser.parse_args()
 
-    rendered = render(build_policies(json.loads(TAXONOMY_PATH.read_text(encoding="utf-8")), load_overrides()))
+    rendered = render(build_policies(json.loads(TAXONOMY_PATH.read_text(encoding="utf-8")), load_overrides(), load_legal_standards()))
     if args.check:
         if POLICIES_PATH.read_text(encoding="utf-8") != rendered:
             raise SystemExit(f"{POLICIES_PATH} is out of date with {TAXONOMY_PATH.name}; run this script without --check.")

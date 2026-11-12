@@ -1,0 +1,913 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Agent Output Review</title>
+<style>
+:root {
+  --bg: #f6f5f2; --surface: #ffffff; --surface-2: #f1efea; --border: #e3e0d9; --text: #1d1d1b; --muted: #67665f;
+  --accent: #2f4a7a; --accent-soft: #e7edf7;
+  --crit: #7f1d1d; --crit-bg: #f6dcd8; --high: #b42318; --high-bg: #fde8e6; --med: #8a5208; --med-bg: #fcefd6;
+  --low: #2c5a8c; --low-bg: #e5eef8; --good: #1e6b3a; --good-bg: #e0f2e6; --none: #57574f; --none-bg: #ebeae5;
+  --ins-bg: #d6efdb; --ins: #14532d; --del-bg: #fadedb; --del: #8a1c1c;
+  --serif: Georgia, "Times New Roman", serif;
+  --sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #141413; --surface: #1d1d1b; --surface-2: #262623; --border: #34332f; --text: #ecebe6; --muted: #a4a39b;
+    --accent: #a3b9e4; --accent-soft: #24304a;
+    --crit: #ffb3aa; --crit-bg: #4d1714; --high: #ffb4a8; --high-bg: #44201b; --med: #f3c779; --med-bg: #3b2d12;
+    --low: #a9c7ef; --low-bg: #1c2c43; --good: #9ad6ad; --good-bg: #173223; --none: #c5c4bc; --none-bg: #2c2c29;
+    --ins-bg: #1b3c25; --ins: #b8ebc7; --del-bg: #47201d; --del: #ffc3bc;
+  }
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font: 15px/1.55 var(--sans); -webkit-font-smoothing: antialiased; }
+button, input, select { font: inherit; color: inherit; }
+a { color: var(--accent); }
+
+/* Top bar */
+.topbar { position: sticky; top: 0; z-index: 10; display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 10px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+.brand { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.brand strong { font-size: 16px; letter-spacing: .01em; }
+.brand span { color: var(--muted); font-size: 13px; }
+.actions { margin-left: auto; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.btn { display: inline-flex; align-items: center; gap: 6px; padding: 6px 12px; border: 1px solid var(--border);
+  border-radius: 7px; background: var(--surface); cursor: pointer; font-size: 14px; white-space: nowrap; }
+.btn:hover { background: var(--surface-2); }
+.btn:focus-visible, .chip-btn:focus-visible, .run-link:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 14px; color: var(--muted); cursor: pointer; }
+
+/* Layout */
+.layout { display: grid; grid-template-columns: 280px minmax(0, 1fr); min-height: calc(100vh - 53px); }
+nav { background: var(--surface-2); border-right: 1px solid var(--border); padding: 16px 12px 40px;
+  position: sticky; top: 53px; height: calc(100vh - 53px); overflow: auto; }
+main { padding: 28px 36px 72px; max-width: 1120px; width: 100%; }
+.nav-title { font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin: 0 10px 8px; }
+.agent { border-bottom: 1px solid var(--border); }
+.agent:last-child { border-bottom: 0; }
+.agent-toggle { width: 100%; display: flex; align-items: center; gap: 10px; padding: 12px 10px; margin: 2px 0;
+  background: none; border: 0; border-radius: 8px; cursor: pointer; text-align: left; }
+.agent-toggle:hover { background: var(--surface); }
+.agent-name { flex: 1; font-weight: 600; font-size: 14.5px; }
+.count { min-width: 24px; padding: 0 7px; font-size: 12.5px; text-align: center; color: var(--muted);
+  background: var(--surface); border: 1px solid var(--border); border-radius: 999px; font-variant-numeric: tabular-nums; }
+.chev { flex: none; width: 16px; height: 16px; color: var(--muted); transition: transform .15s ease; }
+.agent-toggle[aria-expanded="true"] .chev { transform: rotate(180deg); }
+.runs { padding: 0 0 10px; }
+.run-row { display: flex; align-items: flex-start; border-radius: 7px; }
+.run-row:hover, .run-row.active { background: var(--surface); }
+.run-row.active { box-shadow: inset 3px 0 0 var(--accent); }
+.run-link { flex: 1; min-width: 0; display: block; padding: 7px 4px 8px 14px; text-decoration: none; color: var(--text);
+  background: none; border: 0; font: inherit; text-align: left; cursor: pointer; }
+.run-title { display: flex; align-items: center; gap: 6px; font-weight: 600; font-size: 14px; }
+.run-title .name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tag-latest { flex: none; font-size: 11px; font-weight: 600; color: var(--good); background: var(--good-bg); border-radius: 999px; padding: 0 7px; }
+.run-when, .run-detail { display: block; font-size: 12.5px; color: var(--muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.rm { flex: none; display: grid; place-items: center; width: 28px; height: 28px; margin: 5px 5px 0 0; padding: 0;
+  background: none; border: 0; border-radius: 6px; color: var(--muted); cursor: pointer; font-size: 18px; line-height: 1; opacity: .5; }
+.run-row:hover .rm, .run-row.active .rm, .rm:focus-visible { opacity: 1; }
+.rm:hover { background: var(--high-bg); color: var(--high); }
+.runs-actions { padding: 8px 14px 0; }
+.link-btn { padding: 0; background: none; border: 0; color: var(--accent); cursor: pointer; font-size: 13px; text-decoration: underline; text-underline-offset: 2px; }
+.nav-empty { font-size: 13px; color: var(--muted); padding: 2px 14px 4px; }
+.agent-toggle:focus-visible, .rm:focus-visible, .link-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (hover: none) { .rm { opacity: 1; } }
+
+/* Run header */
+.eyebrow { font-size: 12.5px; text-transform: uppercase; letter-spacing: .07em; color: var(--muted); font-weight: 600; }
+h1 { font-size: 26px; line-height: 1.25; margin: 4px 0 6px; }
+h2.section { font-size: 18px; margin: 34px 0 6px; padding-bottom: 6px; border-bottom: 1px solid var(--border); }
+h3 { font-size: 16px; margin: 0; line-height: 1.35; }
+h4 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 14px 0 4px; font-weight: 600; }
+.blurb { color: var(--muted); max-width: 70ch; margin: 0 0 10px; }
+.meta { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 13.5px; color: var(--muted); }
+.meta b { color: var(--text); font-weight: 600; }
+.refcode { font-variant-numeric: tabular-nums; background: var(--accent-soft); color: var(--accent); padding: 1px 7px; border-radius: 5px; font-weight: 600; }
+
+.guide { margin: 18px 0 8px; padding: 14px 18px; background: var(--accent-soft); border-radius: 10px; }
+.guide p { margin: 0 0 6px; }
+.guide ul { margin: 0; padding-left: 20px; }
+.guide li { margin: 2px 0; }
+
+.context { margin: 18px 0 0; display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 4px 16px;
+  padding: 14px 18px; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+.context dt { color: var(--muted); font-size: 14px; }
+.context dd { margin: 0; }
+.context-title { grid-column: 1 / -1; font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin-bottom: 4px; }
+
+/* Summary tiles */
+.tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 10px; margin: 14px 0; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 10px 14px; }
+.tile .num { font-size: 22px; font-weight: 650; font-variant-numeric: tabular-nums; }
+.tile .lbl { font-size: 13px; color: var(--muted); }
+
+/* Filter chips */
+.filters { display: flex; gap: 6px; flex-wrap: wrap; margin: 10px 0 0; }
+.chip-btn { border: 1px solid var(--border); background: var(--surface); border-radius: 999px; padding: 3px 12px; cursor: pointer; font-size: 13.5px; }
+.chip-btn[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+.list[data-filter="High"] > .card:not([data-level="High"]),
+.list[data-filter="Medium"] > .card:not([data-level="Medium"]),
+.list[data-filter="Low"] > .card:not([data-level="Low"]) { display: none; }
+
+/* Cards */
+.card { background: var(--surface); border: 1px solid var(--border); border-left: 4px solid var(--border);
+  border-radius: 10px; padding: 16px 20px 18px; margin: 14px 0; }
+.card[data-level="Critical"] { border-left-color: var(--crit); }
+.card[data-level="High"] { border-left-color: var(--high); }
+.card[data-level="Medium"] { border-left-color: var(--med); }
+.card[data-level="Low"] { border-left-color: var(--low); }
+.card[data-level="Good"] { border-left-color: var(--good); }
+.card-head { display: flex; gap: 10px; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; }
+.card-label { font-size: 12.5px; color: var(--muted); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+.badges { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.badge { display: inline-block; font-size: 12.5px; font-weight: 600; padding: 2px 9px; border-radius: 999px; white-space: nowrap; }
+.badge.crit { background: var(--crit-bg); color: var(--crit); }
+.badge.high { background: var(--high-bg); color: var(--high); }
+.badge.med { background: var(--med-bg); color: var(--med); }
+.badge.low { background: var(--low-bg); color: var(--low); }
+.badge.good { background: var(--good-bg); color: var(--good); }
+.badge.none { background: var(--none-bg); color: var(--none); }
+.badge.outline { background: transparent; color: var(--muted); border: 1px solid var(--border); font-weight: 500; }
+.sub { font-size: 13.5px; color: var(--muted); margin-top: 2px; }
+.prose { margin: 0; white-space: pre-wrap; max-width: 80ch; }
+
+/* Contract text */
+.doc { font-family: var(--serif); font-size: 15px; line-height: 1.65; background: var(--surface-2); border-radius: 8px;
+  padding: 12px 16px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.doc + .doc { margin-top: 6px; }
+.doc .pid { display: block; font-family: var(--sans); font-size: 12px; color: var(--muted); margin-bottom: 2px; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.col-label { font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; margin: 14px 0 4px; }
+.lc { text-transform: none; letter-spacing: 0; font-weight: 500; }
+.field { text-transform: none; letter-spacing: 0; font-family: ui-monospace, "Cascadia Mono", Consolas, monospace; font-size: 12.5px; font-weight: 600; }
+ins { background: var(--ins-bg); color: var(--ins); text-decoration: none; border-radius: 3px; }
+del { background: var(--del-bg); color: var(--del); text-decoration: line-through; border-radius: 3px; }
+body.plain ins, body.plain del { background: none; color: inherit; text-decoration: none; }
+mark.ph { background: var(--med-bg); color: var(--med); border-radius: 3px; padding: 0 2px; }
+
+/* Notes */
+.note { margin: 14px 0; padding: 12px 16px; border-radius: 10px; background: var(--surface); border: 1px solid var(--border); }
+.note.warn { background: var(--med-bg); border-color: transparent; color: var(--text); }
+.note.error { background: var(--high-bg); border-color: transparent; color: var(--text); }
+.note.muted { color: var(--muted); font-size: 14px; }
+
+table.grid { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin: 12px 0; }
+table.grid th, table.grid td { text-align: left; vertical-align: top; padding: 9px 14px; border-bottom: 1px solid var(--border); }
+table.grid th { font-size: 12.5px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 600; background: var(--surface-2); }
+table.grid tr:last-child td { border-bottom: 0; }
+table.grid td.n { color: var(--muted); font-variant-numeric: tabular-nums; width: 1%; white-space: nowrap; }
+
+details.tech { margin-top: 40px; }
+details.tech summary { cursor: pointer; color: var(--muted); font-size: 14px; }
+details.tech pre { font-size: 12px; background: var(--surface-2); padding: 12px; border-radius: 8px; overflow: auto; max-height: 480px; }
+
+.home h1 { margin-top: 0; }
+.agent-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; margin-top: 18px; }
+.agent-list .card { margin: 0; }
+
+#drop { position: fixed; inset: 0; z-index: 50; display: none; align-items: center; justify-content: center;
+  background: color-mix(in srgb, var(--bg) 85%, transparent); border: 3px dashed var(--accent); font-size: 20px; font-weight: 600; color: var(--accent); }
+#drop.show { display: flex; }
+#toast { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); z-index: 60; max-width: min(560px, calc(100% - 32px));
+  background: var(--text); color: var(--bg); padding: 10px 16px; border-radius: 9px; font-size: 14px; white-space: pre-line; display: none; }
+#toast.show { display: flex; align-items: center; gap: 14px; }
+.toast-btn { flex: none; padding: 0; background: none; border: 0; color: inherit; font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; }
+
+@media (max-width: 820px) {
+  .layout { grid-template-columns: 1fr; align-content: start; }
+  nav { position: static; height: auto; max-height: 260px; border-right: 0; border-bottom: 1px solid var(--border); }
+  main { padding: 20px 16px 56px; }
+  .pair { grid-template-columns: 1fr; }
+  .topbar { padding: 10px 16px; }
+  .context { grid-template-columns: 1fr; }
+  .context dt { margin-top: 6px; }
+}
+@media print {
+  .topbar, nav, .no-print, details.tech { display: none !important; }
+  .layout { display: block; }
+  main { padding: 0; max-width: none; }
+  body { background: #fff; }
+  .card { break-inside: avoid; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><strong>Agent Output Review</strong><span>Development results for legal review</span></div>
+  <div class="actions">
+    <label class="toggle no-print"><input type="checkbox" id="highlight" checked> Highlight wording changes</label>
+    <button class="btn no-print" id="refresh" type="button" hidden>Refresh</button>
+    <label class="btn no-print">Open result files<input type="file" id="files" accept=".json,application/json" multiple hidden></label>
+    <button class="btn no-print" id="print" type="button">Print</button>
+  </div>
+</header>
+<div class="layout">
+  <nav id="nav" aria-label="Agent results"></nav>
+  <main id="view"></main>
+</div>
+<div id="drop">Drop result files to view them</div>
+<div id="toast" role="status"></div>
+
+<script>
+(() => {
+"use strict";
+
+// ---------------------------------------------------------------- agents
+const AGENTS = {
+  general_review: {
+    name: "General Review", prefix: "GR",
+    blurb: "Reviews the contract clause by clause against a fixed checklist for each type of clause, flags paragraphs that leave the client exposed, and proposes replacement wording.",
+    check: ["Is each flagged issue a real problem for the party we represent?", "Is the risk level right?", "Would you accept the proposed wording as drafted?", "Did it miss anything important?"],
+  },
+  playbook_review: {
+    name: "Playbook Review", prefix: "PB",
+    blurb: "Checks the contract against the organisation's playbook rules, judges whether each rule is met, and lists important clauses that are missing or weak.",
+    check: ["Did it find the right clause for each rule?", "Is the status (Critical to Good) correct?", "Is the proposed fix acceptable?", "Are the listed clauses genuinely missing or weak?"],
+  },
+  contract_analyzer: {
+    name: "Contract Analyzer", prefix: "CA",
+    blurb: "Reads the whole contract and produces a one-page overview: a summary, the key terms, the deadlines and the main risks.",
+    check: ["Is the summary accurate?", "Are the key terms and dates correct?", "Are the risks real, and is each severity right?", "Is anything important missing?"],
+  },
+  compare_documents: {
+    name: "Compare Documents", prefix: "CD",
+    blurb: "Compares an original and a revised version of a contract, finds every change, and says how each change shifts risk and which party it affects.",
+    check: ["Did it catch every change?", "Is each change described correctly?", "Are the risk level and affected party right?", "Are cosmetic changes correctly marked?"],
+  },
+  describe_draft: {
+    name: "Describe & Draft", prefix: "DD",
+    blurb: "Drafts a clause or a full agreement from a plain-language request, using the uploaded contract's parties and terms when asked.",
+    check: ["Does the draft do what was asked?", "Is it sound and consistent with the rest of the contract?", "Would you use it as is, with light edits, with heavy edits, or not at all?"],
+  },
+  doc_chat: {
+    name: "DocuChat", prefix: "DC",
+    blurb: "Answers questions about the contract in plain language, using only the contract's own text.",
+    check: ["Is each answer correct and complete?", "Does it state anything the contract doesn't say?"],
+  },
+};
+const ORDER = Object.keys(AGENTS);
+const SERVER = location.protocol === "http:" || location.protocol === "https:";
+
+const state = { runs: [], current: null, contract: null, contractName: null, fileCount: 0, serverOk: null };
+const $ = (id) => document.getElementById(id);
+const nav = $("nav"), view = $("view");
+
+// ---------------------------------------------------------------- helpers
+function h(tag, attrs, ...kids) {
+  const node = document.createElement(tag);
+  if (attrs) for (const [k, v] of Object.entries(attrs)) {
+    if (v == null || v === false) continue;
+    if (k === "class") node.className = v;
+    else if (k.startsWith("on") && typeof v === "function") node.addEventListener(k.slice(2), v);
+    else node.setAttribute(k, v === true ? "" : String(v));
+  }
+  for (const kid of kids.flat(Infinity)) {
+    if (kid == null || kid === false || kid === "") continue;
+    node.append(kid instanceof Node ? kid : String(kid));
+  }
+  return node;
+}
+const txt = (v) => (v == null ? "" : String(v)).trim();
+const arr = (v) => (Array.isArray(v) ? v : []);
+const cap = (s) => (s ? s.charAt(0).toUpperCase() + s.slice(1) : s);
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many || one + "s"}`;
+
+const LEVEL = { critical: "crit", high: "high", medium: "med", low: "low", good: "good" };
+function levelName(v) {
+  const s = txt(v).toLowerCase();
+  return s === "not found" ? "Not found" : cap(s);
+}
+function badge(label, level) {
+  const key = txt(level ?? label).toLowerCase();
+  return h("span", { class: `badge ${LEVEL[key] || "none"}` }, label);
+}
+const outline = (label) => h("span", { class: "badge outline" }, label);
+// An agent's own JSON field name, shown as-is so reviewers' feedback maps straight to the field.
+const field = (name) => h("span", { class: "field" }, name);
+
+function card({ label, title, sub, badges, level }, ...body) {
+  return h("article", { class: "card", "data-level": level || null },
+    h("div", { class: "card-head" },
+      h("div", null, label && h("div", { class: "card-label" }, label), h("h3", null, title), sub && h("div", { class: "sub" }, sub)),
+      badges && h("div", { class: "badges" }, badges)),
+    body);
+}
+const section = (title, ...kids) => [h("h2", { class: "section" }, title), ...kids];
+const note = (kind, ...kids) => h("div", { class: `note ${kind}` }, kids);
+const labelled = (label, ...kids) => [h("h4", null, label), ...kids];
+const prose = (t) => h("p", { class: "prose" }, txt(t) || "—");
+
+function contextBox(title, rows) {
+  const items = rows.filter(([, v]) => txt(v) !== "");
+  if (!items.length) return null;
+  return h("dl", { class: "context" }, h("div", { class: "context-title" }, title),
+    items.map(([k, v]) => [h("dt", null, k), h("dd", null, txt(v))]));
+}
+function tiles(items) {
+  return h("div", { class: "tiles" }, items.map(([n, lbl]) => h("div", { class: "tile" }, h("div", { class: "num" }, n), h("div", { class: "lbl" }, lbl))));
+}
+
+function toast(message, action) {
+  const t = $("toast");
+  const hide = () => t.classList.remove("show");
+  t.replaceChildren(h("span", null, message),
+    action ? h("button", { class: "toast-btn", type: "button", onclick: () => { hide(); action.run(); } }, action.label) : "");
+  t.classList.add("show");
+  clearTimeout(toast.timer);
+  toast.timer = setTimeout(hide, action ? 10000 : 7000);
+}
+
+// ---------------------------------------------------------------- wording diff
+// Word-level comparison so reviewers can see exactly what a proposed edit changes.
+const tokenize = (s) => s.match(/\s+|[^\s]+/g) || [];
+const keyOf = (t) => t.replace(/[‘’]/g, "'").replace(/[“”]/g, '"');
+
+function diffWords(a, b) {
+  const A = tokenize(a), B = tokenize(b), KA = A.map(keyOf), KB = B.map(keyOf);
+  let start = 0;
+  while (start < A.length && start < B.length && KA[start] === KB[start]) start++;
+  let endA = A.length, endB = B.length;
+  while (endA > start && endB > start && KA[endA - 1] === KB[endB - 1]) { endA--; endB--; }
+  const ops = [];
+  const push = (t, v) => { const last = ops[ops.length - 1]; if (last && last.t === t) last.v += v; else ops.push({ t, v }); };
+  push("eq", B.slice(0, start).join(""));
+  const n = endA - start, m = endB - start;
+  if (n * m > 3_000_000) {
+    push("del", A.slice(start, endA).join(""));
+    push("ins", B.slice(start, endB).join(""));
+  } else {
+    const W = m + 1, dp = new Uint32Array((n + 1) * W);
+    for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+      dp[i * W + j] = KA[start + i] === KB[start + j] ? dp[(i + 1) * W + j + 1] + 1 : Math.max(dp[(i + 1) * W + j], dp[i * W + j + 1]);
+    let i = 0, j = 0;
+    while (i < n && j < m) {
+      if (KA[start + i] === KB[start + j]) { push("eq", B[start + j]); i++; j++; }
+      else if (dp[(i + 1) * W + j] >= dp[i * W + j + 1]) { push("del", A[start + i]); i++; }
+      else { push("ins", B[start + j]); j++; }
+    }
+    while (i < n) push("del", A[start + i++]);
+    while (j < m) push("ins", B[start + j++]);
+  }
+  push("eq", B.slice(endB).join(""));
+  return ops.filter((o) => o.v);
+}
+
+function wordingPair(before, after, labels) {
+  const [l1, l2] = labels || ["Current wording", "Proposed wording"];
+  const a = txt(before), b = txt(after);
+  if (!a && !b) return null;
+  if (!a) return [h("div", { class: "col-label" }, l2), h("div", { class: "doc" }, b)];
+  if (!b) return [h("div", { class: "col-label" }, l1), h("div", { class: "doc" }, a)];
+  if (keyOf(a) === keyOf(b)) return [h("div", { class: "col-label" }, l1), h("div", { class: "doc" }, a), note("muted", "The proposed wording is identical to the current wording.")];
+  const left = h("div", { class: "doc" }), right = h("div", { class: "doc" });
+  let ops = diffWords(a, b);
+  // A near-total rewrite reads better as one block replaced than as scattered word matches.
+  const words = (s) => (s.match(/[^\s]+/g) || []).length;
+  const shared = ops.filter((o) => o.t === "eq").reduce((n, o) => n + words(o.v), 0);
+  if (shared / Math.min(words(a), words(b)) < 0.5) ops = [{ t: "del", v: a }, { t: "ins", v: b }];
+  for (const op of ops) {
+    if (op.t === "eq") { left.append(op.v); right.append(op.v); }
+    else if (op.t === "del") left.append(h("del", null, op.v));
+    else right.append(h("ins", null, op.v));
+  }
+  return h("div", { class: "pair" },
+    h("div", null, h("div", { class: "col-label" }, l1), left),
+    h("div", null, h("div", { class: "col-label" }, l2), right));
+}
+
+// ---------------------------------------------------------------- contract paragraphs
+function paragraphsFrom(list) {
+  const text = {}, order = [];
+  for (const p of arr(list)) {
+    const id = p && p.paraindetifier != null ? String(p.paraindetifier) : null;
+    if (id && !(id in text)) { text[id] = String(p.text ?? ""); order.push(id); }
+  }
+  return order.length ? { text, order } : null;
+}
+const isHeading = (t) => { const s = txt(t); return s.split(/\s+/).length <= 6 && !/[,;:]$/.test(s); };
+
+// Contract text for one paragraph id. A heading paragraph brings the paragraphs under it,
+// because some agents point at the heading rather than the clause body.
+function sourceText(id, paras, expandHeadings) {
+  const key = txt(id);
+  if (!key || /^n\/?a$/i.test(key)) return { kind: "none" };
+  if (!paras) return { kind: "unloaded", id: key };
+  if (!(key in paras.text)) return { kind: "missing", id: key };
+  const items = [[key, paras.text[key]]];
+  if (expandHeadings && isHeading(paras.text[key])) {
+    for (let k = paras.order.indexOf(key) + 1; k < paras.order.length && items.length < 8; k++) {
+      const pid = paras.order[k];
+      if (isHeading(paras.text[pid])) break;
+      items.push([pid, paras.text[pid]]);
+    }
+  }
+  return { kind: "ok", items };
+}
+function sourceBlock(ids, paras, { expandHeadings = false, label = "Contract wording relied on" } = {}) {
+  const list = arr(ids).map(txt).filter(Boolean);
+  if (!list.length) return null;
+  const out = [h("div", { class: "col-label" }, label)];
+  for (const id of list) {
+    const s = sourceText(id, paras, expandHeadings);
+    if (s.kind === "none") out.push(note("muted", "No paragraph given (the agent says this is missing from the contract)."));
+    else if (s.kind === "unloaded") out.push(note("muted", `Paragraph ${id}. The contract text isn't available for this result.`));
+    else if (s.kind === "missing") out.push(note("warn", `The agent pointed to paragraph "${id}", which doesn't exist in this contract.`));
+    else for (const [pid, t] of s.items) out.push(h("div", { class: "doc" }, h("span", { class: "pid" }, `Paragraph ${pid}`), t));
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- renderers
+const RENDER = {};
+
+RENDER.general_review = (res, req) => {
+  const list = arr(res.suggestions);
+  const out = [contextBox("What the agent was given", [
+    ["Party represented", req?.party_represented], ["Agreement type", req?.agreement_type],
+    ["Review objective", req?.review_objective], ["Specific concerns", req?.specific_concerns],
+    ["Paragraphs reviewed", arr(req?.textinformation).length || ""],
+  ])];
+  if (!list.length) return [...out, note("", "The agent found nothing to flag in this contract.")];
+
+  const count = (lvl) => list.filter((s) => levelName(s.risk_level) === lvl).length;
+  out.push(tiles([[list.length, "Suggestions"], [count("High"), "High risk"], [count("Medium"), "Medium risk"], [count("Low"), "Low risk"]]));
+
+  const listEl = h("div", { class: "list" });
+  const buttons = ["All", "High", "Medium", "Low"].map((lvl) => h("button", {
+    class: "chip-btn", type: "button", "aria-pressed": lvl === "All" ? "true" : "false",
+    onclick: (e) => {
+      listEl.dataset.filter = lvl;
+      for (const b of buttons) b.setAttribute("aria-pressed", b === e.currentTarget ? "true" : "false");
+    },
+  }, lvl === "All" ? `All (${list.length})` : `${lvl} (${count(lvl)})`));
+  out.push(h("div", { class: "filters no-print" }, buttons));
+
+  list.forEach((s, i) => {
+    const level = levelName(s.risk_level);
+    listEl.append(card({
+      label: `Suggestion ${i + 1}`, title: txt(s.clause) || "Untitled clause",
+      sub: txt(s.para_identifier) && h("span", null, field("para_identifier"), ": ", txt(s.para_identifier)),
+      badges: [badge(`${level} risk`, level)], level,
+    },
+      labelled("Why it was flagged", prose(s.reason)),
+      wordingPair(s.original_text, s.suggested_fix, [field("original_text"), field("suggested_fix")])));
+  });
+  out.push(listEl);
+  return out;
+};
+
+RENDER.playbook_review = (res, req, paras) => {
+  const rules = arr(res.rules_review), missing = arr(res.missing_clauses);
+  const sent = arr(req?.rulesinformation);
+  const out = [contextBox("What the agent was given", [
+    ["Playbook rules checked", sent.length || ""], ["Paragraphs in the contract", arr(req?.textinformation).length || ""],
+  ])];
+  if (!rules.length && !missing.length) {
+    return [...out, note("warn", "No results came back. This agent also returns an empty result when something goes wrong, so treat this as a possible error, not a clean review.")];
+  }
+  if (sent.length && rules.length < sent.length) {
+    const back = new Set(rules.map((r) => txt(r.rule_title)));
+    const skipped = sent.map((r) => txt(r.title)).filter((t) => !back.has(t));
+    out.push(note("warn", `${plural(sent.length, "rule")} were sent but only ${rules.length} came back.`, skipped.length ? ` Not answered: ${skipped.join(", ")}.` : ""));
+  }
+
+  const statuses = ["Critical", "Medium", "Low", "Good", "Not found"];
+  const by = (s) => rules.filter((r) => levelName(r.content?.status) === s).length;
+  out.push(tiles([[rules.length, "Rules reviewed"], ...statuses.map((s) => [by(s), s]).filter(([n]) => n), [missing.length, "Missing or weak clauses"]]));
+
+  out.push(...section("Playbook rules"));
+  rules.forEach((r, i) => {
+    const c = r.content || {};
+    const status = levelName(c.status) || "Unknown";
+    const ids = arr(c.para_identifiers);
+    const single = ids.length === 1 ? sourceText(ids[0], paras, false) : null;
+    const currentText = single && single.kind === "ok" ? single.items[0][1] : null;
+    out.push(card({
+      label: `Rule ${i + 1}`, title: txt(r.rule_title) || "Untitled rule",
+      sub: txt(c.matched_clause_name) ? `Matched clause: ${txt(c.matched_clause_name)}` : "No matching clause found",
+      badges: [badge(status, status), txt(r.rule_type) && outline(`${txt(r.rule_type)} rule`)], level: status,
+    },
+      labelled("Playbook requirement", h("p", { class: "prose" }, h("strong", null, txt(r.rule_instruction))), txt(r.rule_description) && h("p", { class: "prose sub" }, txt(r.rule_description))),
+      labelled("Assessment", prose(c.reason)),
+      txt(c.suggestion) && labelled("Recommendation", prose(c.suggestion)),
+      currentText != null
+        ? wordingPair(currentText, c.suggested_fix, [h("span", null, "Current wording ", h("span", { class: "lc" }, `(paragraph ${txt(ids[0])})`)), "Proposed fix"])
+        : [sourceBlock(ids, paras), txt(c.suggested_fix) && [h("div", { class: "col-label" }, "Proposed fix"), h("div", { class: "doc" }, txt(c.suggested_fix))]]));
+  });
+
+  if (missing.length) {
+    out.push(...section("Missing or weak clauses"));
+    missing.forEach((m, i) => {
+      const imp = levelName(m.importance);
+      out.push(card({
+        label: `Missing clause ${i + 1}`, title: txt(m.clause_name) || "Unnamed clause",
+        badges: [outline(cap(txt(m.status)) || "Unknown status"), imp && badge(`${imp} importance`, imp)], level: imp,
+      }, prose(m.explanation)));
+    });
+  }
+  return out;
+};
+
+RENDER.contract_analyzer = (res, req, paras) => {
+  const keys = arr(res.key_information), dates = arr(res.timeline_and_key_milestones);
+  const rank = { critical: 0, high: 1, medium: 2, low: 3 };
+  const risks = arr(res.risk_and_compliance_insights).map((r, i) => [r, i])
+    .sort((a, b) => (rank[txt(a[0].severity).toLowerCase()] ?? 9) - (rank[txt(b[0].severity).toLowerCase()] ?? 9) || a[1] - b[1])
+    .map(([r]) => r);
+  const out = [contextBox("What the agent was given", [["Paragraphs in the contract", arr(req?.textinformation).length || ""]])];
+
+  out.push(...section("Summary"), h("p", { class: "prose" }, txt(res.summary) || "No summary was returned."));
+
+  out.push(...section("Key terms"));
+  out.push(keys.length
+    ? h("table", { class: "grid" }, h("thead", null, h("tr", null, h("th", null, "#"), h("th", null, "Term"), h("th", null, "Detail"))),
+        h("tbody", null, keys.map((k, i) => h("tr", null, h("td", { class: "n" }, `Key term ${i + 1}`), h("td", null, txt(k.field_name)), h("td", null, txt(k.value))))))
+    : note("muted", "None listed."));
+
+  out.push(...section("Timeline and key dates"));
+  out.push(dates.length
+    ? h("table", { class: "grid" }, h("thead", null, h("tr", null, h("th", null, "#"), h("th", null, "Milestone"), h("th", null, "Date or trigger"), h("th", null, "Detail"))),
+        h("tbody", null, dates.map((d, i) => h("tr", null, h("td", { class: "n" }, `Date ${i + 1}`), h("td", null, txt(d.milestone_name)), h("td", null, txt(d.date_or_trigger)), h("td", null, txt(d.description))))))
+    : note("muted", "None listed."));
+
+  out.push(...section("Risks and compliance issues"));
+  if (!risks.length) out.push(note("muted", "No risks were listed."));
+  risks.forEach((r, i) => {
+    const sev = levelName(r.severity);
+    const title = txt(r.clause_title);
+    const isMissing = /^missing\s*:/i.test(title);
+    out.push(card({
+      label: `Risk ${i + 1}`, title: isMissing ? title.replace(/^missing\s*:\s*/i, "") : title || "Unnamed clause",
+      badges: [badge(sev || "Unrated", sev), isMissing && outline("Missing from the contract")], level: sev,
+    },
+      labelled("Issue", prose(r.issue)),
+      isMissing ? null : sourceBlock([r.para_identifier], paras, { expandHeadings: true, label: "Contract wording" })));
+  });
+  return out;
+};
+
+RENDER.compare_documents = (res) => {
+  const out = [];
+  if (res.success === false) return [note("error", "The comparison failed. ", txt(res.error))];
+  if (txt(res.message)) out.push(note("", txt(res.message)));
+  const s = res.summary || {};
+  if (res.summary) {
+    out.push(tiles([[s.total_changes ?? 0, "Changes"], [s.added ?? 0, "Added"], [s.removed ?? 0, "Removed"], [s.modified ?? 0, "Modified"], [s.reordered ?? 0, "Moved"], [s.high_risk_count ?? 0, "High risk"]]));
+    if (txt(s.overall_risk)) out.push(h("p", null, "Overall risk of the revision: ", badge(levelName(s.overall_risk), s.overall_risk)));
+  }
+  const TYPE = { added: "Added", removed: "Removed", modified: "Modified", reordered: "Moved" };
+  let n = 0;
+  for (const sec of arr(res.sections)) {
+    const changes = arr(sec.changes);
+    if (!changes.length) continue;
+    const name = txt(sec.section_name);
+    out.push(...section(name && name !== "General / Ungrouped" ? name : "Changes"));
+    for (const c of changes) {
+      n++;
+      const type = txt(c.change_type).toLowerCase();
+      const risk = levelName(c.risk_level);
+      const a = txt(c.text_from_doc_a), b = txt(c.text_from_doc_b);
+      let texts;
+      if (type === "added") texts = b && [h("div", { class: "col-label" }, "Added in the revised version"), h("div", { class: "doc" }, h("ins", null, b))];
+      else if (type === "removed") texts = a && [h("div", { class: "col-label" }, "Removed from the original"), h("div", { class: "doc" }, h("del", null, a))];
+      else texts = wordingPair(a, b, ["Original version", "Revised version"]);
+      out.push(card({
+        label: `Change ${n}`, title: txt(c.clause_name) || "Unnamed clause",
+        sub: txt(c.affected_party) && `Affects: ${txt(c.affected_party)}`,
+        badges: [outline(TYPE[type] || cap(type) || "Change"), txt(c.modification_type) && outline(`${cap(txt(c.modification_type))} change`),
+          risk && badge(`${risk} risk`, risk), c.is_substantive === false && outline("Cosmetic only"),
+          txt(c.confidence) && txt(c.confidence).toLowerCase() !== "high" && outline(`${cap(txt(c.confidence))} confidence`)],
+        level: risk,
+      }, labelled("What changed", prose(c.summary)), texts));
+    }
+  }
+  if (!n && res.success !== false && !txt(res.message)) out.push(note("", "No changes were reported."));
+  return out;
+};
+
+function withPlaceholders(text) {
+  return txt(text).split(/(\[[^\]\n]{1,60}\])/g).map((part, i) => (i % 2 ? h("mark", { class: "ph" }, part) : part));
+}
+RENDER.describe_draft = (res, req) => {
+  const clauses = arr(res.clauses);
+  const out = [contextBox("What was asked", [
+    ["Request", req?.query],
+    ["Based on the uploaded contract", req ? (req.use_document_context ? "Yes" : "No, a general template") : ""],
+  ])];
+  if (!clauses.length) return [...out, note("warn", "No draft was returned.")];
+  clauses.forEach((c, i) => out.push(card({ label: `Draft ${i + 1}`, title: txt(c.title) || "Untitled clause" },
+    labelled("Summary", prose(c.summary)),
+    h("div", { class: "col-label" }, "Drafted clause"), h("div", { class: "doc" }, withPlaceholders(c.drafted_clause)))));
+  if (clauses.some((c) => /\[[^\]\n]{1,60}\]/.test(txt(c.drafted_clause)))) out.push(note("muted", "Highlighted items in square brackets are placeholders to be filled in."));
+  return out;
+};
+
+RENDER.doc_chat = (res, req) => {
+  const answers = arr(res.answers);
+  const out = [contextBox("What was asked", [["Question", req?.query]])];
+  if (txt(res.title)) out.push(...section(txt(res.title)));
+  if (!answers.length) return [...out, note("warn", "No answer was returned.")];
+  answers.forEach((a, i) => out.push(card({ label: `Answer ${i + 1}`, title: txt(a.field_name) || "Answer" }, prose(a.answer))));
+  out.push(note("muted", "This agent doesn't say which parts of the contract it used, so each answer needs checking against the contract."));
+  return out;
+};
+
+// ---------------------------------------------------------------- runs
+// Server runs are numbered per agent by the backend ("Result 3"); the number never changes,
+// even after older runs are removed. Runs opened from a file are named after the file.
+const runTitle = (run) => (run.source === "file" ? `From file ${run.fileName}` : `Result ${run.number}`);
+const runRef = (run) => `${AGENTS[run.agent].name}, ${run.source === "file" ? `file ${run.fileName}` : `Result ${run.number}`}`;
+function whenText(run) {
+  if (run.source === "file") return "Opened in this browser";
+  const d = new Date(run.captured_at);
+  return isNaN(d) ? "" : d.toLocaleString(undefined, { day: "numeric", month: "short", year: "numeric", hour: "2-digit", minute: "2-digit" });
+}
+function runsOf(agent) {
+  const mine = state.runs.filter((r) => r.agent === agent);
+  return [
+    ...mine.filter((r) => r.source === "server").sort((a, b) => (b.number || 0) - (a.number || 0)),
+    ...mine.filter((r) => r.source === "file"),
+  ];
+}
+function isLatest(run) {
+  if (run.source !== "server") return false;
+  const numbers = state.runs.filter((r) => r.agent === run.agent && r.source === "server").map((r) => r.number || 0);
+  return numbers.length > 1 && run.number === Math.max(...numbers);
+}
+function detailFor(agent, record) {
+  const res = record?.response || {}, req = record?.request || {};
+  const q = txt(req.query).replace(/\s+/g, " ");
+  switch (agent) {
+    case "general_review": return plural(arr(res.suggestions).length, "suggestion");
+    case "playbook_review": return `${plural(arr(res.rules_review).length, "rule")} checked · ${plural(arr(res.missing_clauses).length, "missing clause")}`;
+    case "contract_analyzer": return plural(arr(res.risk_and_compliance_insights).length, "risk");
+    case "compare_documents": return res.success === false ? "Comparison failed" : plural(res.summary?.total_changes ?? 0, "change");
+    default: return q ? `“${q.length > 80 ? q.slice(0, 80) + "…" : q}”` : "";
+  }
+}
+
+// Which agents are expanded in the sidebar. Every visit starts with all of them closed.
+state.open = new Set();
+function toggleAgent(agent) {
+  if (state.open.has(agent)) state.open.delete(agent); else state.open.add(agent);
+  renderNav();
+}
+
+function chevron() {
+  const NS = "http://www.w3.org/2000/svg";
+  const svg = document.createElementNS(NS, "svg");
+  svg.setAttribute("viewBox", "0 0 16 16");
+  svg.setAttribute("class", "chev");
+  svg.setAttribute("aria-hidden", "true");
+  const path = document.createElementNS(NS, "path");
+  for (const [k, v] of Object.entries({ d: "M4 6l4 4 4-4", fill: "none", stroke: "currentColor", "stroke-width": "1.8", "stroke-linecap": "round", "stroke-linejoin": "round" })) path.setAttribute(k, v);
+  svg.append(path);
+  return svg;
+}
+
+function runRow(run) {
+  const active = state.current === run;
+  return h("div", { class: `run-row${active ? " active" : ""}` },
+    h("button", { class: "run-link", type: "button", "aria-current": active ? "true" : null, onclick: () => showRun(run.id) },
+      h("span", { class: "run-title" }, h("span", { class: "name" }, runTitle(run)), isLatest(run) && h("span", { class: "tag-latest" }, "Latest")),
+      h("span", { class: "run-when" }, whenText(run)),
+      run.detail && h("span", { class: "run-detail" }, run.detail)),
+    h("button", { class: "rm", type: "button", title: "Remove from this page", "aria-label": `Remove ${runTitle(run)} of ${AGENTS[run.agent].name}`, onclick: () => removeRuns([run]) }, "×"));
+}
+
+function renderNav() {
+  nav.replaceChildren(h("div", { class: "nav-title" }, "Agents"), ...ORDER.map((agent) => {
+    const runs = runsOf(agent);
+    const open = state.open.has(agent);
+    const older = runs.filter((r) => r.source === "server" && !isLatest(r));
+    return h("section", { class: "agent" },
+      h("button", { class: "agent-toggle", type: "button", "aria-expanded": open ? "true" : "false", "aria-controls": `runs-${agent}`, onclick: () => toggleAgent(agent) },
+        h("span", { class: "agent-name" }, AGENTS[agent].name),
+        h("span", { class: "count", title: plural(runs.length, "result") }, runs.length),
+        chevron()),
+      h("div", { class: "runs", id: `runs-${agent}`, hidden: !open },
+        runs.length ? runs.map(runRow) : h("div", { class: "nav-empty" }, "No results yet. They appear here each time this agent runs."),
+        runs.length > 1 && older.length > 0 && h("div", { class: "runs-actions" },
+          h("button", { class: "link-btn", type: "button", onclick: () => removeRuns(older) }, `Remove older results (${older.length})`))));
+  }));
+}
+
+async function removeRuns(list) {
+  const removed = [];
+  for (const run of list) {
+    if (run.source === "server") {
+      try {
+        const res = await fetch(`/review/runs/${encodeURIComponent(run.id)}`, { method: "DELETE" });
+        if (!res.ok) throw new Error(String(res.status));
+      } catch {
+        toast(`Couldn't remove ${runTitle(run)}. Try Refresh.`);
+        continue;
+      }
+    }
+    removed.push(run);
+  }
+  if (!removed.length) return;
+  state.runs = state.runs.filter((r) => !removed.includes(r));
+  if (removed.includes(state.current)) {
+    const next = runsOf(state.current.agent)[0];
+    if (next) showRun(next.id); else renderHome();
+  } else {
+    renderNav();
+  }
+  const what = removed.length === 1 ? `${runTitle(removed[0])} removed.` : `${removed.length} results removed.`;
+  toast(what, { label: "Undo", run: () => restoreRuns(removed) });
+}
+
+async function restoreRuns(list) {
+  let failed = 0;
+  for (const run of list) {
+    if (run.source === "server") {
+      try {
+        const res = await fetch(`/review/runs/${encodeURIComponent(run.id)}/restore`, { method: "POST" });
+        if (!res.ok) throw new Error(String(res.status));
+      } catch { failed++; }
+    } else if (!state.runs.includes(run)) {
+      state.runs.push(run);
+    }
+  }
+  await loadServerRuns();
+  if (state.current) renderNav(); else if (list[0]) showRun(list[0].id);
+  if (failed) toast(`${plural(failed, "result")} couldn't be restored.`);
+}
+
+function paragraphsFor(record) {
+  return paragraphsFrom(record?.request?.textinformation) || state.contract;
+}
+
+function renderRun(run) {
+  const meta = AGENTS[run.agent];
+  const record = run.record || {};
+  const response = record.response && typeof record.response === "object" ? record.response : {};
+  const request = record.request && typeof record.request === "object" ? record.request : null;
+  let body;
+  try { body = RENDER[run.agent](response, request, paragraphsFor(record)); }
+  catch (err) { body = [note("error", "This result couldn't be displayed. Its format may have changed. ", String(err && err.message || err))]; }
+
+  view.replaceChildren(
+    h("div", { class: "eyebrow" }, "Agent result"),
+    h("h1", null, meta.name),
+    h("p", { class: "blurb" }, meta.blurb),
+    h("div", { class: "meta" },
+      h("span", { class: "refcode" }, runTitle(run)),
+      isLatest(run) && h("span", { class: "tag-latest" }, "Latest"),
+      run.source === "file" ? h("span", null, "Opened in this browser") : whenText(run) && h("span", null, "Produced ", h("b", null, whenText(run))),
+      run.detail && h("span", null, run.detail)),
+    h("aside", { class: "guide" },
+      h("p", null, h("strong", null, "When reviewing, please consider:")),
+      h("ul", null, meta.check.map((c) => h("li", null, c))),
+      h("p", { style: "margin:8px 0 0" }, "When you send feedback, name the agent, the result and the item, for example ", h("em", null, `“${runRef(run)}, ${EXAMPLE[run.agent]}”`))),
+    ...[body].flat(Infinity).filter((x) => x != null && x !== false && x !== ""),
+    h("details", { class: "tech" }, h("summary", null, "Technical data (for the development team)"),
+      h("pre", null, JSON.stringify(record.response ?? record, null, 2))));
+  window.scrollTo(0, 0);
+}
+const EXAMPLE = {
+  general_review: "Suggestion 3: the risk should be High, and the suggested_fix is acceptable.",
+  playbook_review: "Rule 2: the clause meets the rule, so the status should be Good.",
+  contract_analyzer: "Risk 1: overstated. This is standard for this type of agreement.",
+  compare_documents: "Change 2: correct, but the affected party is Accordor, not the Service Provider.",
+  describe_draft: "Draft 1: usable with light edits; carve-out (b) is too narrow.",
+  doc_chat: "Answer 2: incomplete. It misses the termination right in Section 4.",
+};
+
+function renderHome() {
+  state.current = null;
+  renderNav();
+  view.replaceChildren(h("div", { class: "home" }, // h() flattens nested arrays itself
+    h("h1", null, "Agent results for legal review"),
+    h("p", { class: "blurb" }, state.runs.length ? "Choose an agent on the left, then one of its results." :
+      SERVER && state.serverOk ? "No results yet. They appear here automatically each time an agent runs on the development server. Use Refresh to check for new ones." :
+      "Open or drop an agent's result file (.json) to view it. To see the contract wording behind a result, also open the contract file."),
+    state.serverOk === false ? note("warn", "The results list on the server couldn't be reached. You can still open result files.") : null,
+    h("div", { class: "agent-list" }, ORDER.map((a) => card({ title: AGENTS[a].name }, h("p", { class: "prose sub" }, AGENTS[a].blurb))))));
+}
+
+async function showRun(id) {
+  const run = state.runs.find((r) => r.id === id);
+  if (!run) return renderHome();
+  state.current = run;
+  state.open.add(run.agent);
+  renderNav();
+  if (!run.record) {
+    view.replaceChildren(note("muted", "Loading…"));
+    try {
+      const res = await fetch(`/review/runs/${encodeURIComponent(run.id)}`, { cache: "no-store" });
+      if (!res.ok) throw new Error(String(res.status));
+      run.record = await res.json();
+    } catch {
+      if (state.current === run) view.replaceChildren(note("error", "This result couldn't be loaded. It may have been removed. Try Refresh."));
+      return;
+    }
+    if (state.current !== run) return;
+  }
+  renderRun(run);
+}
+
+async function loadServerRuns() {
+  if (!SERVER) return;
+  try {
+    const res = await fetch("/review/runs", { cache: "no-store" });
+    if (!res.ok) throw new Error(String(res.status));
+    const list = await res.json();
+    const known = new Map(state.runs.filter((r) => r.source === "server").map((r) => [r.id, r]));
+    const serverRuns = arr(list).filter((x) => x && AGENTS[x.agent]).map((x) => {
+      const run = known.get(x.id);
+      return run ? Object.assign(run, { number: x.number, detail: x.detail }) : { ...x, source: "server", record: null };
+    });
+    state.runs = [...serverRuns, ...state.runs.filter((r) => r.source === "file")];
+    state.serverOk = true;
+    $("refresh").hidden = false;
+  } catch {
+    state.serverOk = false;
+  }
+}
+
+// ---------------------------------------------------------------- opening files
+function detect(obj) {
+  if (!obj || typeof obj !== "object" || Array.isArray(obj)) return null;
+  if (typeof obj.agent === "string" && AGENTS[obj.agent] && "response" in obj) return { type: "run", agent: obj.agent, record: obj };
+  const wrap = (agent) => ({ type: "run", agent, record: { agent, request: null, response: obj } });
+  if (Array.isArray(obj.suggestions)) return wrap("general_review");
+  if (Array.isArray(obj.rules_review)) return wrap("playbook_review");
+  if ("risk_and_compliance_insights" in obj || "timeline_and_key_milestones" in obj || "key_information" in obj) return wrap("contract_analyzer");
+  if (Array.isArray(obj.sections) && "success" in obj) return wrap("compare_documents");
+  if (Array.isArray(obj.clauses)) return wrap("describe_draft");
+  if (Array.isArray(obj.answers)) return wrap("doc_chat");
+  if (Array.isArray(obj.textinformation)) return { type: "contract", paragraphs: paragraphsFrom(obj.textinformation) };
+  const values = Object.values(obj);
+  if (values.length > 1 && values.every((v) => typeof v === "string")) return { type: "contract", paragraphs: { order: Object.keys(obj), text: obj } };
+  return null;
+}
+
+async function openFiles(files) {
+  const problems = [], opened = [];
+  let contractLoaded = false;
+  for (const file of files) {
+    let obj;
+    try { obj = JSON.parse(await file.text()); }
+    catch { problems.push(`${file.name}: not a valid result file`); continue; }
+    const found = detect(obj);
+    if (!found) { problems.push(`${file.name}: not recognised as an agent result`); continue; }
+    if (found.type === "contract") {
+      if (found.paragraphs) { state.contract = found.paragraphs; state.contractName = file.name; contractLoaded = true; }
+      continue;
+    }
+    state.fileCount++;
+    const run = { id: `file-${state.fileCount}`, agent: found.agent, source: "file", fileName: file.name, captured_at: found.record.captured_at || null, record: found.record, detail: detailFor(found.agent, found.record) };
+    state.runs.push(run);
+    opened.push(run);
+  }
+  const messages = [...problems];
+  if (contractLoaded) messages.unshift(`Contract text loaded from ${state.contractName}.`);
+  if (messages.length) toast(messages.join("\n"));
+  if (opened.length) showRun(opened[0].id);
+  else if (state.current) renderRun(state.current);
+  else renderNav();
+}
+
+// ---------------------------------------------------------------- wiring
+$("files").addEventListener("change", (e) => { openFiles([...e.target.files]); e.target.value = ""; });
+$("print").addEventListener("click", () => window.print());
+$("highlight").addEventListener("change", (e) => document.body.classList.toggle("plain", !e.target.checked));
+$("refresh").addEventListener("click", async () => {
+  const before = state.runs.length;
+  await loadServerRuns();
+  if (state.current && !state.runs.includes(state.current)) renderHome(); else renderNav();
+  const added = state.runs.length - before;
+  toast(added > 0 ? `${plural(added, "new result")}.` : "No new results.");
+});
+
+let dragDepth = 0;
+const dropEl = $("drop");
+const hasFiles = (e) => [...(e.dataTransfer?.types || [])].includes("Files");
+window.addEventListener("dragenter", (e) => { if (!hasFiles(e)) return; e.preventDefault(); dragDepth++; dropEl.classList.add("show"); });
+window.addEventListener("dragover", (e) => { if (hasFiles(e)) e.preventDefault(); });
+window.addEventListener("dragleave", () => { dragDepth = Math.max(0, dragDepth - 1); if (!dragDepth) dropEl.classList.remove("show"); });
+window.addEventListener("drop", (e) => {
+  if (!hasFiles(e)) return;
+  e.preventDefault(); dragDepth = 0; dropEl.classList.remove("show");
+  openFiles([...e.dataTransfer.files]);
+});
+
+(async () => {
+  // Always start on the overview with every agent closed. Earlier versions kept the open result
+  // in the address (#...), which reopened it on every reload; clear that if a bookmark still has it.
+  if (location.hash) history.replaceState(null, "", location.pathname + location.search);
+  await loadServerRuns();
+  renderHome();
+})();
+})();
+</script>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import asyncio
 import json
 import time
-from typing import Any, Dict, Optional, Type, TypeVar
+from typing import Any, Dict, List, Optional, Type, TypeVar
 
 import boto3
 import pystache
@@ -12,6 +12,7 @@ from src.config.logging import get_logger
 from src.config.settings import get_settings
 from src.exceptions.llm_exceptions import (
     LLMModelError,
+    LLMOutputTruncatedError,
 )
 from src.services.llm.base_model import BaseLLMModel
 
@@ -223,12 +224,58 @@ class BedrockModel(BaseLLMModel):
 
     #     return cast(response_model, response_model.model_validate(normalized_input))  # type: ignore
 
-    async def generate(self, prompt: str, context: Dict[str, Any], response_model: Type[ResponseModelT], session_id: str, system_message: Optional[str] = None, temperature: float = 0.0) -> ResponseModelT:
+    async def generate(
+        self,
+        prompt: str,
+        context: Dict[str, Any],
+        response_model: Type[ResponseModelT],
+        session_id: str,
+        system_message: Optional[str] = None,
+        temperature: float = 0.0,
+        *,
+        max_tokens: int = 10000,
+        cached_prefix: Optional[str] = None,
+        fail_on_truncation: bool = False,
+    ) -> ResponseModelT:
+        """Send a schema-enforced generation request and return the validated response.
 
-        prompt = self.render_prompt_template(
-            prompt=prompt,
-            context=context,
-        )
+        cached_prefix is text placed ahead of the rendered prompt and marked
+        for Bedrock prompt caching: calls that share the same tool, system
+        message and prefix read it from the cache instead of paying for it
+        again. With fail_on_truncation, a response cut off at max_tokens raises
+        LLMOutputTruncatedError instead of being validated as if it were whole.
+        """
+
+        rendered = self.render_prompt_template(prompt=prompt, context=context)
+        model_response = await self._invoke_structured(rendered, response_model, session_id, system_message, temperature, max_tokens, cached_prefix)
+
+        if model_response.get("stop_reason") == "max_tokens":
+            logger.warning("bedrock model stopped at its output token limit; the response is incomplete", model_id=self.model_id, session_id=session_id, max_tokens=max_tokens)
+            if fail_on_truncation:
+                raise LLMOutputTruncatedError(f"The model stopped at its {max_tokens}-token output limit before finishing its {response_model.__name__} response.")
+
+        tool_use_block = next(block for block in model_response["content"] if block["type"] == "tool_use")
+
+        normalized_input = self._normalize_tool_response(tool_use_block["input"])
+
+        return response_model.model_validate(normalized_input)
+
+    async def warm_prompt_cache(self, cached_prefix: str, response_model: Type[BaseModel], session_id: str, system_message: Optional[str] = None) -> None:
+        """Write cached_prefix to the Bedrock prompt cache without generating a response.
+
+        Calls that start together all miss the cache, because an entry exists
+        only once a first response has begun. This sends the same tool, system
+        message and prefix a generate() call would, limited to one output
+        token, so the entry is written in a second or two and the calls that
+        follow read it.
+        """
+
+        await self._invoke_structured("", response_model, session_id, system_message, 0.0, 1, cached_prefix)
+
+    async def _invoke_structured(
+        self, rendered_prompt: str, response_model: Type[BaseModel], session_id: str, system_message: Optional[str], temperature: float, max_tokens: int, cached_prefix: Optional[str]
+    ) -> Dict[str, Any]:
+        """Invoke the model with response_model as a forced tool and return the raw response body."""
 
         tool = {
             "name": response_model.__name__,
@@ -236,19 +283,18 @@ class BedrockModel(BaseLLMModel):
             "input_schema": response_model.model_json_schema(),
         }
 
+        content: List[Dict[str, Any]] = [{"type": "text", "text": rendered_prompt or "-"}]
+        if cached_prefix:
+            content.insert(0, {"type": "text", "text": cached_prefix, "cache_control": {"type": "ephemeral"}})
+
         native_request = {
             "anthropic_version": "bedrock-2023-05-31",
-            "max_tokens": 10000,
+            "max_tokens": max_tokens,
             "temperature": temperature,
             "messages": [
                 {
                     "role": "user",
-                    "content": [
-                        {
-                            "type": "text",
-                            "text": prompt,
-                        }
-                    ],
+                    "content": content,
                 }
             ],
             "system": system_message or "You are a helpful assistant.",
@@ -269,7 +315,7 @@ class BedrockModel(BaseLLMModel):
 
         response_body = await asyncio.to_thread(response["body"].read)
 
-        model_response = json.loads(response_body)
+        model_response: Dict[str, Any] = json.loads(response_body)
 
         usage = model_response.get("usage", {})
 
@@ -279,11 +325,9 @@ class BedrockModel(BaseLLMModel):
             session_id=session_id,
             time_taken=time.time() - start_time,
             tokens_input=usage.get("input_tokens"),
+            tokens_cache_read=usage.get("cache_read_input_tokens"),
+            tokens_cache_write=usage.get("cache_creation_input_tokens"),
             output_tokens=usage.get("output_tokens"),
         )
 
-        tool_use_block = next(block for block in model_response["content"] if block["type"] == "tool_use")
-
-        normalized_input = self._normalize_tool_response(tool_use_block["input"])
-
-        return response_model.model_validate(normalized_input)
+        return model_response

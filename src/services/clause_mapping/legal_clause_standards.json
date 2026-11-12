@@ -1,0 +1,263 @@
+{
+  "_about": "The legal team's clause-by-clause risk classification for MSAs, transcribed from the workbook 'MSA Clause Risk Classification - Standard Instructions clause by clause'. One entry per clause type, named as the taxonomy names it. risk_allocation is the risk level the legal team assigns to the clause; fallback_guidelines is the compromise position to propose when the clause misses the standard. scripts/build_policies_from_taxonomy.py reads this file: a clause type listed here takes its risk tier and fallback position from here.",
+  "clauses": {
+    "Definitions & Interpretation": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Clear, precise, consistently used defined terms; neutral interpretation rules; definitions do not silently expand obligations or narrow protections",
+      "unacceptable_triggers": "Overbroad definitions that expand liability or scope (e.g., Confidential Information, Losses, Deliverables); undefined capitalised terms; circular definitions; interpretation rules favouring one party",
+      "fallback_guidelines": "Tighten definitions with qualifiers; add missing definitions; align to operative clauses; make interpretation rules mutual"
+    },
+    "Purpose": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "Short statement of commercial intent and the framework nature of the MSA; non-operative",
+      "unacceptable_triggers": "Recitals that create binding obligations, warranties or exclusivity; purpose inconsistent with scope",
+      "fallback_guidelines": "State that recitals are non-operative; delete or conform to Scope of Services"
+    },
+    "Scope of Services": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Services specifically described; assumptions and exclusions stated; additions handled through Change Control",
+      "unacceptable_triggers": "Open-ended scope (\"all related services\"); unlimited scope creep without fee adjustment; no exclusions; conflict with SOW",
+      "fallback_guidelines": "Add defined service descriptions, assumptions and exclusions; route additions through Change Control"
+    },
+    "Statements of Work & Work Orders": {
+      "risk_allocation": "High",
+      "acceptable_standard": "SOWs signed by both parties, stating scope, deliverables, timeline, fees, acceptance criteria and personnel; MSA terms apply; no work or fees before a signed SOW",
+      "unacceptable_triggers": "SOW overrides MSA without express reference; unilateral issuance of work orders; fees due without signed SOW; missing fees or acceptance criteria; SOW continues after MSA ends with no governing terms",
+      "fallback_guidelines": "Require signed SOW with minimum content; SOW overrides MSA only by express named clause; add pre-authorisation requirement for work orders"
+    },
+    "Customer Obligations": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Limited to reasonable, specified cooperation (access, information, timely decisions); provider relief only if it gives prompt notice and is actually prevented",
+      "unacceptable_triggers": "Open-ended dependencies; deemed breach or automatic fee, SLA or deadline relief for any customer delay; unspecified resource commitments; customer responsible for provider's failures",
+      "fallback_guidelines": "List obligations specifically; require written notice and a cure period; limit relief to delay actually caused"
+    },
+    "Service Provider Obligations": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Services performed with professional skill and care, to industry standards, per SOW and applicable law, by qualified personnel; defects re-performed",
+      "unacceptable_triggers": "No performance standard or \"best efforts\" only; services \"as is\"; no obligation to meet timelines; unilateral right to change services or key personnel; no re-performance",
+      "fallback_guidelines": "Add professional-standard and re-performance obligations; key personnel replacement with consent; timelines binding unless customer-caused"
+    },
+    "Term & Termination": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Defined initial term and renewal mechanism; customer termination for convenience on reasonable notice; mutual termination for cause with cure period (typically 30 days); transition assistance; pro-rata refund of prepaid fees",
+      "unacceptable_triggers": "Auto-renewal with long notice window or price uplift; provider-only convenience termination; no cure period; excessive termination fees; no transition assistance; no return of data",
+      "fallback_guidelines": "Opt-in renewal or 60-day notice window; mutual convenience termination on 60-90 days; 30-day cure; limit termination fees to unrecovered committed costs"
+    },
+    "Deliverables & Acceptance": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Objective acceptance criteria; reasonable review period (typically 10-30 days); written rejection with reasons; rework at provider cost; payment tied to acceptance",
+      "unacceptable_triggers": "Deemed acceptance on short silence; no right to reject; acceptance by use; subjective criteria controlled by provider; acceptance waives warranty claims",
+      "fallback_guidelines": "Extend review period; deemed acceptance only after reminder notice; objective criteria in SOW; acceptance does not waive warranty"
+    },
+    "Service Levels": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Measurable SLAs with defined measurement and reporting; service credits; right to terminate for chronic failure",
+      "unacceptable_triggers": "Aspirational targets only; credits as sole and exclusive remedy with no termination right; broad exclusions; short claim windows; no reporting",
+      "fallback_guidelines": "Add reporting, credit schedule and chronic-failure termination right; extend claim window; narrow exclusions"
+    },
+    "Support & Maintenance": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Defined support hours, response and resolution times by severity; escalation path; updates and patches included",
+      "unacceptable_triggers": "No support commitment; support at provider's discretion; right to discontinue without notice; extra charges for defect fixes",
+      "fallback_guidelines": "Add severity-based response times; 12 months' notice before end-of-support; defect fixes at no charge"
+    },
+    "Change Control": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Written change request process; approval by both parties; documented impact on scope, fees and timeline",
+      "unacceptable_triggers": "Unilateral changes to scope, fees or terms; changes effective by email or conduct; no pricing transparency; refusing a change is a breach",
+      "fallback_guidelines": "Require signed change order; provider must supply impact assessment; no work or charges before approval"
+    },
+    "Fees & Payment": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Fees clearly stated (fixed or rate card); invoicing in arrears or on milestones; payment net 30-45 days; good-faith dispute right; expenses pre-approved; price increases capped and notified in advance",
+      "unacceptable_triggers": "Unilateral price increases; payment terms under 15 days; late fees above 1.5% per month; no dispute right; suspension for disputed amounts; non-refundable prepayments; uncapped expenses; non-cancellable commitments",
+      "fallback_guidelines": "Cap increases (e.g., CPI or fixed %) with 90 days' notice; net 30; withhold disputed amounts without penalty; expense pre-approval and caps"
+    },
+    "Confidentiality": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Mutual; defined scope with standard exclusions; reasonable care; use only for the agreement; compelled-disclosure notice; return or destruction; term of 3-5 years after termination (trade secrets for as long as they remain secret)",
+      "unacceptable_triggers": "One-way obligations; no exclusions; perpetual term for all information; residuals clause; no return or destruction; broad permitted disclosures; no remedies",
+      "fallback_guidelines": "Make mutual; add standard exclusions; need-to-know and flow-down to recipients; time-limit non-trade-secret information"
+    },
+    "Data Protection & Privacy": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Compliance with applicable data protection laws (e.g., GDPR, UK GDPR, CCPA/CPRA, India DPDP Act, as relevant); Data Processing Agreement with documented instructions; security measures; breach notice (typically within 72 hours); sub-processor controls; lawful transfer mechanisms; deletion or return at exit",
+      "unacceptable_triggers": "No DPA where personal data is processed; provider may use customer data for its own purposes or model training without consent; no breach notification; unrestricted cross-border transfer; no security standards; no deletion on exit",
+      "fallback_guidelines": "Attach DPA and security schedule; restrict use to service delivery; 72-hour breach notice (up to 5 days as a fallback); approved sub-processor list with objection right"
+    },
+    "Intellectual Property": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Customer owns its data and bespoke deliverables (on payment); provider retains pre-existing IP and tools and licenses embedded IP to customer; clear licence scope; no implied licences; limited feedback licence",
+      "unacceptable_triggers": "Provider owns all deliverables with no licence back; assignment of customer's pre-existing IP; broad licence to customer data; no licence to embedded provider IP; ownership of derivatives of customer data",
+      "fallback_guidelines": "Customer owns deliverables, or receives perpetual royalty-free licence to use them; carve out pre-existing IP; limit licence to customer data to service delivery"
+    },
+    "Representations & Warranties": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Mutual authority and capacity; provider warrants conformity to specification, professional performance, non-infringement, legal compliance and freedom from malware; remedy is re-performance or refund",
+      "unacceptable_triggers": "Blanket \"as is\" disclaimer; warranty period under 30 days; no non-infringement warranty; knowledge-qualified warranties only; exclusive remedy that is illusory",
+      "fallback_guidelines": "Extend warranty period (60-90 days minimum); add non-infringement and compliance warranties; re-performance plus refund fallback"
+    },
+    "Indemnification": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Provider indemnifies for third-party IP infringement, data breach and legal violations, gross negligence or wilful misconduct, bodily injury and property damage; customer indemnifies for customer data and misuse; defined notice, control and cooperation process; broadly mutual",
+      "unacceptable_triggers": "One-way indemnity against customer; unlimited customer indemnity; indemnity for provider's own negligence; no IP indemnity; no duty to defend; settlement without consent; first-party losses indemnified in provider's favour",
+      "fallback_guidelines": "Make mutual and proportionate; limit customer indemnity to customer data and misuse; add procedure and settlement consent; keep IP indemnity in all cases"
+    },
+    "Limitation of Liability": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Mutual cap at fees paid or payable in the prior 12 months (higher multiple for high-risk services); mutual exclusion of indirect and consequential loss; carve-outs from caps for confidentiality, data breach (super-cap acceptable), indemnities, gross negligence, wilful misconduct, fraud, and death or personal injury",
+      "unacceptable_triggers": "One-sided cap; cap below 12 months' fees or a low fixed amount; no carve-outs; customer's payment obligations not excluded from its cap; exclusion of direct losses such as data restoration; uncapped liability for customer only",
+      "fallback_guidelines": "Super-cap for data breach and confidentiality (e.g., 2-3x fees); mutual cap; minimum 12 months' fees; clearly define recoverable direct losses"
+    },
+    "Insurance": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Provider maintains commercially reasonable cover (general liability, professional or E&O, cyber, workers' compensation) at stated minimums; certificates on request; notice of cancellation",
+      "unacceptable_triggers": "No insurance requirement; limits well below deal exposure; insurance limits used as liability cap; claims-made cover with no tail",
+      "fallback_guidelines": "Specify minimum limits per cover type; certificate on request; 30 days' notice of cancellation; 2-year tail for claims-made"
+    },
+    "Compliance": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Each party complies with applicable laws (anti-bribery, labour, environmental, tax); code of conduct; notification of violations",
+      "unacceptable_triggers": "Compliance obligations only on customer; compliance with provider policies that can change unilaterally; no anti-corruption commitments",
+      "fallback_guidelines": "Make mutual; attach policies by version; add anti-bribery and violation-notice clauses"
+    },
+    "Audit & Records": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Provider keeps records for 3-7 years; customer may audit on reasonable notice (at least 10 business days), annually, in business hours, subject to confidentiality; regulator access; costs allocated fairly",
+      "unacceptable_triggers": "No audit rights where regulated or personal data is involved; unlimited provider audit of customer; audit costs always on customer; no regulator access",
+      "fallback_guidelines": "Third-party or remote audit alternatives; annual limit with exceptions for incidents and regulators; provider bears cost if material non-compliance is found"
+    },
+    "Subcontractors": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Subcontracting only with prior written consent or notice with objection right; provider remains fully liable; confidentiality and data protection terms flow down",
+      "unacceptable_triggers": "Free subcontracting without notice; provider disclaims liability for subcontractors; no flow-down; offshoring without notice",
+      "fallback_guidelines": "Approved-subcontractor list; notice of changes; flow-down of key obligations; provider fully responsible for subcontractors"
+    },
+    "Assignment": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "No assignment without consent (not unreasonably withheld); permitted assignment to affiliates or successors with notice; termination right if assigned to a competitor",
+      "unacceptable_triggers": "One-sided right for provider to assign; change of control without notice; assignment to a competitor",
+      "fallback_guidelines": "Mutual consent requirement; allow affiliate and merger assignment with notice; termination right on competitor assignment"
+    },
+    "Force Majeure": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Defined events beyond reasonable control; prompt notice and mitigation; relief from performance only; right to terminate after prolonged event (30-60 days); excludes subcontractor failure and foreseeable or preventable events",
+      "unacceptable_triggers": "Overbroad events (own labour disputes, supplier failure, cyberattacks that a BCP should prevent); no notice or mitigation; no termination right; customer must still pay for undelivered services",
+      "fallback_guidelines": "Narrow event list; require notice and mitigation; termination after 30-60 days; fee abatement during the event"
+    },
+    "Governing Law & Dispute Resolution": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Neutral or customer-favourable governing law; escalation, then mediation, then courts or arbitration; defined seat, language and rules; reasonable venue",
+      "unacceptable_triggers": "Unfavourable foreign law or venue; unilateral right to choose forum; mandatory arbitration with unfair cost allocation; no carve-out for injunctive relief; one-way fee shifting",
+      "fallback_guidelines": "Neutral law and venue; defendant's home forum; institutional arbitration with agreed seat; mutual costs"
+    },
+    "Notices": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "Written notice to named addresses or emails; clear deemed-receipt rules; address updates by notice",
+      "unacceptable_triggers": "Notice by website posting; notice effective without receipt; unrealistic delivery rules",
+      "fallback_guidelines": "Specify email and courier addresses; use standard deemed-receipt rules"
+    },
+    "Independent Contractor": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "Parties are independent contractors; provider responsible for its personnel's wages, taxes and benefits",
+      "unacceptable_triggers": "Wording that creates employment or joint-employer risk (customer directs provider personnel); personnel claim customer benefits",
+      "fallback_guidelines": "Add independent contractor wording and provider responsibility for personnel"
+    },
+    "Entire Agreement": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "MSA, SOWs and attachments supersede prior agreements on the subject; fraud is not excluded; documents listed",
+      "unacceptable_triggers": "Excludes reliance on fraudulent statements; incorporates changeable online terms or policies; unintentionally supersedes an existing NDA",
+      "fallback_guidelines": "Add fraud carve-out; limit to attached documents; preserve existing NDA"
+    },
+    "Order of Precedence": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Clear hierarchy (e.g., MSA body, then DPA or security schedule, then SOW, then other attachments); SOW overrides MSA only by express statement; customer PO and provider online terms excluded",
+      "unacceptable_triggers": "Provider quotes, click-through or online terms override the MSA; no hierarchy; conflicting terms with no resolution rule",
+      "fallback_guidelines": "Insert a hierarchy clause; exclude PO and online terms; require express override language in SOW"
+    },
+    "Amendments and Modifications": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "In writing and signed by both authorised signatories; no amendment by email, conduct or website update",
+      "unacceptable_triggers": "Unilateral right to amend by posting; amendment by conduct; click acceptance",
+      "fallback_guidelines": "Require signed written amendments; policy changes need 60 days' notice and a termination right"
+    },
+    "Waiver": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Waiver must be in writing; failure to enforce is not a waiver; mutual",
+      "unacceptable_triggers": "Deemed waiver after a time period; claims waived by acceptance or payment; one-sided waiver",
+      "fallback_guidelines": "Written-waiver requirement; no waiver by payment or acceptance"
+    },
+    "Severability": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "Invalid provisions severed; remainder continues; parties reform to closest lawful intent",
+      "unacceptable_triggers": "Severance that removes core risk allocation (e.g., liability cap) without renegotiation; one-sided operation",
+      "fallback_guidelines": "Add renegotiation obligation where severance affects a core term"
+    },
+    "No Agency or Authority": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "Neither party may bind the other; no partnership or joint venture",
+      "unacceptable_triggers": "Provider authority to bind customer; implied agency; customer liable for provider's statements",
+      "fallback_guidelines": "Add express no-agency language"
+    },
+    "Non-Exclusivity": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "Neither party is exclusive; customer may use other providers; provider may serve others subject to confidentiality",
+      "unacceptable_triggers": "Customer exclusivity or minimum purchase commitments; non-compete on customer; provider exclusivity without consideration",
+      "fallback_guidelines": "Delete exclusivity or minimum-spend terms; if required, tie to pricing benefits"
+    },
+    "Export Controls and Sanctions": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Each party complies with applicable export control and sanctions laws (e.g., US, EU, UN and local); no dealings with restricted parties; prompt notice; right to suspend or terminate for violation",
+      "unacceptable_triggers": "Obligations on customer only; customer warrants all affiliates are unrestricted; clause missing in a cross-border deal; strict liability for violations; provider excludes its own supply chain",
+      "fallback_guidelines": "Make mutual; add screening and notice duties; limit warranties to knowledge; add suspension and termination right"
+    },
+    "Publicity and Use of Names": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "No use of name, logo or announcements without prior written consent; consent revocable",
+      "unacceptable_triggers": "Provider may use customer name or logo as a reference without consent; unilateral press release; no revocation",
+      "fallback_guidelines": "Require prior written approval of each use; allow revocation"
+    },
+    "Equitable Relief": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Either party may seek injunctive relief for confidentiality or IP breach without proving damages (as permitted by law); non-exclusive",
+      "unacceptable_triggers": "One-sided right; waiver of customer's right to injunction; provider may suspend or restrain services during a dispute",
+      "fallback_guidelines": "Make mutual; limit to confidentiality and IP; no suspension of services during a good-faith dispute"
+    },
+    "Conflict of Interest": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Provider discloses actual or potential conflicts; no engagements that impair performance; gifts and hospitality rules",
+      "unacceptable_triggers": "No disclosure obligation; provider may serve direct competitors using customer information; no gifts rules",
+      "fallback_guidelines": "Add disclosure duty, information barriers and gifts policy"
+    },
+    "Survival": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Express list of surviving clauses (confidentiality, IP, indemnity, liability, accrued payments, data return, governing law)",
+      "unacceptable_triggers": "No survival clause; critical clauses omitted; only provider-favourable terms survive; customer obligations survive indefinitely",
+      "fallback_guidelines": "Add a survival list; time-limit survival where appropriate"
+    },
+    "Counterparts": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "Execution in counterparts; electronic signatures valid",
+      "unacceptable_triggers": "Electronic signatures excluded where law allows them; unclear signing authority",
+      "fallback_guidelines": "Add counterparts and e-signature wording; confirm signatory authority"
+    },
+    "Time of the Essence": {
+      "risk_allocation": "Medium",
+      "acceptable_standard": "Applies only to specifically identified milestones or payment dates, and mutually",
+      "unacceptable_triggers": "General time-of-the-essence applied to customer only or to all obligations; provider deadlines exempt",
+      "fallback_guidelines": "Limit to named milestones; make mutual; add grace period"
+    },
+    "Taxes": {
+      "risk_allocation": "High",
+      "acceptable_standard": "Fees exclusive of indirect taxes (VAT or GST) shown separately; each party bears its own income taxes; cooperation on treaty relief; withholding gross-up not required or limited; compliant tax invoices",
+      "unacceptable_triggers": "Customer bears all taxes including provider's income taxes; mandatory gross-up of withholding tax; undisclosed taxes added later; non-compliant invoices; no cooperation on tax forms",
+      "fallback_guidelines": "Allocate each tax type explicitly; no gross-up (or capped); require compliant invoices and tax certificates"
+    },
+    "Miscellaneous / Other Provisions": {
+      "risk_allocation": "Low",
+      "acceptable_standard": "Standard boilerplate (further assurances, costs, language, interpretation) that does not alter risk allocation",
+      "unacceptable_triggers": "Hidden substantive terms (non-solicit, exclusivity, IP assignment, liability shifts, auto-renewal) in boilerplate; one-sided terms",
+      "fallback_guidelines": "Move substantive terms to the correct clause for review; delete or make mutual"
+    }
+  }
+}

@@ -66,6 +66,7 @@ class Settings(BaseSettings):
     # Session management settings
     session_ttl_minutes: int = Field(default=120, description="Session TTL in minutes (default: 2 hours).")
     session_cleanup_interval_minutes: float = Field(default=10.0, description="How often to check for expired sessions, in minutes.")
+    general_review_cache_ttl_minutes: float = Field(default=120.0, description="How long a general review outcome is kept in memory before it is discarded, in minutes. 0 disables the caches.")
 
     class Config:
         env_file = ".env"

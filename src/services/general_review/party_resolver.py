@@ -13,9 +13,10 @@ or network call.
 """
 
 import re
+from collections import Counter
 from dataclasses import dataclass
 from functools import lru_cache
-from typing import List, Optional, Pattern, Sequence, Tuple
+from typing import Dict, List, Optional, Pattern, Sequence, Tuple
 
 from src.schemas.general_review import TextInformation
 
@@ -83,6 +84,8 @@ class Party:
         """Every name the agreement's text may use for this party, longest first."""
 
         candidates = {self.alias, self.legal_name, self.legal_name.rstrip("."), _strip_company_suffix(self.legal_name)}
+        # An agreement does not always type a name the same way ("CoreWeave" / "Coreweave").
+        candidates |= {name[:1] + name[1:].lower() for name in candidates if name and " " not in name}
         return tuple(sorted((name for name in candidates if name), key=lambda name: (-len(name), name)))
 
 
@@ -143,7 +146,7 @@ class PartyContext:
         if _fold(self.raw) not in {_fold(name) for name in client.names}:
             shorthand = f' The client\'s own shorthand "{self.raw}" means this same party and never the other one.'
         return (
-            "Parties to this agreement (resolved from its preamble — authoritative; never swap them):\n\n"
+            "Parties to this agreement (resolved from its own text — authoritative; never swap them):\n\n"
             f'- Represented Party (your client): {client.describe()}. Every reference to "{client.alias}" in the text is your client.{shorthand}\n'
             f'- Counterparty: {other.describe()}. Every reference to "{other.alias}" in the text is the other side, never your client.\n\n'
         )
@@ -210,6 +213,48 @@ def extract_defined_parties(paragraphs: Sequence[TextInformation]) -> List[Tuple
     return found
 
 
+# A capitalised term that takes on a duty or holds a right: "CoreWeave shall", "Service Provider will", "Customer may".
+_ACTOR_RE = re.compile(r"(?<![\w’'])([A-Z][\w&-]*(?:\s+[A-Z][\w&-]*){0,2})\s+(?:shall|will|may|must|agrees|represents|warrants|acknowledges|reserves)\b")
+# Capitalised words that open such a sentence without being a party.
+_NOT_AN_ACTOR = {"party", "parties", "agreement", "section", "nothing", "services", "service", "each", "either", "neither", "both", "such", "this", "that", "the", "any", "all", "no", "if"}
+# A term must act at least this often, and at least this share as often as the busiest one, to be one of the two parties.
+_MIN_ACTOR_MENTIONS = 4
+_MIN_ACTOR_SHARE = 0.15
+
+
+def parties_by_usage(paragraphs: Sequence[TextInformation]) -> List[Tuple[str, str]]:
+    """The two parties, read from how the agreement uses them, for an agreement whose preamble introduces none.
+
+    An order-form style agreement names its parties in a cover table
+    ("Customer Full Legal Name: ...") and then simply speaks of "Customer" and
+    "CoreWeave". The parties are the two capitalised terms that most often
+    take on duties or hold rights. Returns (name, term) pairs in the order the
+    terms first act, or nothing when two such terms do not stand out.
+    """
+
+    counts: Counter = Counter()
+    spellings: Dict[str, Counter] = {}
+    first_seen: Dict[str, int] = {}
+    for number, para in enumerate(paragraphs):
+        for match in _ACTOR_RE.finditer(para.text):
+            term = " ".join(match.group(1).split())
+            words = term.casefold().split()
+            if any(word in _NOT_AN_ACTOR for word in words) or term.isupper() and len(term) > 12:
+                continue
+            key = term.casefold()
+            counts[key] += 1
+            spellings.setdefault(key, Counter())[term] += 1
+            first_seen.setdefault(key, number)
+    ranked = counts.most_common(3)
+    if len(ranked) < 2 or ranked[1][1] < max(_MIN_ACTOR_MENTIONS, _MIN_ACTOR_SHARE * ranked[0][1]):
+        return []
+    # A third term used as often as the second leaves it unclear who the two parties are.
+    if len(ranked) == 3 and ranked[2][1] >= 0.6 * ranked[1][1]:
+        return []
+    chosen = sorted((key for key, _ in ranked[:2]), key=lambda key: first_seen[key])
+    return [(term, term) for term in (spellings[key].most_common(1)[0][0] for key in chosen)]
+
+
 def _role_from_words(text: str) -> Optional[str]:
     if _VENDOR_WORDS_RE.search(text):
         return ROLE_VENDOR
@@ -274,6 +319,12 @@ def is_acronym_of(acronym: str, name: str) -> bool:
     return spell(0, 0)
 
 
+def _contains(folded: str, phrase: str) -> bool:
+    """True when the folded wording contains the folded phrase as whole words."""
+
+    return bool(phrase) and re.search(rf"(?<!\w){re.escape(phrase)}(?!\w)", folded) is not None
+
+
 def _match_party(raw: str, parties: Sequence[Party]) -> Tuple[Optional[int], str]:
     """Index of the one party the reviewer's wording names, and how it matched. Ambiguity resolves to nothing."""
 
@@ -283,6 +334,9 @@ def _match_party(raw: str, parties: Sequence[Party]) -> Tuple[Optional[int], str
         (METHOD_LEGAL_NAME, lambda party: folded in {_fold(party.legal_name), _fold(_strip_company_suffix(party.legal_name))}),
         (METHOD_ROLE, lambda party: party.role != ROLE_PARTY and _role_from_words(raw) == party.role),
         (METHOD_LEGAL_NAME, lambda party: bool(folded) and set(folded.split()) <= set(_fold(party.legal_name).split())),
+        # 'XYZ Inc ("You", the recipient)', "Customer (Microsoft Corporation)": the reviewer's wording contains the party's name, or its defined term.
+        (METHOD_LEGAL_NAME, lambda party: _contains(folded, _fold(_strip_company_suffix(party.legal_name)))),
+        (METHOD_ALIAS, lambda party: _contains(folded, _fold(party.alias))),
         (METHOD_ACRONYM, lambda party: " " not in raw.strip() and (is_acronym_of(raw, party.legal_name) or is_acronym_of(raw, party.alias))),
     )
     for method, test in tests:
@@ -306,6 +360,8 @@ def resolve_party_context(party_represented: Optional[str], paragraphs: Sequence
         return None
     defined = extract_defined_parties(paragraphs)[:2]
     if len(defined) < 2:
+        defined = parties_by_usage(paragraphs)
+    if len(defined) < 2:
         return PartyContext(raw=party_represented)
     preamble = " ".join(para.text for para in paragraphs[: PREAMBLE_SCAN_PARAGRAPHS * 2])
     parties = _assign_roles(defined, preamble)
@@ -327,34 +383,6 @@ _DUTY = (
 )
 _RIGHT = r"(?:may(?!\s+not)|reserves?\s+the\s+right|is\s+entitled|shall\s+have\s+the\s+right|will\s+have\s+the\s+right|has\s+the\s+right|retains?)\b"
 _MUTUAL_DUTY_RE = re.compile(rf"\b(?:(?:either|each|neither|both)\s+part(?:y|ies)|the\s+parties|no\s+party)\s+{_ADVERBS}(?:{_DUTY}|agree\b)", re.IGNORECASE)
-
-
-# A reason that complains the clause binds, protects, or benefits one party only.
-_MUTUALITY_RE = re.compile(
-    r"\bone[-\s]sided\b|\bone[-\s]way\b|\bonly\s+one\s+way\b|\bmutual(?:ity|ly)?\b|\bnon-?mutual\b|\breciproc\w+|\bunilateral\w*|\basymmetr\w+|"
-    r"\b(?:appl(?:y|ies)|protects?|binds?|runs?)\s+only\b|\bonly\s+(?:to\s+)?(?:binds?|protects?|appl(?:y|ies))\b|\bsolely\s+(?:on|to\s+protect)\b",
-    re.IGNORECASE,
-)
-# Wording that marks a sentence as naming a defect.
-_DEFECT_CUE_RE = re.compile(
-    r"\b(?:does\s+not|do\s+not|doesn['’]t|no|not|without|missing|omits?|omitted|fails?\s+to|lacks?|lacking|absent|absence|vague|ambiguous|undefined|unclear|unlimited|uncapped|overbroad|silent)\b",
-    re.IGNORECASE,
-)
-_REASON_SENTENCE_RE = re.compile(r"(?<=[.!?])\s+")
-
-
-def is_sole_mutuality_complaint(reason: str) -> bool:
-    """True when the only defect a finding's reason names is that the clause is one-sided or not mutual.
-
-    Every sentence that names a defect must itself be about one-sidedness.
-    A reason that goes on to name anything else — a missing exclusion, an
-    undefined period — is a finding in its own right and is left alone.
-    """
-
-    sentences = [sentence for sentence in _REASON_SENTENCE_RE.split(reason or "") if sentence.strip()]
-    if not any(_MUTUALITY_RE.search(sentence) for sentence in sentences):
-        return False
-    return not any(_DEFECT_CUE_RE.search(sentence) and not _MUTUALITY_RE.search(sentence) for sentence in sentences)
 
 
 @lru_cache(maxsize=64)

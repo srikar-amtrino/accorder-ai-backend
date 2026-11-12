@@ -1,8 +1,17 @@
 {
-  "_about": "Additions to MSA_Criteria_Final_Taxonomy.json, merged by scripts/build_policies_from_taxonomy.py into clause_policies.json and read by the review at runtime. extra_types use the taxonomy's own schema, so they can move into the workbook unchanged. extra_triggers name criteria, by id, that are unacceptable triggers although they are neither Core nor a gate in the workbook.",
+  "_about": "Additions to MSA_Criteria_Final_Taxonomy.json, merged by scripts/build_policies_from_taxonomy.py into clause_policies.json and read by the review at runtime. extra_types use the taxonomy's own schema, so they can move into the workbook unchanged. extra_triggers name criteria, by id, that are unacceptable triggers although they are neither Core nor a gate in the workbook. provider_protective names criteria, by id, whose missing term protects only the service provider (exclusions from the scope of the services, deadlines for the customer's own actions); the review does not raise them when the represented party is the customer. needs_relocation names criteria, by id, that can only be resolved by moving wording to another clause (an obligation sitting inside a definition); a suggestion replaces one paragraph and cannot do that, so the review does not raise them.",
   "extra_triggers": {
-    "Governing Law & Dispute Resolution": ["LAW-03"]
+    "Governing Law & Dispute Resolution": [
+      "LAW-03"
+    ]
   },
+  "provider_protective": [
+    "SCO-02",
+    "CUS-02"
+  ],
+  "needs_relocation": [
+    "DEF-07"
+  ],
   "extra_types": {
     "Non-Compete": {
       "group": "Clause",

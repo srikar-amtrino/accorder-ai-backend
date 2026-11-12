@@ -7,14 +7,14 @@
       "Main terms are defined: No main terms are defined (DEF-01)",
       "Definitions are precise: Most definitions are open-ended or circular (DEF-02)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Tighten definitions with qualifiers; add missing definitions; align to operative clauses; make interpretation rules mutual"
   },
   {
     "canonical_type": "purpose",
     "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state what the agreement is for (the services or relationship it covers)? (2) Does the clause describe the purpose in the same way throughout, without conflicting statements? (3) Does the clause avoid creating obligations, rights or restrictions?",
     "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "State that recitals are non-operative; delete or conform to Scope of Services"
   },
   {
     "canonical_type": "scope-of-services",
@@ -23,35 +23,35 @@
     "unacceptable_triggers": [
       "Services are identified: The services are not identified (SCO-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add defined service descriptions, assumptions and exclusions; route additions through Change Control"
   },
   {
     "canonical_type": "statements-of-work-and-work-orders",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "High",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say what each statement of work or work order must contain (for example scope, deliverables, timeline, fees)? (2) Does the clause say how a statement of work is agreed and becomes binding? (3) Does the clause set a process for changing a statement of work (for example request, assessment, written approval)? (4) [Balance] Can a statement of work be changed or issued only with the agreement of both parties? (5) Does the clause say how a statement of work relates to the master agreement and what applies if they conflict? (6) Does the clause say whether one statement of work can end without ending the master agreement or other work orders? (7) Does the clause require each statement of work to state how the work is priced (for example fixed price, time and materials)?",
     "unacceptable_triggers": [
       "SoW content is required: No content requirements are stated (SOW-01)",
       "How a SoW becomes binding: No mechanism is stated (SOW-02)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Require signed SOW with minimum content; SOW overrides MSA only by express named clause; add pre-authorisation requirement for work orders"
   },
   {
     "canonical_type": "customer-obligations",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "High",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Are the customer's obligations described specifically (for example access, information, approvals, resources) rather than only as 'cooperation'? (2) Does the clause say when the customer must act (for example when to give information or approvals)? (3) Does the clause state what follows if the customer does not perform an obligation? (4) [Balance] [Only where the clause states a consequence for customer non-performance] Is the consequence limited to a defined remedy (for example time or cost relief) rather than open-ended liability or termination? (5) [Balance] [Only where the clause lets a party claim relief for customer delay] Is that relief conditional on prompt written notice of the problem? (6) [Balance] [Only where the clause lets a party claim relief for customer delay] Must the party claiming relief take reasonable steps to limit the impact of the delay?",
     "unacceptable_triggers": [
       "Obligations are specific: Only broad 'cooperation' wording is used (CUS-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "List obligations specifically; require written notice and a cure period; limit relief to delay actually caused"
   },
   {
     "canonical_type": "service-provider-obligations",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "High",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state what the provider must do (identified duties, not just 'provide the services')? (2) Does the clause set a standard for how the provider performs (a named standard, specification or defined test)? (3) Does the clause state when the provider's obligations must be performed? (4) Does the clause say what follows if the provider does not perform (for example re-performance, credit, termination)? (5) [Only where the clause deals with the provider's personnel] Does the clause require personnel to be suitably qualified or skilled? (6) [Only where the clause identifies key personnel] Is replacement of key personnel subject to notice or consent? (7) [Balance] [Only where the clause deals with the provider's personnel] Can a party require removal or replacement of personnel on stated grounds? (8) [Only where the clause deals with the provider's personnel] Does the clause state which party is responsible for personnel's pay, taxes and benefits? (9) [Only where the clause deals with the provider's personnel] Are personnel required to follow the other party's policies or rules, and are those identified or provided? (10) [Balance] [Only where the clause restricts hiring or soliciting personnel] Is the restriction mutual, limited in time and limited in scope?",
     "unacceptable_triggers": [
       "Obligations are specific: No duties are stated (SPO-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add professional-standard and re-performance obligations; key personnel replacement with consent; timelines binding unless customer-caused"
   },
   {
     "canonical_type": "term-and-termination",
@@ -62,7 +62,7 @@
       "Notice for termination without cause: No notice period is stated (TER-04)",
       "Assistance is required: It is not required (TER-10)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Opt-in renewal or 60-day notice window; mutual convenience termination on 60-90 days; 30-day cure; limit termination fees to unrecovered committed costs"
   },
   {
     "canonical_type": "deliverables-and-acceptance",
@@ -74,18 +74,18 @@
       "No acceptance by silence alone: Acceptance follows from silence alone (DEL-06)",
       "Rejection and correction: Rejection is not addressed (DEL-07)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Extend review period; deemed acceptance only after reminder notice; objective criteria in SOW; acceptance does not waive warranty"
   },
   {
     "canonical_type": "service-levels",
-    "inherent_risk_tier": "High",
+    "inherent_risk_tier": "Medium",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Are the service levels defined as named, measurable standards (for example availability, response time)? (2) Does each measure have a stated target? (3) Does the clause say how, and over what period, performance is measured? (4) Must performance against the service levels be reported to the other party? (5) Does the clause state a consequence for missing a service level (for example credits, a remedial plan, a right to terminate)? (6) [Balance] [Only where the clause states a remedy for missed service levels] Does the clause leave other remedies available, rather than making the stated remedy the only one? (7) [Only where the clause excludes events or periods from measurement] Are the exclusions listed specifically? (8) Does the clause state a consequence for repeated or serious failure beyond the usual remedy (for example a right to terminate)?",
     "unacceptable_triggers": [
       "Service levels are measurable: Only general commitments are given (SLA-01)",
       "Targets are stated: No measure has a target (SLA-02)",
       "Remedy for missed targets: No consequence is stated (SLA-05)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add reporting, credit schedule and chronic-failure termination right; extend claim window; narrow exclusions"
   },
   {
     "canonical_type": "support-and-maintenance",
@@ -95,7 +95,7 @@
       "Scope of support: No scope is stated (SUP-01)",
       "Response and resolution times: No times are stated (SUP-04)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add severity-based response times; 12 months' notice before end-of-support; defect fixes at no charge"
   },
   {
     "canonical_type": "change-control",
@@ -105,7 +105,7 @@
       "Change process is set: No process is stated (CHG-01)",
       "Changes are not one-sided: One party may impose changes (CHG-05)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Require signed change order; provider must supply impact assessment; no work or charges before approval"
   },
   {
     "canonical_type": "fees-and-payment",
@@ -117,7 +117,7 @@
       "Fee changes are limited: The change is unrestricted (FEE-06)",
       "Disputed invoices: No right to dispute is stated (FEE-07)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Cap increases (e.g., CPI or fixed %) with 90 days' notice; net 30; withhold disputed amounts without penalty; expense pre-approval and caps"
   },
   {
     "canonical_type": "confidentiality",
@@ -127,7 +127,7 @@
       "Duty to keep information confidential: No duty is stated (CON-01)",
       "Confidential information is described: Confidential information is not described (CON-02)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Make mutual; add standard exclusions; need-to-know and flow-down to recipients; time-limit non-trade-secret information"
   },
   {
     "canonical_type": "data-protection-and-privacy",
@@ -139,7 +139,7 @@
       "Breach notification: No duty is stated (DPP-05)",
       "Security standard is stated: No standard is stated (DPP-09)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Attach DPA and security schedule; restrict use to service delivery; 72-hour breach notice (up to 5 days as a fallback); approved sub-processor list with objection right"
   },
   {
     "canonical_type": "intellectual-property",
@@ -149,16 +149,16 @@
       "Ownership is allocated: Ownership is not stated (IPR-01)",
       "Licence where ownership stays: No licence is granted (IPR-03)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Customer owns deliverables, or receives perpetual royalty-free licence to use them; carve out pre-existing IP; limit licence to customer data to service delivery"
   },
   {
     "canonical_type": "representations-and-warranties",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "High",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Do the parties state that they have authority to enter the agreement? (2) Is the standard for performing the services stated (for example skill and care, conformance to a specification)? (3) Do the parties warrant compliance with applicable laws? (4) Is there a warranty that the services or deliverables do not infringe others' rights? (5) Does the clause state the remedy for breach of warranty (for example correction, re-performance, refund)? (6) [Only where the clause gives performance or conformance warranties] Is the period during which the warranty applies stated? (7) [Balance] [Only where the clause disclaims warranties] Does the disclaimer leave the express warranties intact?",
     "unacceptable_triggers": [
       "Performance standard: No standard is stated (REP-02)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Extend warranty period (60-90 days minimum); add non-infringement and compliance warranties; re-performance plus refund fallback"
   },
   {
     "canonical_type": "indemnification",
@@ -167,7 +167,7 @@
     "unacceptable_triggers": [
       "Triggers are defined: No triggers are identified (IND-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Make mutual and proportionate; limit customer indemnity to customer data and misuse; add procedure and settlement consent; keep IP indemnity in all cases"
   },
   {
     "canonical_type": "limitation-of-liability",
@@ -178,7 +178,7 @@
       "The limit applies fairly: It protects one party only (LOL-02)",
       "Liabilities that cannot be limited: None is addressed, or the clause limits them (LOL-04)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Super-cap for data breach and confidentiality (e.g., 2-3x fees); mutual cap; minimum 12 months' fees; clearly define recoverable direct losses"
   },
   {
     "canonical_type": "insurance",
@@ -187,7 +187,7 @@
     "unacceptable_triggers": [
       "Required cover is identified: No insurance is required (INS-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Specify minimum limits per cover type; certificate on request; 30 days' notice of cancellation; 2-year tail for claims-made"
   },
   {
     "canonical_type": "compliance",
@@ -196,7 +196,7 @@
     "unacceptable_triggers": [
       "Duty to comply with law: No duty is stated (CMP-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Make mutual; attach policies by version; add anti-bribery and violation-notice clauses"
   },
   {
     "canonical_type": "audit-and-records",
@@ -205,17 +205,17 @@
     "unacceptable_triggers": [
       "Audit right: No right is given (AUD-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Third-party or remote audit alternatives; annual limit with exceptions for incidents and regulators; provider bears cost if material non-compliance is found"
   },
   {
     "canonical_type": "subcontractors",
-    "inherent_risk_tier": "High",
+    "inherent_risk_tier": "Medium",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say whether subcontracting is allowed and on what conditions (for example consent or notice)? (2) Does the clause say that the contracting party remains responsible for its subcontractors? (3) Must subcontractors be bound by obligations equivalent to the main agreement (for example confidentiality, security, data protection)? (4) [Balance] Does the other party have a right to approve or object to subcontractors? (5) Is a list or record of subcontractors kept or shared? (6) [Only where the clause gives a right to object to a subcontractor] Does the clause say what happens if an objection is not resolved?",
     "unacceptable_triggers": [
       "Permission and conditions: It is not addressed (SUB-01)",
       "Responsibility is retained: This is not stated (SUB-02)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Approved-subcontractor list; notice of changes; flow-down of key obligations; provider fully responsible for subcontractors"
   },
   {
     "canonical_type": "assignment",
@@ -224,18 +224,18 @@
     "unacceptable_triggers": [
       "Consent for assignment: It is not addressed (ASG-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Mutual consent requirement; allow affiliate and merger assignment with notice; termination right on competitor assignment"
   },
   {
     "canonical_type": "force-majeure",
-    "inherent_risk_tier": "High",
+    "inherent_risk_tier": "Medium",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause define force majeure events (a list or a defined test)? (2) [Balance] Does the clause exclude events a party could prevent or control (for example its own labour disputes, failure of its own suppliers)? (3) Must the affected party notify the other of the event? (4) Must the affected party take steps to limit the effect and resume performance? (5) Does the clause say what is excused (for example delay, but not payment of sums already due)? (6) Does the clause say what happens to payment during the event? (7) Does the clause give a way out if the event continues for a stated period (for example a right to terminate)? (8) Does the clause say whether continuity or recovery obligations still apply during the event? (9) [Only where the clause deals with business continuity or disaster recovery] Does the clause require a business continuity or disaster recovery plan? (10) [Only where the clause deals with business continuity or disaster recovery] Does the clause say what the plan must cover (for example services, systems, data, locations)? (11) [Only where the clause deals with business continuity or disaster recovery] Does the clause state recovery timeframes or objectives? (12) [Only where the clause deals with business continuity or disaster recovery] Must the plan be tested or reviewed, and how often? (13) [Only where the clause deals with business continuity or disaster recovery] Must the plan or test results be shared with the other party? (14) [Only where the clause deals with business continuity or disaster recovery] Must a party notify the other when the plan is invoked or a disruption occurs? (15) [Only where the clause deals with business continuity or disaster recovery] Must gaps found in tests or events be corrected?",
     "unacceptable_triggers": [
       "Events are defined: No definition is given (FOR-01)",
       "Long-running events: No way out is stated (FOR-07)",
       "Plan is required: No plan is required (FOR-09)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Narrow event list; require notice and mitigation; termination after 30-60 days; fee abatement during the event"
   },
   {
     "canonical_type": "governing-law-and-dispute-resolution",
@@ -246,30 +246,30 @@
       "Forum is identified: No forum is named (LAW-02)",
       "No conflicting provisions: There is a conflict (LAW-03)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Neutral law and venue; defendant's home forum; institutional arbitration with agreed seat; mutual costs"
   },
   {
     "canonical_type": "notices",
     "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state the required form of notice (for example in writing)? (2) Are addresses or contact details for notices stated or referenced for each party? (3) Are the permitted delivery methods listed (for example hand, courier, post, email)? (4) Does the clause say when a notice is treated as received? (5) Does the clause say how a party changes its notice details?",
     "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Specify email and courier addresses; use standard deemed-receipt rules"
   },
   {
     "canonical_type": "independent-contractor",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state that the parties' relationship is that of independent contractors? (2) Does the clause state that no partnership, agency, joint venture or employment relationship is created? (3) Does the clause state that neither party can bind the other? (4) Does the clause state that each party is responsible for its own personnel's costs, taxes and benefits? (5) Does the clause say who controls the manner and means of performance?",
     "unacceptable_triggers": [
       "Status is stated: This is not stated (IC-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add independent contractor wording and provider responsibility for personnel"
   },
   {
     "canonical_type": "entire-agreement",
     "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say which documents make up the whole agreement? (2) [Balance] [Only where the clause contains entire agreement or exclusion wording] Does that wording leave liability for fraud intact? (3) Does the clause say that earlier agreements and communications on the same subject are replaced? (4) [Balance] [Only where the clause excludes reliance on statements outside the agreement] Does the exclusion of reliance apply to both parties?",
     "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add fraud carve-out; limit to attached documents; preserve existing NDA"
   },
   {
     "canonical_type": "order-of-precedence",
@@ -278,57 +278,57 @@
     "unacceptable_triggers": [
       "Priority order is stated: No order is stated (PRE-02)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Insert a hierarchy clause; exclude PO and online terms; require express override language in SOW"
   },
   {
     "canonical_type": "amendments-and-modifications",
-    "inherent_risk_tier": "High",
+    "inherent_risk_tier": "Medium",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say how the agreement can be amended? (2) [Balance] Is any right of one party to change the terms alone (including by updating referenced terms) absent or limited? (3) Does the clause say who may sign an amendment for each party? (4) Does the clause say the amendment process covers the whole agreement, including schedules and orders? (5) Does the clause say that oral agreements or conduct do not change the agreement?",
     "unacceptable_triggers": [
       "No one-sided changes: A party may change terms alone without limit (AMD-02)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Require signed written amendments; policy changes need 60 days' notice and a termination right"
   },
   {
     "canonical_type": "waiver",
-    "inherent_risk_tier": "Low",
+    "inherent_risk_tier": "Medium",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say that delay or failure to enforce a right is not a waiver? (2) Is a waiver effective only if it is in writing and signed by the waiving party? (3) Does the clause say that waiving one breach or right does not waive others?",
     "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Written-waiver requirement; no waiver by payment or acceptance"
   },
   {
     "canonical_type": "severability",
     "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say that a term found invalid does not affect the rest of the agreement? (2) Does the clause provide for replacing an invalid term with a valid one that has the closest effect? (3) Does the clause name the grounds (invalid, illegal, unenforceable)?",
     "unacceptable_triggers": [],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add renegotiation obligation where severance affects a core term"
   },
   {
     "canonical_type": "no-agency-or-authority",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state that neither party is the agent or representative of the other? (2) Does the clause state that neither party may make commitments in the other's name? (3) Does the clause exclude partnership, joint venture or employment? (4) [Balance] [Only where the clause allows one party to act for the other in some cases] Is that authority limited in scope and recorded in writing?",
     "unacceptable_triggers": [
       "No agency is created: This is not stated (NAA-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add express no-agency language"
   },
   {
     "canonical_type": "non-exclusivity",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause state whether the arrangement is exclusive or non-exclusive? (2) Does the clause state that each party may deal with third parties for similar services? (3) Does the clause say whether any minimum volume or spend is promised? (4) [Balance] [Only where the clause grants exclusivity to a party] Is the exclusivity limited by scope, territory or time?",
     "unacceptable_triggers": [
       "Exclusivity position is stated: It is not stated (NEX-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Delete exclusivity or minimum-spend terms; if required, tie to pricing benefits"
   },
   {
     "canonical_type": "export-controls-and-sanctions",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "High",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause require compliance with export control and sanctions laws? (2) Does the clause name the regimes or lists that apply? (3) Does each party confirm it is not a sanctioned or restricted party? (4) [Balance] [Only where the clause lets a party suspend or end the agreement for export or sanctions reasons] Is that right limited to the affected activity and subject to notice? (5) Must a party give the information the other needs to meet export and sanctions rules?",
     "unacceptable_triggers": [
       "Duty to comply: No duty is stated (EXP-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Make mutual; add screening and notice duties; limit warranties to knowledge; add suspension and termination right"
   },
   {
     "canonical_type": "publicity-and-use-of-names",
@@ -337,7 +337,7 @@
     "unacceptable_triggers": [
       "Consent for use of name: Use is allowed without consent, or the matter is not addressed (PUB-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Require prior written approval of each use; allow revocation"
   },
   {
     "canonical_type": "equitable-relief",
@@ -346,7 +346,7 @@
     "unacceptable_triggers": [
       "Relief is available: It is not stated (EQR-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Make mutual; limit to confidentiality and IP; no suspension of services during a good-faith dispute"
   },
   {
     "canonical_type": "conflict-of-interest",
@@ -355,7 +355,7 @@
     "unacceptable_triggers": [
       "Duty to avoid conflicts: No duty is stated (COI-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add disclosure duty, information barriers and gifts policy"
   },
   {
     "canonical_type": "survival",
@@ -364,16 +364,16 @@
     "unacceptable_triggers": [
       "Surviving provisions are identified: It is not stated (SUR-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add a survival list; time-limit survival where appropriate"
   },
   {
     "canonical_type": "counterparts",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause allow the agreement to be signed in separate counterparts? (2) Does the clause say the counterparts together form one agreement? (3) Does the clause allow electronic signature and electronic delivery of signed copies? (4) Does the clause say when the agreement takes effect if counterparts are signed on different dates?",
     "unacceptable_triggers": [
       "Counterparts are allowed: This is not stated (CTP-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Add counterparts and e-signature wording; confirm signatory authority"
   },
   {
     "canonical_type": "time-of-the-essence",
@@ -382,26 +382,26 @@
     "unacceptable_triggers": [
       "Time-critical obligations are identified: No obligation or date is identified (TOE-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Limit to named milestones; make mutual; add grace period"
   },
   {
     "canonical_type": "taxes",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "High",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does the clause say which party bears each tax it covers (for example sales or transaction tax and withholding)? (2) Does the clause state whether fees include taxes? (3) [Balance] [Only where the clause deals with withholding tax or gross-up] Are the treatment of withholding and the documents needed stated? (4) Must the parties provide tax invoices, exemption certificates or other documents? (5) Does the clause say each party bears taxes on its own income and personnel?",
     "unacceptable_triggers": [
       "Responsibility for taxes: No allocation is stated (TAX-01)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Allocate each tax type explicitly; no gross-up (or capped); require compliant invoices and tax certificates"
   },
   {
     "canonical_type": "miscellaneous-other-provisions",
-    "inherent_risk_tier": "Medium",
+    "inherent_risk_tier": "Low",
     "acceptable_standard": "The clause should satisfy each of these checks. (1) Does each right or duty the clause creates say who, what and when? (2) Does the clause avoid terms that belong in a specific clause type (for example liability, payment or termination)? (3) [Balance] Do the rights in the clause apply to both parties in the same way? (4) Does any duty in the clause have a consequence or a way to act on it if it is not followed? (5) [Only where the clause says it applies despite other terms] Does the clause name the terms it overrides? (6) [Only where the clause sets up governance, review or relationship-management arrangements] Does each party appoint a named person or role to manage the relationship? (7) [Only where the clause sets up governance, review or relationship-management arrangements] Does the clause say how often governance meetings or reviews take place? (8) [Only where the clause sets up governance, review or relationship-management arrangements] Does the clause require progress or performance reports, with their content or frequency stated? (9) [Only where the clause sets up governance, review or relationship-management arrangements] Does the clause set how unresolved issues are escalated (levels or steps)? (10) [Only where the clause sets up governance, review or relationship-management arrangements] Does the clause say what the representatives can decide, and that their decisions do not change the agreement unless formally agreed?",
     "unacceptable_triggers": [
       "Rights and duties are definite: Most are vague (MSC-01)",
       "Escalation route: No escalation route is stated (MSC-09)"
     ],
-    "fallback_guidelines": ""
+    "fallback_guidelines": "Move substantive terms to the correct clause for review; delete or make mutual"
   },
   {
     "canonical_type": "non-compete",

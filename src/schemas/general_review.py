@@ -1,9 +1,7 @@
 import json
 from typing import Any, List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
-
-from src.services.general_review.risk_matrix import MATERIAL_DEVIATION, SEVERITY_CATEGORIES
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def _escape_inner_quotes(malformed: str) -> str:
@@ -134,100 +132,175 @@ class GeneralReviewResponse(BaseModel):
         return parse_string_array(value)
 
 
-# --- Model-facing schema -----------------------------------------------------
+# --- Model-facing schemas ----------------------------------------------------
 #
-# The model never chooses a risk level. It reports the facts below for each
-# paragraph it flags; the server computes risk_level from them and the clause
-# type's inherent risk tier (see src/services/general_review/risk_matrix.py)
-# and converts each finding into a Suggestion. These types are internal and
-# never leave the server.
+# The review makes two kinds of model call, and neither chooses a risk level or
+# decides which paragraph is flagged:
+#
+#   1. Assessment: for each clause the model answers that clause type's fixed
+#      checklist (BatchAssessment). Several independent answers are taken and
+#      the majority decides; the server turns the failed items into the points
+#      to resolve and computes each risk level in code.
+#   2. Drafting: for each paragraph with points to resolve, the model redrafts
+#      that paragraph and writes the accompanying note (DraftedRevision).
+#
+# These types are internal and never leave the server.
 
-SeverityCategory = Literal["uncapped_or_severe_exposure", "material_commercial_deviation", "minor_drafting_hygiene"]
+MET = "met"
+PARTLY_MET = "partly_met"
+NOT_MET = "not_met"
+NOT_APPLICABLE = "not_applicable"
+Verdict = Literal["met", "partly_met", "not_met", "not_applicable"]
 
-CLAUSE_WIDE_OMISSION = "clause_wide_omission"
-PARAGRAPH_SPECIFIC_DEFECT = "paragraph_specific_defect"
-FindingScope = Literal["clause_wide_omission", "paragraph_specific_defect"]
+_VERDICT_SYNONYMS = {"n/a": NOT_APPLICABLE, "na": NOT_APPLICABLE, "partially_met": PARTLY_MET, "partial": PARTLY_MET, "unclear": PARTLY_MET, "yes": MET, "no": NOT_MET}
+
+# Drafting defects the model may report: only kinds that can be checked against the words it quotes.
+DEFECT_TYPES = ("blank_or_placeholder", "broken_cross_reference", "typographical_error")
 
 
-class ReviewFinding(BaseModel):
-    """One flagged paragraph as the model reports it: the fix plus structured facts about the clause."""
+def _fold_label(value: str) -> str:
+    return "_".join(value.strip().lower().replace("-", " ").split())
 
-    clause: str = Field(description="Short title of the clause the paragraph belongs to")
-    reason: str = Field(description="Concise plain-language explanation of the issue and its practical impact for the client, written as counsel's own assessment")
-    original_text: str = Field(description="The complete paragraph copied verbatim from the provided text, character for character")
-    suggested_fix: str = Field(description="The complete replacement for original_text, changed only where needed")
-    triggered_unacceptable_flags: List[str] = Field(
+
+class CriterionAnswer(BaseModel):
+    """The model's answer to one checklist item for one clause."""
+
+    criterion_id: str = Field(description="The checklist item's id exactly as given, for example FEE-04")
+    evidence: str = Field(default="", description='The words of the agreement the answer rests on, quoted exactly and kept short; "No provision" when the answer rests on an absence')
+    verdict: Verdict = Field(description="met, partly_met, not_met or not_applicable, by the item's own tests")
+    paragraphs: List[str] = Field(
         default_factory=list,
-        description=(
-            "Every unacceptable trigger listed in this clause's legal team policy that the paragraph's wording actually triggers, each copied exactly as written in the policy. "
-            "Empty when none applies or the clause has no policy."
-        ),
-    )
-    falls_short_of_acceptable_standard: bool = Field(
-        description=(
-            "True when the clause omits a protection, carve-out, right, or term that the clause's acceptable standard "
-            "(or, without a policy, market standard for the client's position) requires for the client"
-        ),
-    )
-    is_materially_one_sided_against_client: bool = Field(
-        description="True when an obligation, cap, indemnity, remedy, or termination right disproportionately burdens the client where market practice expects mutuality",
-    )
-    severity_category: SeverityCategory = Field(
-        description=(
-            "uncapped_or_severe_exposure: unlimited liability, loss of core IP, missing IP indemnity, termination without refund, missing data/confidentiality protection. "
-            "material_commercial_deviation: sub-standard cap, one-sided burden, unfavourable payment terms, missing cure period, restrictive covenants. "
-            "minor_drafting_hygiene: ambiguity, mechanics, or clarification with no material shift in exposure."
-        ),
-    )
-    finding_scope: FindingScope = Field(
-        default="paragraph_specific_defect",
-        description=(
-            "clause_wide_omission: the finding adds a protection, carve-out, right, or term the clause as a whole lacks; always anchored on the clause's [PRIMARY_OPERATIVE_ANCHOR] paragraph. "
-            "paragraph_specific_defect: wording already in the paragraph is itself defective."
-        ),
+        description='For partly_met or not_met caused by particular wording: the id of every paragraph whose wording is the cause, for example ["P12"]. Empty otherwise',
     )
 
-    @field_validator("finding_scope", mode="before")
+    @field_validator("verdict", mode="before")
     @classmethod
-    def _normalize_scope(cls, value: Any) -> Any:
-        """Fold casing/spacing; an unknown or missing label counts as a defect in the paragraph it was raised on."""
+    def _normalize_verdict(cls, value: Any) -> Any:
+        """Fold casing/spacing ("Partly met" -> partly_met); an unknown label counts as not applicable rather than failing the batch."""
 
         if not isinstance(value, str):
-            return PARAGRAPH_SPECIFIC_DEFECT if value is None else value
-        folded = "_".join(value.strip().lower().replace("-", " ").split())
-        return CLAUSE_WIDE_OMISSION if folded == CLAUSE_WIDE_OMISSION else PARAGRAPH_SPECIFIC_DEFECT
+            return value
+        folded = _fold_label(value)
+        folded = _VERDICT_SYNONYMS.get(folded, folded)
+        return folded if folded in (MET, PARTLY_MET, NOT_MET, NOT_APPLICABLE) else NOT_APPLICABLE
 
-    @field_validator("triggered_unacceptable_flags", mode="before")
+    @field_validator("criterion_id", "evidence", mode="before")
     @classmethod
-    def _flags_as_list(cls, value: Any) -> Any:
-        """Accept a JSON-encoded list or a single string in place of a list."""
+    def _text(cls, value: Any) -> Any:
+        return "" if value is None else str(value).strip()
 
+    @field_validator("paragraphs", mode="before")
+    @classmethod
+    def _ids_as_list(cls, value: Any) -> Any:
+        """Accept a single id, a comma-separated string, or a JSON-encoded list in place of a list."""
+
+        if value is None:
+            return []
         if isinstance(value, str):
             stripped = value.strip()
             if stripped.startswith("["):
                 return parse_string_array(stripped)
-            return [stripped] if stripped else []
-        if value is None:
-            return []
+            return [part.strip() for part in stripped.split(",") if part.strip()]
         return value
 
-    @field_validator("severity_category", mode="before")
-    @classmethod
-    def _normalize_severity(cls, value: Any) -> Any:
-        """Fold casing/spacing; an unknown label counts as a material deviation rather than failing the batch."""
 
-        if not isinstance(value, str):
-            return value
-        folded = "_".join(value.strip().lower().replace("-", " ").split())
-        return folded if folded in SEVERITY_CATEGORIES else MATERIAL_DEVIATION
+class ClauseAnswers(BaseModel):
+    """The model's answers to one clause's checklist."""
 
+    clause_id: str = Field(description="The clause's id exactly as given, for example C3")
+    clause_type_fits: bool = Field(
+        default=True,
+        description="Only for a clause given two checklists: true when the clause is, in substance, a clause of the type its first checklist names; false when it is not",
+    )
+    answers: List[CriterionAnswer] = Field(default_factory=list, description="One answer per checklist item of this clause, in the order the items were given")
 
-class GeneralReviewFindings(BaseModel):
-    """The model's structured output for one review batch."""
-
-    findings: List[ReviewFinding] = Field(default_factory=list, description="One finding per paragraph that needs a change, in document order. Empty when nothing needs to change.")
-
-    @field_validator("findings", mode="before")
+    @field_validator("answers", mode="before")
     @classmethod
     def _parse_string_array(cls, value: Any) -> Any:
         return parse_string_array(value)
+
+
+class DraftingDefect(BaseModel):
+    """A drafting defect the model can point to in one paragraph's own words."""
+
+    paragraph: str = Field(description="The id of the paragraph that contains the defect, for example P12")
+    defect_type: str = Field(description="blank_or_placeholder, broken_cross_reference or typographical_error")
+    evidence: str = Field(description="The defective words, quoted exactly from that paragraph")
+    note: str = Field(default="", description="One sentence: what is wrong and what the paragraph should say")
+
+    @field_validator("defect_type", mode="before")
+    @classmethod
+    def _normalize_type(cls, value: Any) -> Any:
+        return _fold_label(value) if isinstance(value, str) else value
+
+    @field_validator("paragraph", "evidence", "note", mode="before")
+    @classmethod
+    def _text(cls, value: Any) -> Any:
+        return "" if value is None else str(value).strip()
+
+
+class BatchAssessment(BaseModel):
+    """The model's structured output for one assessment call."""
+
+    clauses: List[ClauseAnswers] = Field(default_factory=list, description="The checklist answers for every clause under assessment, in the order the clauses were given")
+    drafting_defects: List[DraftingDefect] = Field(default_factory=list, description="Drafting defects in the paragraphs under assessment. Empty when there are none")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _split_run_together_arrays(cls, data: Any) -> Any:
+        """Separate the two arrays when the model writes both into the clauses field as one string.
+
+        Bedrock tool-use sometimes returns clauses as a JSON-encoded string, and
+        then now and again appends the drafting_defects array to that same
+        string ('[ ...answers ] [ ...defects ]'). The first array is the
+        answers; an array that follows it is the defects, unless the defects
+        were also given in their own field.
+        """
+
+        if not isinstance(data, dict) or not isinstance(data.get("clauses"), str):
+            return data
+        text = data["clauses"].strip()
+        try:
+            first, end = json.JSONDecoder().raw_decode(text)
+        except json.JSONDecodeError:
+            return data
+        rest = text[end:].lstrip(" \t\r\n,")
+        if not rest:
+            return data
+        split = {**data, "clauses": first}
+        try:
+            trailing = json.loads(rest)
+        except json.JSONDecodeError:
+            return split
+        if isinstance(trailing, list) and not data.get("drafting_defects"):
+            split["drafting_defects"] = trailing
+        return split
+
+    @field_validator("clauses", "drafting_defects", mode="before")
+    @classmethod
+    def _parse_string_array(cls, value: Any) -> Any:
+        return [] if value is None else parse_string_array(value)
+
+    @field_validator("drafting_defects", mode="after")
+    @classmethod
+    def _known_defects_only(cls, value: List[DraftingDefect]) -> List[DraftingDefect]:
+        return [defect for defect in value if defect.defect_type in DEFECT_TYPES]
+
+
+class DraftedRevision(BaseModel):
+    """The model's redraft of one paragraph and the two-sentence note that goes with it."""
+
+    exposure: str = Field(description="One sentence, 30 words at most: the exposure for the client as the paragraph stands — what can happen, and to whom")
+    change: str = Field(description='One sentence, 30 words at most, beginning "The revision": what the redraft does. It does not go on to say why that is good')
+    revised_paragraph: str = Field(description="The complete replacement paragraph, ready to go into the agreement as written")
+
+    @field_validator("exposure", "change", "revised_paragraph", mode="before")
+    @classmethod
+    def _text(cls, value: Any) -> Any:
+        return "" if value is None else str(value).strip()
+
+    @property
+    def comment(self) -> str:
+        """The note shown with the suggestion: the exposure, then the change."""
+
+        return " ".join(part for part in (self.exposure, self.change) if part)

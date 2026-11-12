@@ -20,8 +20,9 @@ from src.schemas.clause_mapping import ClauseMatch  # noqa: E402
 from src.services.clause_mapping.policy_store import get_clause_policy_store  # noqa: E402
 from src.services.clause_mapping.resilient_classifier import LAYER1_HEADING, LAYER3_FALLBACK, classify_clause_resilient  # noqa: E402
 from src.services.general_review.clause_cache import ZDRClauseHashCache  # noqa: E402
-from src.services.general_review.risk_matrix import compute_deterministic_risk_level  # noqa: E402
+from src.services.general_review.risk_matrix import criterion_risk_level  # noqa: E402
 from src.services.general_review.segmentation import build_smart_embedding_query, detect_clause_start  # noqa: E402
+from src.services.general_review.taxonomy_gates import criteria_for_type  # noqa: E402
 
 
 def _policy(slug):
@@ -87,29 +88,15 @@ def test_ten_runs_are_identical_with_vector_path_flapping():
         "otherwise, for any special, indirect, incidental, exemplary, punitive or consequential damages, "
         "including, but not limited to loss of anticipated profits."
     ]
-    facts: dict = {
-        "triggered_unacceptable_flags": [
-            "The limit is clear: It is not stated, or the wording is contradictory (LOL-01)",
-            "Liabilities that cannot be limited: None is addressed, or the clause limits them (LOL-04)",
-        ],
-        "falls_short_of_acceptable_standard": True,
-        "is_materially_one_sided_against_client": False,
-        "severity_category": "uncapped_or_severe_exposure",
-    }
 
     outcomes = []
     for run in range(1, 11):
         hits = [ClauseMatch(canonical_type="limitation-of-liability", score=0.846)] if run % 2 else None
         resolved = _classify("Damages", paragraphs, hits)
         policy = _policy(resolved.canonical_type)
-        risk = compute_deterministic_risk_level(
-            policy.inherent_risk_tier,
-            facts["triggered_unacceptable_flags"],
-            facts["falls_short_of_acceptable_standard"],
-            facts["is_materially_one_sided_against_client"],
-            facts["severity_category"],
-        )
-        outcomes.append((resolved.canonical_type, risk))
+        # The clause type fixes the checklist, and a failed criterion's risk level follows from the taxonomy alone.
+        cap = next(criterion for criterion in criteria_for_type(resolved.canonical_type) if criterion.criterion_id == "LOL-01")
+        outcomes.append((resolved.canonical_type, criterion_risk_level(policy.inherent_risk_tier, cap.gate)))
 
     assert len(set(outcomes)) == 1, f"Drift detected! Outcomes: {set(outcomes)}"
     assert outcomes[0] == ("limitation-of-liability", "High")

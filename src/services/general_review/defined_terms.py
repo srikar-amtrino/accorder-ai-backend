@@ -123,6 +123,12 @@ def _defined_terms(paragraphs: Sequence[TextInformation]) -> Dict[str, Tuple[str
     return defined
 
 
+def quoted_defined_terms(paragraphs: Sequence[TextInformation], limit: int = 60) -> List[str]:
+    """The agreement's defined terms as written, in order of first use in quotation marks."""
+
+    return [phrase for phrase, _ in sorted(_defined_terms(paragraphs).values(), key=lambda item: item[1])][:limit]
+
+
 def _groups(phrase: str) -> List[Tuple[int, List[str]]]:
     """Split a capitalised run into phrases at possessives: "Accordor’s Confidential Information" -> "Accordor", "Confidential Information".
 
