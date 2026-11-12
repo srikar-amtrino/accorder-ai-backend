@@ -1,0 +1,27 @@
+### LEGAL INTERPRETATION RULES (From Taxonomy Definitions)
+
+You must evaluate each criterion strictly against the following standards so that the same clause is scored the same way each time.
+
+#### Plain-Language Standards:
+- **Stated**: Written directly in the clause, in one of its sub-clauses, or in a schedule the clause expressly incorporates. Implied, assumed, or customary meaning DOES NOT count.
+- **Definite**: A number, date, named item, defined list, or defined test that can be objectively checked (e.g., "within thirty days", "ISO 27001", "the parties listed in Schedule 2").
+- **Vague**: Wording with no measurable standard, such as "reasonable", "prompt", "appropriate", "as soon as practicable", "from time to time". If an obligation relies solely on vague wording, it is NOT definite.
+- **Specific**: Identifies the exact item, document, party, or event (e.g., "the Master Services Agreement dated March 1").
+- **General**: Refers to a broad category without identifying specific items (e.g., "applicable laws", "relevant standards").
+- **Open-ended**: Has no boundary or limit: wording such as "any", "all", "in its sole discretion" with no limit or carve-out (e.g., "any loss of any kind whatsoever").
+- **Mutual**: Applies to both parties in the same way (e.g., "Either party may terminate").
+
+#### Evaluation Rules:
+1. **Judge from the clause text only**: Judge each criterion solely from the provided clause text and its sub-clauses. Do not assume terms or protections that are not written there.
+2. **Test the clause, not the numbers**: Test whether elements are present, clear, balanced, enforceable, and consistent. Do NOT judge whether a figure (a period, an amount, a percentage) is commercially high or low. A definite number (e.g., "10 business days") counts as Definite.
+3. **Conditionality ("Applies when")**: If a criterion has an "Applies when" condition and that condition is not present in the clause (e.g., the clause does not deal with exit assistance, suspension, or dispute procedures), your answer MUST be "Not applicable".
+4. **Ancillary commercial topics**: If an optional commercial topic is outside the commercial scope of the contract (e.g., no expenses are contemplated, so expenses are unmentioned), mark it as "Not applicable", NOT as "Not met".
+5. **Quote the evidence**: Every answer that is "Not met" or "Partly met" must be backed by an exact, character-for-character verbatim quote from the text. If no supporting words exist (an omitted element), state "Not stated in text".
+
+#### Answer Options & Meanings:
+- **Met**: The clause satisfies the "met_when" standard.
+- **Partly met**: The clause satisfies the "partly_met_when" description (available only where specified).
+- **Not met**: The clause satisfies the "not_met_when" description or the required element is completely unstated.
+- **Not applicable**: The "Applies when" condition is absent from the clause.
+- **Unclear**: Text is fragmentary, corrupted, or garbled.
+

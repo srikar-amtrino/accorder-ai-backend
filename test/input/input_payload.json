@@ -1,0 +1,1460 @@
+{
+  "party_represented": "Halcyon Retail Group, LLC",
+  "review_objective": "Review the Dedicated Delivery Center Master Services Agreement from the perspective of Halcyon Retail Group (Client) purchasing offshore technology delivery services.",
+  "specific_concerns": "Liability caps, minimum commitments and reduction charges, IP assignment vs provider tools, unilateral rate increases, termination rights, SLA remedy exclusiveness, and data security.",
+  "agreement_type": "MSA",
+  "textinformation": [
+    {
+      "paraindetifier": "p_0001",
+      "text": "MASTER SERVICES AGREEMENT"
+    },
+    {
+      "paraindetifier": "p_0002",
+      "text": "Dedicated Delivery Center Engagement"
+    },
+    {
+      "paraindetifier": "p_0003",
+      "text": "This Master Services Agreement (this “Agreement”) takes effect on March 17, 2025 (the “Effective Date”) and is made between:"
+    },
+    {
+      "paraindetifier": "p_0004",
+      "text": "(1) HALCYON RETAIL GROUP, LLC, a Texas limited liability company with its principal office at 4200 Commerce Street, Suite 1100, Dallas, Texas 75226, USA (“Client”); and"
+    },
+    {
+      "paraindetifier": "p_0005",
+      "text": "(2) MERIDIAN BYTECRAFT INC., a Delaware corporation with its principal office at 77 Harbor Point Drive, Suite 300, Wilmington, Delaware 19801, USA, and MERIDIAN BYTECRAFT SOLUTIONS PRIVATE LIMITED, a company incorporated in India with its registered office in Pune, Maharashtra (together, “Provider”)."
+    },
+    {
+      "paraindetifier": "p_0006",
+      "text": "Client and Provider are each a “Party” and together the “Parties”."
+    },
+    {
+      "paraindetifier": "p_0007",
+      "text": "BACKGROUND"
+    },
+    {
+      "paraindetifier": "p_0008",
+      "text": "(A) Provider operates offshore technology delivery centers and wishes to supply to Client, and Client wishes to purchase from Provider, the services described in this Agreement on the terms set out below."
+    },
+    {
+      "paraindetifier": "p_0009",
+      "text": "(B) The Parties have held detailed discussions on the shape of the relationship and have recorded their conclusions in this Agreement."
+    },
+    {
+      "paraindetifier": "p_0010",
+      "text": "In consideration of the mutual promises below, the Parties agree as follows:"
+    },
+    {
+      "paraindetifier": "p_0011",
+      "text": "ARTICLE 1\tINTERPRETATION AND DEFINED TERMS"
+    },
+    {
+      "paraindetifier": "p_0012",
+      "text": "1.1\tDefined Terms. Capitalised expressions used in this Agreement carry the meanings assigned to them in Schedule A (Glossary), unless the context plainly requires another meaning."
+    },
+    {
+      "paraindetifier": "p_0013",
+      "text": "1.2\tRules of Construction."
+    },
+    {
+      "paraindetifier": "p_0014",
+      "text": "(a) Every Schedule forms an integral part of this Agreement, and a mention of “this Agreement” covers the Schedules and any appendices annexed to them."
+    },
+    {
+      "paraindetifier": "p_0015",
+      "text": "(b) Captions, the contents page and the schedule list are provided only for ease of navigation and have no bearing on how the Agreement is read or enforced."
+    },
+    {
+      "paraindetifier": "p_0016",
+      "text": "(c) A cross-reference to an Article, Section or Schedule points to that item of this Agreement unless the text says otherwise."
+    },
+    {
+      "paraindetifier": "p_0017",
+      "text": "(d) A mention of any statute or regulation includes that statute or regulation as amended, re-enacted or replaced from time to time."
+    },
+    {
+      "paraindetifier": "p_0018",
+      "text": "(e) Whenever the words “including”, “includes” or “such as” appear, they are to be read as introducing examples and not as a limit (“without limitation” is implied)."
+    },
+    {
+      "paraindetifier": "p_0019",
+      "text": "(f) The singular covers the plural and the reverse, where that fits the context."
+    },
+    {
+      "paraindetifier": "p_0020",
+      "text": "(g) Both Parties took part in shaping the wording of this Agreement with the help of counsel. No ambiguity will be resolved against a Party merely because that Party, or its lawyers, prepared the first draft; the text will be read to give effect to the Parties’ shared intention as shown by the Agreement taken as a whole."
+    },
+    {
+      "paraindetifier": "p_0021",
+      "text": "1.3\tHierarchy of Documents. If the main body of this Agreement and a Schedule or Work Order say different things, the main body governs, save where the Schedule or Work Order expressly states that it is intended to override a named provision of the main body."
+    },
+    {
+      "paraindetifier": "p_0022",
+      "text": "ARTICLE 2\tDURATION"
+    },
+    {
+      "paraindetifier": "p_0023",
+      "text": "2.1\tInitial Period. This Agreement starts on the Effective Date and remains in force for thirty-six (36) months (the “Initial Period”), subject to any earlier termination permitted by this Agreement or any later date reached through a Renewal Period."
+    },
+    {
+      "paraindetifier": "p_0024",
+      "text": "2.2\tAutomatic Renewal. When the Initial Period ends, and when each Renewal Period ends, this Agreement renews for a further twelve (12) months (each a “Renewal Period”), unless either Party gives the other written notice of non-renewal at least one hundred twenty (120) days before the current period expires. Provider may update the rates for a Renewal Period by giving Client written notice of the revised rates not less than one hundred fifty (150) days before the renewal date, and Client’s failure to give notice of non-renewal means the revised rates apply."
+    },
+    {
+      "paraindetifier": "p_0025",
+      "text": "ARTICLE 3\tTHE SERVICES"
+    },
+    {
+      "paraindetifier": "p_0026",
+      "text": "3.1\tScope of Core Services. “Core Services” are the functions and tasks Provider has agreed in writing to carry out for Client in each Service Stream, as set out in this Agreement, the Onboarding Plan and the Work Orders, and as they may be modified by an approved Change Request. Core Services comprise only:"
+    },
+    {
+      "paraindetifier": "p_0027",
+      "text": "(a) the activities described for each Service Stream in the Onboarding Plan and every Work Order;"
+    },
+    {
+      "paraindetifier": "p_0028",
+      "text": "(b) tasks that were previously handled by the Client Employees and Client Contractors who moved to Provider under this Agreement, but only where those tasks are listed in a Work Order or have been added through the Change Control Procedure;"
+    },
+    {
+      "paraindetifier": "p_0029",
+      "text": "(c) the supply and periodic renewal of the Provider Technology Stack used by the Delivery Team; and"
+    },
+    {
+      "paraindetifier": "p_0030",
+      "text": "(d) a joint effort, to be agreed in writing, to evaluate extending Provider’s CMMI-based quality certification to Client’s software lines, at the pace and cost the Parties settle in a Work Order."
+    },
+    {
+      "paraindetifier": "p_0031",
+      "text": "Work not covered by this Section 3.1 is outside the Core Services and is chargeable at the Rate Card once authorised through a Change Request."
+    },
+    {
+      "paraindetifier": "p_0032",
+      "text": "3.2\tHow Services Are Delivered."
+    },
+    {
+      "paraindetifier": "p_0033",
+      "text": "(a) Start Dates and Onboarding. From the Effective Date Provider will carry out the Onboarding Services described in the Onboarding Plan. The plan lists several Service Start Dates and the Services attached to each. From each Service Start Date, Provider will perform the Services allocated to it. Client may state its scheduling preferences through the process in the Operations Handbook, and Provider will take them into account in a commercially reasonable way, consistent with Provider’s staffing and its other commitments."
+    },
+    {
+      "paraindetifier": "p_0034",
+      "text": "(b) Core Services. Provider will perform the Core Services as stated in this Agreement, the Onboarding Plan and each Work Order."
+    },
+    {
+      "paraindetifier": "p_0035",
+      "text": "(c) Additional Headcount. If Client asks for extra work in a Service Stream that cannot be handled with the Delivery Team in place when the request is made, Provider will, within fifteen (15) business days, tell Client whether it can supply further staff and, if so, estimate the number needed and the timeline (the “Added Headcount”). Provider is not required to accept an expansion. Added Headcount will be provided only once the Governance Board signs a written addendum, at the rates stated in Schedule B, and Client is liable only for Added Headcount that it has approved in writing. An expansion approved under this Section is an enlargement of an existing Service Stream and is not a New Service Stream."
+    },
+    {
+      "paraindetifier": "p_0036",
+      "text": "(d) Headcount Reduction. After the first twelve (12) months from the Effective Date, and on at least ninety (90) days’ written notice, Client may lower the size of the Delivery Team once per calendar quarter, by no more than ten percent (10%) of the preceding quarter’s average team size, or three (3) people, whichever is larger. Charges drop from the effective date of the reduction, but Client must pay the Reduction Charge in Schedule B to compensate Provider for bench time, severance and redeployment costs, and the Minimum Commitment continues to apply."
+    },
+    {
+      "paraindetifier": "p_0037",
+      "text": "(e) Taking Work Elsewhere. Client may move part of the Services in-house or to another vendor only on at least ninety (90) days’ written notice, and the Minimum Commitment, together with the Reduction Charge, will continue to apply to the work removed."
+    },
+    {
+      "paraindetifier": "p_0038",
+      "text": "(f) Client Group Members. Provider will perform the Services for Client and those Client Affiliates that Client has identified in writing and that have signed a joinder. Client is responsible for each Client Affiliate’s compliance and payment. Where this Agreement imposes duties or licences on Provider, “Client” includes only those Affiliates that have joined."
+    },
+    {
+      "paraindetifier": "p_0039",
+      "text": "(g) Infrastructure. Unless this Agreement states otherwise, Provider will furnish the premises, equipment, connectivity and software that it chooses to use to deliver the Services. Shared common services are described in Schedule M. The location and standards of the Delivery Center are described in Schedule F. Upon at least five (5) business days’ written notice, Provider will let Client’s authorised staff visit the areas of the Provider Sites where the Services are performed during business hours, accompanied by a Provider escort, and subject to Provider’s security rules and the confidentiality rights of Provider’s other customers."
+    },
+    {
+      "paraindetifier": "p_0040",
+      "text": "(h) Delivery and Acceptance. Provider will hand over each Deliverable in accordance with the relevant Work Order. If the Work Order sets Acceptance Tests, the Deliverable must meet them in all material respects; otherwise it will be tested against the written specifications that the Parties approved for that Deliverable. Provider will carry out internal testing before delivery and will tell Client of any known non-conformity. Client has ten (10) business days from delivery to test the Deliverable and to either accept it or give a written list of reproducible non-conformities. If Client does neither within that window, the Deliverable is deemed accepted, and it is also deemed accepted when Client puts it into production use. Provider will correct reported non-conformities within a reasonable period, and Client then has five (5) business days to retest. Repair or re-performance of a non-conforming Deliverable, or, if repair is not feasible, a refund of the fees paid for that Deliverable, is Client’s sole remedy for non-conformity."
+    },
+    {
+      "paraindetifier": "p_0041",
+      "text": "3.3\tTechnology Improvements. Provider will review its technology and delivery methods at least once in every twelve (12) months and, at one of the Governance Board’s regular meetings, will brief Client on developments that Provider reasonably thinks could benefit the Services. Any proposal to adopt a new technology or method will be handled as a Change Request, under which Client decides whether to adopt it and agrees to any resulting change in fees. Provider is not required to adopt any technology beyond the level that is generally used in the offshore software-services industry for similar work."
+    },
+    {
+      "paraindetifier": "p_0042",
+      "text": "3.4\tPermits and Regulatory Approvals. Each Party will obtain, at its own expense, the permits, licences and registrations that the law applying to it requires in order to perform its own obligations. Where one Party asks, the other will give reasonable assistance, with any out-of-pocket costs borne by the requesting Party."
+    },
+    {
+      "paraindetifier": "p_0043",
+      "text": "3.5\tLegal and Regulatory Change."
+    },
+    {
+      "paraindetifier": "p_0044",
+      "text": "(a) Monitoring. Client will watch for, and give Provider prompt notice of, any change in law in the places where Client operates that affects the Services or Client’s use of them (“Client Law Changes”). Provider will watch for, and give Client prompt notice of, changes in the law of the country in which the Delivery Center is located that directly affect Provider’s performance (“Provider Law Changes”)."
+    },
+    {
+      "paraindetifier": "p_0045",
+      "text": "(b) Consequences."
+    },
+    {
+      "paraindetifier": "p_0046",
+      "text": "(i) Client Law Changes. The Parties will consult on the revisions to the Services needed for compliance. Provider will quote any fee impact within a reasonable time, and will carry out the revisions once Client approves the quote through the Change Control Procedure."
+    },
+    {
+      "paraindetifier": "p_0047",
+      "text": "(ii) Provider Law Changes. Provider will implement such changes to the way it delivers the Services as are required for compliance with a Provider Law Change at its own cost, except that costs attributable to immigration, visa and wage rules, and any cost that has a significant effect on Provider’s cost of delivery, will be borne by Client as an equitable fee adjustment to which the Parties will agree in good faith."
+    },
+    {
+      "paraindetifier": "p_0048",
+      "text": "(iii) Material Impact. If a change in law, or a change in the Services needed to comply with it, outside either Party’s reasonable control, lowers the Delivery Team below the level permitted by Section 3.2(d), Provider may, at its choice, (A) propose a fair adjustment to the fees, which the Parties will negotiate, or (B) end the affected part of the Services on notice. Client will pay all charges for work performed and unrecoverable costs incurred up to the end date."
+    },
+    {
+      "paraindetifier": "p_0049",
+      "text": "3.6\tClient Technology Standards. Provider will use the minimum hardware and software configuration and communication lines listed in Schedule H, and will observe the technical standards of Client that have been given to Provider in writing. If Client later modifies those standards, Provider will adopt the modified standards through the Change Control Procedure, with any added cost charged to Client."
+    },
+    {
+      "paraindetifier": "p_0050",
+      "text": "3.7\tKnowledge Transfer. In the sixty (60) days leading up to expiry or termination, and on Client’s reasonable request, Provider will make appropriate staff available to describe (a) how the Deliverables work and are operated, (b) the testing approach and scripts, (c) the development workflow, (d) how the Services are provided, and (e) such documentation as Client reasonably needs to run the delivered Systems after the Agreement ends. Up to forty (40) hours of this support is included in the fees; further hours are billable at the Rate Card."
+    },
+    {
+      "paraindetifier": "p_0051",
+      "text": "3.8\tReporting. Provider will submit the reports listed in Schedule I in the format stated there and any other reports agreed in a Work Order. Reports Client requests in addition to those will be prepared at the Rate Card, unless they take less than two (2) hours."
+    },
+    {
+      "paraindetifier": "p_0052",
+      "text": "3.9\tProject Planning and Progress Tracking. The Parties will together prepare and maintain delivery plans for the Services, which Provider will supply on request in a mutually agreed form. Provider will measure progress against milestones using accepted industry practice and will report status each week for the first two (2) quarters and every month thereafter, or as the Operations Handbook states. A delay in a milestone caused by Client or by a Client Third-Party Vendor extends the milestone by a matching period."
+    },
+    {
+      "paraindetifier": "p_0053",
+      "text": "3.10\tEquipment Acquisition. Where Client asks Provider to acquire Additional Equipment, Provider will, if it agrees to do so, seek competitive terms from vendors and Client may choose either (i) to lend the equipment to Provider for use solely for Client’s work, or (ii) to have Provider obtain it by purchase, lease or licence (alone or through a third party) on terms that Provider has disclosed and Client has approved in writing. Provider will pass through to Client any volume discounts it actually receives on the specific purchase, after deducting a handling fee of five percent (5%). Client will reimburse the actual purchase, lease or licence price and transport costs. Unless otherwise agreed, (1) title to equipment bought by Provider for Client passes to Client once Client has paid in full, (2) the equipment will be new, and (3) the party that arranges shipment bears the risk of loss during transit, while Client bears the risk of loss or damage to Client-owned equipment kept at a Provider Site, except to the extent caused by Provider’s negligence. Supplier warranties on the equipment are passed through to Client to the extent they are assignable. At Client’s request and expense, Provider will return Client-owned equipment to Client."
+    },
+    {
+      "paraindetifier": "p_0054",
+      "text": "ARTICLE 4\tONBOARDING; ACQUISITIONS AND DIVESTITURES; COLLABORATION"
+    },
+    {
+      "paraindetifier": "p_0055",
+      "text": "4.1\tOnboarding Services. Provider will carry out the activities needed to move the Services into Provider’s Delivery Center (the “Onboarding Services”), which are expected to take about six (6) months, in line with the Onboarding Plan and without causing unreasonable disruption to Client’s operations. Schedule J is the starting framework for the final Onboarding Plan, which the Parties will complete together no later than forty-five (45) days after the Effective Date. Provider will name an Onboarding Lead, and a point person for each Client site or function affected, who will brief Client’s Account Lead on progress at reasonable intervals."
+    },
+    {
+      "paraindetifier": "p_0056",
+      "text": "4.2\tOnboarding Milestones. Provider will use reasonable efforts to hit the Onboarding Milestones set out in the Onboarding Plan. If Provider misses a Critical Onboarding Milestone for reasons not attributable to Client, a Client Third-Party Vendor, or a Force Majeure Event, and then does not complete the milestone within the Cure Window, Client may end the affected Service Stream on written notice, in which case no Early Exit Charge is payable but Client will pay for work performed and costs incurred up to that point. Client will give Provider timely warning of any perceived slippage, including at Governance Board meetings."
+    },
+    {
+      "paraindetifier": "p_0057",
+      "text": "4.3\tEmployees Moving to Provider. Provider will make employment offers, on Provider’s standard terms and in accordance with Provider’s ordinary hiring criteria, to those Client personnel whom the Parties agree should move to Provider (“Moved Personnel”), and will use reasonable efforts to have at least seventy percent (70%) of them accept. Provider’s offer to or employment of any individual does not oblige it to retain that individual beyond what its own business needs require."
+    },
+    {
+      "paraindetifier": "p_0058",
+      "text": "4.4\tCorporate Changes on Client’s Side."
+    },
+    {
+      "paraindetifier": "p_0059",
+      "text": "(a) New Group Members. If Client acquires another business, is itself acquired, or adds further Affiliates (“New Group Members”), then, provided that serving them would not breach Provider’s existing exclusivity commitments to another customer, Provider will, on Client’s request and at the Rate Card, assist in integrating the New Group Members’ IT environments into the Systems and, if the Parties agree through a Change Request, supply Services to them."
+    },
+    {
+      "paraindetifier": "p_0060",
+      "text": "(b) Carve-Outs. If Client sells a business unit or ceases to include an Affiliate (“Carve-Out Entities”), Provider will, on request, keep serving the Carve-Out Entity for up to six (6) months on the then-applicable terms, provided that the entity signs a joinder accepting this Agreement and satisfies Provider’s credit review. Provider will also, at the Rate Card, support Client, the Carve-Out Entity and the purchaser in separating the relevant IT environments."
+    },
+    {
+      "paraindetifier": "p_0061",
+      "text": "(c) Added Costs. Client will bear all additional costs triggered by events described in this Section 4.4, with Provider giving prior notice of the nature and expected amount of such costs."
+    },
+    {
+      "paraindetifier": "p_0062",
+      "text": "4.5\tWorking With Client’s Other Vendors. Client may from time to time engage other contractors or consultants (“Client Third-Party Vendors”). Provider will cooperate in good faith with them as reasonably requested, on condition that Client ensures each Client Third-Party Vendor signs confidentiality terms acceptable to Provider. Cooperation may include:"
+    },
+    {
+      "paraindetifier": "p_0063",
+      "text": "(a) giving written requirements, standards and policies for the Services, to the extent they exist, so the vendor’s work can be integrated;"
+    },
+    {
+      "paraindetifier": "p_0064",
+      "text": "(b) giving written interface requirements for the vendor’s work;"
+    },
+    {
+      "paraindetifier": "p_0065",
+      "text": "(c) giving written requirements for any needed changes to the Systems;"
+    },
+    {
+      "paraindetifier": "p_0066",
+      "text": "(d) making its own testing processes available to the extent they relate to the vendor’s work;"
+    },
+    {
+      "paraindetifier": "p_0067",
+      "text": "(e) providing reasonable assistance so the vendor or Client can learn how to run and maintain the vendor’s work as part of the Systems, with Provider’s effort billed at the Rate Card; and"
+    },
+    {
+      "paraindetifier": "p_0068",
+      "text": "(f) providing access to Provider’s software, equipment and sites needed for the vendor’s work, as long as Provider approves in advance, may impose security conditions and may withhold access that would compromise other customers."
+    },
+    {
+      "paraindetifier": "p_0069",
+      "text": "Client is answerable for the acts and omissions of every Client Third-Party Vendor. Provider is not obliged to disclose its proprietary methods or tools."
+    },
+    {
+      "paraindetifier": "p_0070",
+      "text": "ARTICLE 5\tADDITIONAL SERVICE STREAMS"
+    },
+    {
+      "paraindetifier": "p_0071",
+      "text": "5.1\tRequests for New Streams. During the Term and any Exit Support Period, Client may ask Provider to supply services beyond the current scope (a “New Service Stream”). Provider will respond to the request, within twenty (20) business days (or any other period the Parties agree), either by declining or by giving a written proposal (a “New Stream Proposal”), which will cover:"
+    },
+    {
+      "paraindetifier": "p_0072",
+      "text": "(a) a description of the work Provider expects to perform;"
+    },
+    {
+      "paraindetifier": "p_0073",
+      "text": "(b) a timetable for the start and, where relevant, the end of the work;"
+    },
+    {
+      "paraindetifier": "p_0074",
+      "text": "(c) Provider’s estimate of the people needed, with a breakdown;"
+    },
+    {
+      "paraindetifier": "p_0075",
+      "text": "(d) when relevant, any new software or equipment that would be required;"
+    },
+    {
+      "paraindetifier": "p_0076",
+      "text": "(e) when relevant, the runtime and development environment requirements;"
+    },
+    {
+      "paraindetifier": "p_0077",
+      "text": "(f) the skills profile of the staff proposed;"
+    },
+    {
+      "paraindetifier": "p_0078",
+      "text": "(g) when relevant, existing software or equipment that would be used;"
+    },
+    {
+      "paraindetifier": "p_0079",
+      "text": "(h) when relevant, acceptance criteria and test procedures; and"
+    },
+    {
+      "paraindetifier": "p_0080",
+      "text": "(i) any other details Client reasonably asks for."
+    },
+    {
+      "paraindetifier": "p_0081",
+      "text": "Provider will not start work on a New Service Stream before both Parties have agreed the terms and Client’s Account Lead has countersigned the New Stream Proposal. Any work that Provider performs before then at Client’s request is billable at the Rate Card."
+    },
+    {
+      "paraindetifier": "p_0082",
+      "text": "5.2\tPricing of New Streams. Charges for a New Service Stream will be set in the New Stream Proposal on the basis of the Rate Card and the resources and skills required, and will be consistent with Provider’s then-current market pricing for comparable work. Where work for a New Service Stream replaces resources already billed under existing Services, the Parties will discuss in good faith a fair offset."
+    },
+    {
+      "paraindetifier": "p_0083",
+      "text": "5.3\tWork Placed With Other Vendors. If Client chooses to have a vendor that is not a direct competitor of Provider carry out any New Service Stream work, Provider will cooperate reasonably with Client and that vendor in accordance with Section 4.5."
+    },
+    {
+      "paraindetifier": "p_0084",
+      "text": "ARTICLE 6\tCLIENT OBLIGATIONS"
+    },
+    {
+      "paraindetifier": "p_0085",
+      "text": "6.1\tClient Account Lead. Client will designate a person (the “Client Account Lead”) to act as Client’s main representative from the Effective Date. The Client Account Lead will (a) oversee and coordinate Client’s compliance with its duties, and (b) have power to bind Client on all matters relating to this Agreement, including by giving decisions, approvals and instructions within three (3) business days of request. The Client Account Lead may pass on tasks to other Client staff after informing Provider."
+    },
+    {
+      "paraindetifier": "p_0086",
+      "text": "6.2\tWhat Client Provides."
+    },
+    {
+      "paraindetifier": "p_0087",
+      "text": "(a) Premises. From each Service Start Date, and for as long as Provider needs them to carry out the relevant Services, Client will make available at no charge to Provider the space at the Client Sites listed in Schedule F, along with reasonable furniture, cleaning, desk telephones, parking, access to computers, servers and printers and utilities, to at least the standard Client gives its own contractors. Client will also supply the productivity equipment that Provider’s on-site staff reasonably need. Client Sites are made available in their present condition."
+    },
+    {
+      "paraindetifier": "p_0088",
+      "text": "(b) Systems Access. Client will give Provider timely access to those Client systems, information, documentation, licences and personnel that Provider needs to deliver the Services. Provider will use the access only for the Services and will follow the written security and conduct policies Client has supplied to it. Client is responsible for the accuracy and completeness of the information and materials it provides."
+    },
+    {
+      "paraindetifier": "p_0089",
+      "text": "6.3\tProvider Use of Client Sites. Provider and its personnel may use the Client Sites for providing the Services, and nothing in this Agreement grants Provider a tenancy. In connection with those sites:"
+    },
+    {
+      "paraindetifier": "p_0090",
+      "text": "(a) Provider will follow the requirements in this Article 6 and Schedule F;"
+    },
+    {
+      "paraindetifier": "p_0091",
+      "text": "(b) Provider will make reasonable and efficient use of the space;"
+    },
+    {
+      "paraindetifier": "p_0092",
+      "text": "(c) Provider will keep the space tidy, avoid damage, not use it for any unlawful aim, and follow Client’s reasonable site rules that were notified to Provider, and will be responsible for damage and fines it causes through its negligence;"
+    },
+    {
+      "paraindetifier": "p_0093",
+      "text": "(d) Provider will allow Client to enter the areas occupied by Provider’s staff, on reasonable notice, for maintenance work;"
+    },
+    {
+      "paraindetifier": "p_0094",
+      "text": "(e) Provider will not make structural, mechanical or electrical alterations without Client’s written consent, and any alteration will belong to Client or its landlords; and"
+    },
+    {
+      "paraindetifier": "p_0095",
+      "text": "(f) when a Client Site is no longer needed, Provider will return it in substantially the condition received, apart from fair wear and tear."
+    },
+    {
+      "paraindetifier": "p_0096",
+      "text": "6.4\tEffect of Client Non-Performance. If Client fails to carry out any of its obligations under this Agreement, including through delay in providing decisions, access, data, premises, third-party cooperation or approvals (a “Client Delay”), then, to the extent the Client Delay affects Provider’s performance: (a) Provider is relieved of the affected obligations and of the related Service Levels and Service Credits; (b) delivery dates are extended by a matching period; and (c) Provider may charge for the additional costs reasonably caused by the Client Delay, at the Rate Card. Provider will tell Client about a Client Delay within ten (10) business days after becoming aware of it and will make reasonable efforts to limit its impact. Client’s failure to pay fees is additionally governed by Article 24."
+    },
+    {
+      "paraindetifier": "p_0097",
+      "text": "ARTICLE 7\tPERFORMANCE STANDARDS"
+    },
+    {
+      "paraindetifier": "p_0098",
+      "text": "7.1\tService Levels. Provider will provide the Services in line with the Service Levels set out in Schedule C and the relevant Work Order. A Work Order may state that particular Service Levels, or Schedule C as a whole, do not apply to that Work Order. For Services with no stated Service Levels, Provider will perform with the care and skill that is customary in the industry."
+    },
+    {
+      "paraindetifier": "p_0099",
+      "text": "7.2\tService Level Review. In the final quarter of every Contract Year, on Client’s request, the Governance Board will examine the Service Levels for the year just ending and, by agreement, adjust any that have become unsuitable because the Services have changed or for another good reason, with the revised levels applying for the following Contract Year. Client may also, at any time on notice, ask for an out-of-cycle review, but no Service Level changes unless both Parties sign a written amendment."
+    },
+    {
+      "paraindetifier": "p_0100",
+      "text": "7.3\tFailure Analysis. After a failure to meet a Service Level that is within Provider’s control, Provider will, within ten (10) business days, (a) carry out a root-cause review, (b) deliver to Client a summary of the cause and the remedy proposed, and (c) once Client approves the remedy, put it in place using commercially reasonable efforts. If the work cannot be completed within the ten-day period, Provider will give Client regular progress reports until it is done. Provider is not required to analyse failures caused by Client Delay, Force Majeure Events, or events excluded under Schedule C."
+    },
+    {
+      "paraindetifier": "p_0101",
+      "text": "7.4\tMeasurement Tools. From each Service Start Date Provider will use the measurement and monitoring tools and processes agreed in Schedule C for the relevant Services. The tools will produce reports detailed enough to show whether Service Levels have been met, and Client may, once a year, on reasonable notice and at its own cost, inspect them through its auditor. Provider will make the Systems used to supply the Services compatible with the Client software and equipment identified in the Onboarding Plan that is meant to exchange records with them."
+    },
+    {
+      "paraindetifier": "p_0102",
+      "text": "7.5\tOngoing Improvement. Alongside any improvement obligations in Schedule C, Provider will from time to time put forward, for Client’s consideration, techniques and tools used elsewhere in its operations that Provider believes could improve the Services, and will mention them in the periodic reports described in Section 3.8. Adopting any such proposal is subject to the Change Control Procedure."
+    },
+    {
+      "paraindetifier": "p_0103",
+      "text": "7.6\tService Credits. If Provider fails to meet a Service Level, Client’s remedy is the Service Credit specified in Schedule C, which Provider will apply on the next invoice. Provider will not owe a Service Credit if the failure was caused by Client Delay, Client’s refusal to approve sufficient Delivery Team capacity, a Force Majeure Event, scheduled maintenance, or Client Third-Party Vendors. If Provider tells Client within ten (10) days of a failure that it was caused by such a factor, the Parties will take the matter to Section 23.1 and the Service Credit is suspended until resolved. In no month will the Service Credits exceed ten percent (10%) of the monthly fees for the affected Service Stream. Service Credits are Client’s sole and exclusive financial remedy for a failure to meet a Service Level, without prejudice to Client’s termination right under Section 24.3(b)(i)."
+    },
+    {
+      "paraindetifier": "p_0104",
+      "text": "ARTICLE 8\tCLIENT FEEDBACK SURVEYS"
+    },
+    {
+      "paraindetifier": "p_0105",
+      "text": "8.1\tSatisfaction Surveys. Within one hundred eighty (180) days of the Effective Date the Parties will choose an independent survey firm and agree the method for conducting satisfaction surveys of Client’s internal stakeholders on the Services, as described in Schedule K. The first baseline survey will be completed within a further ninety (90) days, with its questions approved by both Parties before it goes out. Later surveys will take place annually. The Parties may agree to treat results as a reference point for improvements in Schedule C, but survey scores do not by themselves constitute a Service Level or a breach. Each Party will bear half of the survey firm’s charges."
+    },
+    {
+      "paraindetifier": "p_0106",
+      "text": "8.2\tContested Results. If Client disagrees with a survey’s results, it may, at its own expense and after consulting Provider, commission one further survey by a different independent firm. The Parties will review both sets of results together in good faith, but neither survey is binding."
+    },
+    {
+      "paraindetifier": "p_0107",
+      "text": "ARTICLE 9\tPRICE BENCHMARKING"
+    },
+    {
+      "paraindetifier": "p_0108",
+      "text": "9.1\tSelecting a Benchmarker. After the third (3rd) anniversary of the Effective Date, and not more than once in any twenty-four (24) months, Client may request a benchmarking exercise. The exercise will be performed by an independent firm jointly selected from the list in Schedule L, and Client will pay the firm’s charges. If no listed firm is available, the Parties will agree a substitute within thirty (30) business days, failing which each side will nominate a firm and those two firms will pick the benchmarker. Provider will cooperate reasonably, including by giving data about its fees, at Client’s cost for time over twenty (20) hours."
+    },
+    {
+      "paraindetifier": "p_0109",
+      "text": "9.2\tScope and Method. The benchmarker will compare the fees and service levels for the selected Services against those for comparable services, taking into account volume, scope, tenure, geography, technology, term and risk profile, and will give both Parties the opportunity to comment on its methodology and draft findings before issuing them."
+    },
+    {
+      "paraindetifier": "p_0110",
+      "text": "9.3\tResults and Follow-Up. The Parties will study the findings during a sixty (60) day review period. If the benchmarker concludes, on a like-for-like basis, that Provider’s fees for a Service exceed the comparable market range by more than fifteen percent (15%), the Parties will negotiate in good faith an adjustment to the fees or the Service Levels, but no adjustment is made without both Parties’ agreement and no retroactive reduction applies."
+    },
+    {
+      "paraindetifier": "p_0111",
+      "text": "ARTICLE 10\tDELIVERY LOCATIONS AND SECURITY"
+    },
+    {
+      "paraindetifier": "p_0112",
+      "text": "10.1\tApproved Locations. The Services will be delivered from (a) the Provider Sites, (b) the Client Sites, and (c) any other place agreed in writing, in each case as noted in Schedules B and F. Provider may deliver Services for several customers from a Provider Site. Neither Provider nor its personnel will market or deliver third-party services from a Client Site without Client’s consent."
+    },
+    {
+      "paraindetifier": "p_0113",
+      "text": "10.2\tChanging Locations. Provider may add or replace a Provider Site in the same country (or, if the Parties have agreed to additional countries, within those countries) on thirty (30) days’ notice to Client, provided there is no material adverse impact on the Services. To move delivery outside those countries, Provider will give Client a written proposal describing the new location, the reasons, the expected effect on the Services and any anticipated fee changes, and Client will not unreasonably withhold approval. Client will bear the additional costs it incurs because Provider relocates at Client’s request, while Provider will bear the additional costs it causes by relocating for its own reasons."
+    },
+    {
+      "paraindetifier": "p_0114",
+      "text": "10.3\tPhysical Safety and Security. Provider will operate, at each Provider Site, safety and security procedures that are commercially reasonable and not less protective than those described in Schedule F, and will comply with Client’s written site rules while at Client Sites. If Client asks for measures stronger than those in Schedule F, Client will bear the extra cost."
+    },
+    {
+      "paraindetifier": "p_0115",
+      "text": "10.4\tInformation Security. Provider will maintain administrative, technical and physical safeguards intended to protect Client Data in its custody against destruction, loss, unauthorised alteration and unauthorised access, in accordance with the security program in Schedule E (“Security Measures”), which will be no less protective than the standards of the industry for similar services and the law that applies to Provider. Either Party may propose updates to the Security Measures, which take effect once agreed through the Change Control Procedure. If Provider learns of an actual breach of security affecting Client Data, it will (a) inform Client’s Account Lead without undue delay and in any event within seventy-two (72) hours, and (b) investigate, take reasonable steps to contain and remedy the breach, and give Client a summary of the corrective measures. Client may keep its own backup copies of Client Data."
+    },
+    {
+      "paraindetifier": "p_0116",
+      "text": "10.5\tSeparation of Client Data. Provider will implement policies, consistent with Schedule E, that logically separate Client Data from the data of its other customers and restrict access to Client’s Confidential Information to those staff who need it to perform the Services."
+    },
+    {
+      "paraindetifier": "p_0117",
+      "text": "ARTICLE 11\tPROVIDER PERSONNEL"
+    },
+    {
+      "paraindetifier": "p_0118",
+      "text": "11.1\tRecruiting and Assignment. Provider alone decides how to recruit, hire, train, supervise and compensate its personnel, subject to the standards in Schedule N. Before putting a person into a Key Staff role, Provider will tell Client about the proposed assignment and share a profile of the individual, and Client may interview that person and raise reasonable objections within three (3) business days, which Provider will consider in good faith. Provider will try to keep Key Staff assigned for the periods stated in Schedule N and will, together with Client, consider sensible steps to reduce staff turnover, at Client’s cost where those steps go beyond Provider’s normal practices."
+    },
+    {
+      "paraindetifier": "p_0119",
+      "text": "11.2\tProvider Account Lead. Provider will name a person (the “Provider Account Lead”) as its principal representative from the Effective Date, who will (a) oversee Provider’s performance of the Agreement and (b) be authorised to act for Provider in matters relating to the Agreement. The Provider Account Lead may be assigned to other duties in addition to this account."
+    },
+    {
+      "paraindetifier": "p_0120",
+      "text": "11.3\tKey Staff."
+    },
+    {
+      "paraindetifier": "p_0121",
+      "text": "(a) The Parties will jointly identify the roles that count as Key Staff in Schedule N."
+    },
+    {
+      "paraindetifier": "p_0122",
+      "text": "(b) Provider will keep a succession approach for Key Staff who leave the account for any reason and, on request, will describe that approach to Client."
+    },
+    {
+      "paraindetifier": "p_0123",
+      "text": "(c) Provider will make Key Staff reasonably available to meet Client’s personnel in line with the Operations Handbook."
+    },
+    {
+      "paraindetifier": "p_0124",
+      "text": "11.4\tDelivery Team."
+    },
+    {
+      "paraindetifier": "p_0125",
+      "text": "(a) Selection. Provider will place on the Delivery Team individuals with the training and skills suited to their roles, consistent with the skill mix in the Work Orders. Team members will be allocated to Client’s account for the percentage of working time specified in the Work Order. Every ninety (90) days Provider will give Client a roster showing job titles. On Client’s written request, and at Client’s cost, Provider will carry out and confirm background verification that is permitted by local law and in line with Provider’s policy, for Delivery Team members who will work at a Client Site for more than five (5) days."
+    },
+    {
+      "paraindetifier": "p_0126",
+      "text": "(b) Direction of the Team. Client may direct the day-to-day priorities of the Delivery Team through Provider’s managers, but Provider remains responsible for the personnel’s employment and for the manner of their work. Delivery Team members on Client’s premises will work only on Client-related matters unless Provider and Client agree otherwise. Provider will make sure each Delivery Team member is bound by written confidentiality and invention-assignment commitments that are enforceable under local law."
+    },
+    {
+      "paraindetifier": "p_0127",
+      "text": "(c) Replacement. Provider will notify Client of the departure or reassignment of any Delivery Team member in a timely way. Nothing here requires Provider to end anyone’s employment."
+    },
+    {
+      "paraindetifier": "p_0128",
+      "text": "(i) If Client reasonably objects to the conduct of a person at a Client Site, Provider will promptly investigate and, where warranted, remove that person from the Client Site and replace them within a reasonable period."
+    },
+    {
+      "paraindetifier": "p_0129",
+      "text": "(ii) If Client has documented cause (such as serious misconduct or a security violation) to demand the removal of a Delivery Team member, Provider will remove that individual from the account within forty-eight (48) hours and propose a replacement as soon as practical."
+    },
+    {
+      "paraindetifier": "p_0130",
+      "text": "(iii) If Client reasonably contends that a team member is not performing adequately, it will tell Provider in writing, and Provider may propose a corrective plan, which Client will consider in good faith. If the performance problem is not corrected within thirty (30) days under that plan, Provider will replace the individual, and Client will bear the ordinary training cost for the replacement unless the removal was for cause."
+    },
+    {
+      "paraindetifier": "p_0131",
+      "text": "(d) Hiring by Client. During the Term and for twelve (12) months afterwards, Client will not solicit for employment or hire any member of the Delivery Team or Key Staff without Provider’s written consent, which Provider may condition on payment of a conversion fee equal to one hundred percent (100%) of the individual’s annualised billing under the Agreement during the preceding twelve (12) months. General advertisements not aimed at Provider’s personnel do not breach this clause. If Client hires a person under this Section, Provider will help with the transition and, after the transfer, will have no further responsibility for that person’s services."
+    },
+    {
+      "paraindetifier": "p_0132",
+      "text": "(e) Training. Each Delivery Team member will complete an initial training programme of up to four (4) weeks, which Provider will provide at its own cost unless the training concerns Client-specific systems, which will be charged at the Rate Card. Surge Resources and replacements will be trained for up to four (4) weeks before starting, with Client paying where the replacement results from a Client request not based on cause."
+    },
+    {
+      "paraindetifier": "p_0133",
+      "text": "(f) Headcount Levels. Staffing levels are specified in the Onboarding Plan and the Work Orders, and may be changed only in accordance with Section 3.2 or by a written Change Request. At each quarterly Governance Board meeting the Parties will consider whether staffing is appropriate, looking at average monthly hours worked as set out in Schedule B."
+    },
+    {
+      "paraindetifier": "p_0134",
+      "text": "11.5\tEmployer Responsibilities of Provider. Provider alone is responsible for paying its personnel and for all income-tax withholding, social-security contributions, insurance and statutory benefits applicable to them, and none of Provider’s staff is entitled to participate in any benefit plan that Client provides to its own employees. Since Provider is an independent contractor, Client will not withhold taxes, make social-security or insurance contributions, or provide workers’ compensation coverage for Provider’s personnel."
+    },
+    {
+      "paraindetifier": "p_0135",
+      "text": "11.6\tSurge Capacity. On Client’s request, and for the fee in Schedule B, Provider will keep a reserve of trained personnel (“Surge Resources”) for each Service Stream, in the number specified in the Work Order, available for deployment within the time stated there."
+    },
+    {
+      "paraindetifier": "p_0136",
+      "text": "11.7\tSubcontracting."
+    },
+    {
+      "paraindetifier": "p_0137",
+      "text": "(a) Provider may use subcontractors to perform parts of the Services, on written notice to Client, except that Client’s consent (not to be unreasonably withheld or delayed) is required where a subcontractor would perform more than twenty percent (20%) of a Service Stream. Provider does not need to give notice for subcontracting of facilities-related or other ancillary activities. Each subcontract must contain confidentiality obligations at least as protective as those in Article 20."
+    },
+    {
+      "paraindetifier": "p_0138",
+      "text": "(b) Use of a subcontractor does not relieve Provider of its responsibilities, and Provider answers for its subcontractors’ performance as it does for its own. Provider will pay its subcontractors."
+    },
+    {
+      "paraindetifier": "p_0139",
+      "text": "(c) Provider will pay promptly for the goods, services and labour it uses, and will take reasonable steps to prevent any lien from attaching to Client’s premises as a result of Provider’s failure to pay."
+    },
+    {
+      "paraindetifier": "p_0140",
+      "text": "11.8\tConduct on Client Premises. While on a Client Site, Provider’s personnel will (a) observe the reasonable health, safety and conduct rules that Client has provided in writing and applies to its own contractors and (b) behave professionally. Provider will remind the Delivery Team of the confidentiality obligations in this Agreement. If Client reports that a team member has broken those rules, Provider will promptly investigate and take suitable corrective action, which may include warning, retraining, removal or replacement. A member of the team who repeatedly and seriously breaches the rules will be taken off the account."
+    },
+    {
+      "paraindetifier": "p_0141",
+      "text": "11.9\tWork for Client’s Competitors. Provider may serve Client’s competitors, including those listed in Schedule O, provided that Provider (a) maintains information barriers so that Client’s Confidential Information is not made available to the staff serving that competitor, and (b) does not simultaneously assign any individual Key Staff member to Client and to a Client competitor in the same Service Stream. Provider will have no further restriction on assigning Key Staff or Delivery Team members to other customers once their work for Client ends."
+    },
+    {
+      "paraindetifier": "p_0142",
+      "text": "ARTICLE 12\tGOVERNANCE AND CHANGE MANAGEMENT"
+    },
+    {
+      "paraindetifier": "p_0143",
+      "text": "12.1\tGovernance Structure. The Parties will establish the governance structure described in Schedule D, which sets out the committees, their purpose, members’ responsibilities and the frequency and content of meetings. The Governance Board will supervise the general operations of the Delivery Center as further described there. Time Provider’s staff spend in governance meetings is not billable unless Schedule D says it is. Meetings will take place at times and places convenient to both Parties, and either Party may change its own representatives on notice to the other. Each Party will give the other appropriate details about any newly appointed committee member."
+    },
+    {
+      "paraindetifier": "p_0144",
+      "text": "12.2\tOperations Handbook and Change Control. Provider will prepare an Operations Handbook, including quality processes and a change-control procedure (the “Change Control Procedure”), and submit it to Client for review under Schedule D, and Client will not unreasonably withhold approval. At a minimum, the procedure will provide that:"
+    },
+    {
+      "paraindetifier": "p_0145",
+      "text": "(a) no change to the Services, Deliverables, scope, price or schedule takes effect until both Parties have signed a written Change Request, other than temporary measures needed to maintain the continuity of the Services;"
+    },
+    {
+      "paraindetifier": "p_0146",
+      "text": "(b) for every change, Provider will estimate the effect on cost, timing and Service Levels, will plan the change so as to limit disruption to Client’s operations, will provide a rolling ninety (90) day schedule of planned changes every month, and will monitor progress against it;"
+    },
+    {
+      "paraindetifier": "p_0147",
+      "text": "(c) for a temporary continuity change, Provider will document it and inform Client no later than the next business day; and"
+    },
+    {
+      "paraindetifier": "p_0148",
+      "text": "(d) Provider will update the procedure when necessary and submit it to Client for approval, which will not be unreasonably withheld."
+    },
+    {
+      "paraindetifier": "p_0149",
+      "text": "ARTICLE 13\tINTELLECTUAL PROPERTY"
+    },
+    {
+      "paraindetifier": "p_0150",
+      "text": "13.1\tPre-Existing IP. Provider keeps all right, title and interest in its Pre-Existing IP, and Client keeps all right, title and interest in its Pre-Existing IP. Neither Party transfers any rights to the other in Pre-Existing IP unless this Agreement says so expressly, and all rights not granted are reserved."
+    },
+    {
+      "paraindetifier": "p_0151",
+      "text": "13.2\tProvider Tools and Platforms. Provider will let Client use the Provider Tools that are embedded in the Services during the Term and any Exit Support Period, solely for Client’s internal use of the Services. Provider may select the Provider Tools it uses, but where it uses a third party tool that requires a separate licence for Client, it will tell Client in advance. Provider grants Client a non-exclusive, non-transferable, worldwide licence, in the form described in this Section, to use any Provider Tools or Pre-Existing IP that Provider has incorporated into a Deliverable, but only as part of that Deliverable and only for Client’s internal business, for as long as Client needs to operate and maintain the Deliverable. Any third-party component is licensed only as far as the third party permits. On Client’s request Provider will give Client a list of the principal Provider Tools used. This licence does not allow Client to extract, separately use or sublicense the Provider Tools, other than to Client Affiliates and to contractors who are bound by confidentiality terms and who use it solely for Client. Provider reserves all rights not expressly given."
+    },
+    {
+      "paraindetifier": "p_0152",
+      "text": "13.3\tCustom Output. Subject to Client paying all fees due for the relevant Deliverable, Provider assigns to Client its rights in the Custom Output when payment is received, apart from the Pre-Existing IP and Provider Tools, and the Parties agree that Custom Output means only the new material that Provider specifically creates for Client as a Deliverable under a Work Order. Until payment in full, Client has a non-exclusive licence to use the Custom Output for its internal purposes. Provider may keep and reuse general know-how, techniques, ideas, concepts and skills gained in performing the Services (“Residuals”), provided that Provider does not disclose Client’s Confidential Information. To the extent any right in the Custom Output cannot legally be assigned, Provider grants Client an exclusive (other than as to Provider’s Pre-Existing IP, where the licence is non-exclusive), perpetual, worldwide, royalty-free licence to use the Custom Output in any manner Client wishes, with the right to grant sublicences to its Affiliates and service providers. Provider will ensure its personnel have assigned to Provider the necessary rights in the Custom Output to give effect to this Section. Provider will follow Client’s reasonable procedures for delivery and backup of the Custom Output after those have been given to Provider in writing."
+    },
+    {
+      "paraindetifier": "p_0153",
+      "text": "13.4\tClient Materials Licence. Client grants Provider and its Delivery Team, for the Term and any Exit Support Period, a non-exclusive, royalty-free, limited licence to access and use the Client Materials (including Client’s proprietary software, any Client-supplied third-party software to the extent Client’s own licences allow it, and relevant documentation) solely to perform the Services for Client. Client may withdraw this licence on notice if Provider materially breaches Section 13.5, but doing so does not release Client from any payment obligation or relieve it of the effect of Client Delay. All other rights in Client Materials stay with Client. Where Client directs Provider to embed third-party materials in the Systems, Client will bear the costs of the licence and will be responsible for the third party’s licence terms."
+    },
+    {
+      "paraindetifier": "p_0154",
+      "text": "13.5\tUse Limitations. Unless a Work Order allows otherwise, Provider will not, and will not allow others to, (a) permit anyone other than Delivery Team members to access the Client Materials, (b) modify or create derivative works of the Client Materials other than as the Services require, (c) sublicense, sell, lease or distribute them to third parties, (d) reverse engineer or decompile them, except where the law does not allow this restriction, (e) remove proprietary notices, or (f) use them other than as this Agreement permits. Provider will promptly tell Client if it discovers any unauthorised use."
+    },
+    {
+      "paraindetifier": "p_0155",
+      "text": "13.6\tCooperation on Ownership Matters. Provider will, at Client’s request and expense, reasonably help Client to register, maintain or enforce Client’s rights in the Custom Output, and will sign such documents as are reasonably necessary for the purpose. If, despite reasonable efforts, Client cannot obtain Provider’s signature on a document needed for this purpose, Client may sign it on Provider’s behalf only for the limited purpose of recording an assignment that this Agreement already requires, and only after giving Provider fifteen (15) days’ written notice."
+    },
+    {
+      "paraindetifier": "p_0156",
+      "text": "13.7\tThird-Party and Open-Source Components. Provider will keep, and provide to Client on request, a list of third-party components and open-source software included in the Deliverables, and will update the list as the Deliverables change. Client is responsible for reviewing it and for compliance with the applicable open-source licences once it takes possession of a Deliverable."
+    },
+    {
+      "paraindetifier": "p_0157",
+      "text": "13.8\tWeb Content. Where Provider develops web pages or other online content for Client, Client decides on the layout, branding, content and domain names of the content, and is responsible for the legality of materials that it supplies. Domain names and hosting accounts that Provider registers for Client will be registered in Client’s name."
+    },
+    {
+      "paraindetifier": "p_0158",
+      "text": "13.9\tSource Code Escrow. If Client requests it, the Parties may enter into a three-party escrow agreement, with an escrow agent chosen by Client and reasonably acceptable to Provider, covering the source code of the Provider-owned software that is specified by the Parties as critical to the Services. Client will pay the escrow charges. Release conditions will be limited to those set out in the escrow agreement, such as Provider’s insolvency or abandonment of the software, and any release will give Client a licence only for maintaining and supporting the software for its own internal business use."
+    },
+    {
+      "paraindetifier": "p_0159",
+      "text": "13.10\tPost-Term Support. If Client asks, Provider will, subject to its availability and on commercially reasonable terms to be agreed, support the Deliverables after this Agreement expires or is terminated, charged at the Rate Card in force at the end of the Term."
+    },
+    {
+      "paraindetifier": "p_0160",
+      "text": "ARTICLE 14\tCLIENT DATA"
+    },
+    {
+      "paraindetifier": "p_0161",
+      "text": "14.1\tOwnership and Permitted Use. As between the Parties, Client owns the Client Data. Provider and its personnel will use Client Data only to the extent required to provide the Services or to exercise Provider’s rights or perform its duties under this Agreement, and will not sell or disclose Client Data to third parties except as permitted by this Agreement. Provider may, however, compile and use usage statistics and technical performance data from the Services in an aggregated and de-identified form that does not reveal Client or any individual, to improve its services and tools. Client grants Provider the rights in Client Data needed for these purposes. Client will take reasonable steps to provide Provider with the data required for the Services in a timely way."
+    },
+    {
+      "paraindetifier": "p_0162",
+      "text": "14.2\tData Errors and Recovery."
+    },
+    {
+      "paraindetifier": "p_0163",
+      "text": "(a) Provider will correct errors in the reports it delivers to Client without undue delay."
+    },
+    {
+      "paraindetifier": "p_0164",
+      "text": "(b) Provider will maintain procedures for restoring lost Client Data from backups and will, at its own cost, restore data lost or corrupted as a direct result of Provider’s failure to follow those procedures. In other cases Provider will assist in restoration at the Rate Card."
+    },
+    {
+      "paraindetifier": "p_0165",
+      "text": "14.3\tReturn and Deletion of Data. On Client’s written request during the Term and Exit Support Period, Provider will, within thirty (30) days, (a) export Client Data to Client in a mutually agreed, commonly used format, and (b) delete Client Data on Provider’s systems, apart from copies it needs to keep to comply with law or that sit in routine backups, which Provider will delete in the ordinary backup rotation cycle of up to ninety (90) days. Copies kept in backup will be used only for restoration. Provider may defer export of Client Data while Client has undisputed invoices that are more than sixty (60) days overdue, after giving Client a further written warning of ten (10) days."
+    },
+    {
+      "paraindetifier": "p_0166",
+      "text": "14.4\tPersonal Data Protection. Each Party will comply with data protection laws that apply to it in connection with personal information processed under this Agreement. The Parties will implement the data processing terms in Schedule E-1, including any transfer mechanisms that are required for the cross-border movement of personal data from the European Economic Area or the United Kingdom. Client is responsible for the lawfulness of its instructions to Provider and for having the necessary rights and notices to allow Provider to process the personal data."
+    },
+    {
+      "paraindetifier": "p_0167",
+      "text": "ARTICLE 15\tTHIRD-PARTY CONSENTS"
+    },
+    {
+      "paraindetifier": "p_0168",
+      "text": "Each Party will be responsible for getting and keeping the third-party consents needed for the resources it supplies (“Consents”), and Client will obtain the Consents needed for Provider to use the Client Materials and Client’s third-party software. If a Consent cannot be obtained despite reasonable efforts, the Parties will cooperate in finding a workable alternative, subject to the agreement of the Parties on any extra cost or on any adjustments to Service Levels or schedules, to be dealt with through the Change Control Procedure."
+    },
+    {
+      "paraindetifier": "p_0169",
+      "text": "ARTICLE 16\tBUSINESS CONTINUITY AND UNFORESEEN EVENTS"
+    },
+    {
+      "paraindetifier": "p_0170",
+      "text": "16.1\tDisaster Recovery. Within one hundred twenty (120) days of the Effective Date the Parties will agree a disaster recovery plan, which will be added as Schedule G (the “DR Plan”). Provider will comply with the DR Plan and test it at least once every twelve (12) months, delivering the report on the first test within two hundred forty (240) days of the Effective Date and a certification of readiness to Client each year. Provider will inform Client without delay if a Disaster occurs and will put the DR Plan into action. “Disaster” means an event that stops the Delivery Center from delivering the Services. Following a Disaster Provider will use commercially reasonable efforts to resume the Services, including by moving the Delivery Team to alternative locations, with the costs of those measures allocated as follows: (a) Provider bears the costs of recovering its own facilities and equipment; (b) Client bears the costs of recovering Client-owned assets and any additional cost of relocating staff at Client’s request; and (c) the Parties share equally any other extraordinary cost that the Governance Board agrees was required."
+    },
+    {
+      "paraindetifier": "p_0171",
+      "text": "16.2\tForce Majeure. Neither Party will be in breach of this Agreement for any failure or delay in performance (other than payment obligations) to the extent caused by events beyond its reasonable control, such as natural disasters, fire, flood, epidemic or pandemic, war, terrorism, civil unrest, strikes or labour disputes, governmental actions, power or telecommunications failures, internet outages, or the failure of utilities or of third-party suppliers that the affected Party could not reasonably have avoided (each, a “Force Majeure Event”). The affected Party will promptly inform the other and describe the event, will use reasonable efforts to resume performance, and its obligations will be suspended while the event lasts. If a Force Majeure Event continues for more than ninety (90) consecutive days, either Party may terminate the affected Service Stream on thirty (30) days’ written notice without liability, and Client will pay for the Services provided up to that date. The DR Plan applies to events that qualify as a Disaster."
+    },
+    {
+      "paraindetifier": "p_0172",
+      "text": "16.3\tFees During Interruption. Client must continue to pay the Fees for Services that Provider actually provides. If a Force Majeure Event prevents Provider from providing a Service, Client is not required to pay the portion of the Fees for that Service that corresponds to the Delivery Team members who are unable to work because of the event, but Client remains responsible for the Minimum Commitment, for Surge Resources and for charges that Provider continues to incur in relation to the affected Services and cannot reasonably avoid."
+    },
+    {
+      "paraindetifier": "p_0173",
+      "text": "16.4\tAllocating Scarce Resources. If a Force Majeure Event or Disaster forces Provider to prioritise among its customers, Provider will allocate its available resources in a fair and reasonable manner, taking into account the criticality of the services to each customer, contractual commitments and the order in which affected customers have requested help. Provider may redeploy Key Staff or other personnel if reasonably necessary, but will inform Client promptly."
+    },
+    {
+      "paraindetifier": "p_0174",
+      "text": "ARTICLE 17\tCHARGES AND PAYMENT"
+    },
+    {
+      "paraindetifier": "p_0175",
+      "text": "17.1\tFees and Invoicing. Client will pay the fees specified in Schedule B (the “Fees”). Provider will invoice Client monthly in advance for Delivery Team charges and monthly in arrears for expenses and other charges, and each invoice is payable within fifteen (15) days of the invoice date unless Schedule B states otherwise. Starting Fees are calculated as a fixed monthly rate per full-time team member, as set out in Schedule B. Within nine (9) months of the Effective Date, Provider may propose a schedule of skills-tiered monthly rates for each Service Stream (the “Tiered Rate Card”), and the Parties may agree in writing to apply it to any Service Stream. Time spent on services that Provider has agreed to supply without charge does not count as billable time."
+    },
+    {
+      "paraindetifier": "p_0176",
+      "text": "17.2\tAnnual Rate Adjustment. Each year, effective on the anniversary of the Effective Date, the rates in Schedule B will increase by the greater of five percent (5%) and the percentage increase in the Consumer Price Index for the location of the Delivery Center for the preceding twelve (12) months. Provider will notify Client of the increase at least sixty (60) days in advance. If Provider has to obtain work visas for personnel working at Client Sites and the cost of doing so exceeds the assumptions in Schedule B, the Parties will agree a corresponding increase in the rates, and Provider will consider reasonable alternatives that reduce the cost."
+    },
+    {
+      "paraindetifier": "p_0177",
+      "text": "17.3\tExpenses and Pass-Through Costs. Client will reimburse Provider for pre-approved travel and lodging costs, incurred in accordance with the travel policy in Schedule B, upon receipt of invoices with supporting documents. Client will pay in advance for pre-approved equipment, software and connectivity costs that Provider will incur on Client’s behalf, in accordance with the payment terms of the relevant vendor, and Provider will supply supporting documents."
+    },
+    {
+      "paraindetifier": "p_0178",
+      "text": "17.4\tInvoice Disputes. If Client disputes an invoice in good faith, it will tell Provider in writing, itemising the contested amount and the grounds, within fifteen (15) days of receiving the invoice, and will pay the undisputed portion on time. Unless the Parties resolve the dispute under Section 23.1, Client will pay any amount found to be due within five (5) business days after the resolution. Overdue undisputed amounts and amounts determined to be payable bear interest from the due date at one and one-half percent (1.5%) per month, or the highest rate allowed by law if lower. Client may not withhold or offset amounts, other than disputed amounts correctly notified under this Section."
+    },
+    {
+      "paraindetifier": "p_0179",
+      "text": "17.5\tCost Savings. Any reduction in Provider’s costs of delivering the Services, whether from a change in location, supplier pricing or otherwise, belongs to Provider, except where Schedule B specifies that a particular item (such as equipment or software that Provider buys at cost for Client) is passed through at actual cost, in which case any savings on that item will be reflected in the invoice."
+    },
+    {
+      "paraindetifier": "p_0180",
+      "text": "17.6\tSet-Off. Provider may set off any amount that Client owes to Provider under this Agreement against any amount that Provider owes to Client. Client has no right to set off against the Fees, unless Provider has agreed in writing or an arbitrator has determined the amount owed to Client."
+    },
+    {
+      "paraindetifier": "p_0181",
+      "text": "17.7\tRefunds and Vendor Credits. If Provider receives from a third party a refund, credit or rebate that relates specifically to a pass-through item that Client has paid for in full, Provider will tell Client and credit it against the next invoice, after deducting Provider’s reasonable costs of obtaining it. Discounts and rebates that Provider receives in connection with its general purchasing belong to Provider."
+    },
+    {
+      "paraindetifier": "p_0182",
+      "text": "17.8\tClient Review of Information. Client confirms that it has provided or made available all the information it considers relevant to Provider’s pricing and commitments and that Provider has relied on that information. If the information is materially inaccurate or incomplete, or if Client does not provide information that Provider reasonably requests, Provider may submit a Change Request for an appropriate adjustment of the Fees, the schedule or the Service Levels."
+    },
+    {
+      "paraindetifier": "p_0183",
+      "text": "17.9\tStaff Retention Contribution. Client will pay Provider a retention contribution equal to three percent (3%) of the monthly Delivery Team charges (the “Retention Contribution”), which Provider will use, at its discretion after consultation with the Governance Board, for recognition awards, performance bonuses and measures to retain Delivery Team members. Unused amounts at the end of each Contract Year will remain with Provider."
+    },
+    {
+      "paraindetifier": "p_0184",
+      "text": "17.10\tItems Not Covered by the Fees. The Fees cover only the Services described in Schedule B. The following are payable by Client in addition to the Fees: travel and lodging, shipping and document reproduction, additional computers and office equipment requested by Client, telephone charges for Client-requested calls, third-party software or equipment licences needed for Client-specific requirements, Taxes under Article 18, and any other cost that this Agreement says will be charged to Client."
+    },
+    {
+      "paraindetifier": "p_0185",
+      "text": "17.11\tPricing Independence. The Fees reflect the scope, term, volume, commitments and risk allocation negotiated between the Parties. Provider is not obliged to offer Client the lowest or best prices, terms or service levels it gives to any other customer, and Client agrees that comparisons with other customers’ arrangements are not appropriate for assessing the Fees."
+    },
+    {
+      "paraindetifier": "p_0186",
+      "text": "ARTICLE 18\tTAXES"
+    },
+    {
+      "paraindetifier": "p_0187",
+      "text": "18.1\tResponsibility for Taxes. All Fees and other amounts payable under this Agreement are exclusive of sales, use, value-added, goods-and-services, withholding and similar taxes, duties and levies (“Taxes”) imposed on the Services or on the amounts paid for them, which Client will pay in addition, except for taxes on Provider’s net income, gross receipts, property or employees. Provider will show Taxes separately on its invoices where the law requires. If Client is required by law to withhold any tax from a payment, Client will pay Provider an additional amount so that Provider receives the full sum it would have received without the withholding, and will give Provider an official receipt for the tax paid. Client will bear any taxes that arise from its setting up an Affiliate or a place of business in India."
+    },
+    {
+      "paraindetifier": "p_0188",
+      "text": "18.2\tTax Responsibility Allocation. Each Party is responsible for its own tax compliance. Client will indemnify Provider against any Taxes assessed on Provider that are Client’s responsibility under Section 18.1, together with resulting penalties and interest, unless they arise from Provider’s failure to follow Client’s timely written instructions on the treatment of a Tax. Where Client asks for evidence that Provider has remitted Taxes that Client has paid to Provider, Provider will supply it within thirty (30) days."
+    },
+    {
+      "paraindetifier": "p_0189",
+      "text": "18.3\tChanges in Delivery Location. If Provider moves delivery of the Services to a different location for reasons of its own convenience, and this causes an increase in the Taxes that Client pays on the Services, Provider will reimburse the increase."
+    },
+    {
+      "paraindetifier": "p_0190",
+      "text": "18.4\tProperty Taxes. Each Party is responsible for taxes and similar charges on real property that it owns or leases."
+    },
+    {
+      "paraindetifier": "p_0191",
+      "text": "18.5\tTax Coordination. Provider may separate the Fees on its invoices into streams according to their tax treatment, including (a) taxable Services, (b) non-taxable Services, (c) items on which tax has already been paid, and (d) items that Provider buys merely as an agent for Client. The Parties will work together to (x) share information needed to establish each Party’s tax obligations, (y) resolve issues raised in a tax audit, and (z) reduce the overall tax cost where this is commercially reasonable and lawful, but neither Party is required to take a position that conflicts with its advisers’ advice or that would harm it. Each Party will provide exemption and resale certificates that the other reasonably requests."
+    },
+    {
+      "paraindetifier": "p_0192",
+      "text": "18.6\tDisclosure of Tax Treatment. Despite anything else in this Agreement, either Party and its representatives may disclose the tax treatment and tax structure of the transactions contemplated by this Agreement, and any related tax analyses, to anyone without restriction, except to the extent disclosure would breach applicable securities laws. “Tax treatment” means the claimed federal income tax treatment of the transaction, and “tax structure” means any fact that is relevant to understanding that treatment."
+    },
+    {
+      "paraindetifier": "p_0193",
+      "text": "ARTICLE 19\tRECORDS AND AUDITS"
+    },
+    {
+      "paraindetifier": "p_0194",
+      "text": "19.1\tOperational Audits. Once in each Contract Year, and on at least thirty (30) days’ written notice, Provider will allow an independent auditor engaged by Client and bound by confidentiality obligations (and not a competitor of Provider) to inspect Provider’s relevant records and facilities, during business hours and without unreasonable disruption, to verify Provider’s compliance with this Agreement as it relates to the Services and the Fees. Provider will also give access to regulators of Client where the law requires. Audits will not extend to the data of Provider’s other customers, Provider’s cost structure or its profit margins. If an audit reveals that Provider has not complied with a legal or contractual requirement, Provider will promptly prepare a plan to correct the issue."
+    },
+    {
+      "paraindetifier": "p_0195",
+      "text": "19.2\tFee Audits. As part of an audit under Section 19.1, Client’s auditor may examine Provider’s invoicing records to check that the Fees were calculated correctly."
+    },
+    {
+      "paraindetifier": "p_0196",
+      "text": "(a) If the audit establishes that Client was overbilled, Provider will credit or refund the overcharge within thirty (30) days of the audit report. Where the audit shows an undercharge, Client will pay the shortfall within thirty (30) days of the report."
+    },
+    {
+      "paraindetifier": "p_0197",
+      "text": "(b) Client will bear its own audit costs, except that if the audit finds an overcharge of ten percent (10%) or more of the audited amounts for the audited period, Provider will reimburse Client’s reasonable and documented audit costs, up to a maximum of USD 25,000."
+    },
+    {
+      "paraindetifier": "p_0198",
+      "text": "19.3\tThird-Party Assurance Reports. On request, Provider will give Client summaries of its most recent independent assurance reports (such as SOC 2 or ISO 27001 certificates) that relate to the delivery of the Services. Provider is not required to disclose the reports of internal audits or any information concerning other customers."
+    },
+    {
+      "paraindetifier": "p_0199",
+      "text": "19.4\tRetention of Records. Provider will keep the records that are needed to document the Services and the Fees for two (2) years after the end of the Contract Year to which they relate, or for any longer period that the law requires."
+    },
+    {
+      "paraindetifier": "p_0200",
+      "text": "19.5\tAudit Workspace. Provider will provide reasonable workspace and utilities on its premises for audit work, and Client will reimburse Provider’s reasonable out-of-pocket costs of supporting audits that go beyond one (1) week or that happen more than once in a Contract Year."
+    },
+    {
+      "paraindetifier": "p_0201",
+      "text": "ARTICLE 20\tCONFIDENTIALITY"
+    },
+    {
+      "paraindetifier": "p_0202",
+      "text": "20.1\tBasic Duties. Each Party (“Recipient”) will keep in confidence all non-public information that the other Party (“Discloser”) discloses, whether orally, in writing or by access to systems, and that is marked as confidential or that a reasonable person would understand to be confidential given its nature and the circumstances of disclosure (“Confidential Information”). The Recipient will (a) use it only to carry out its obligations or exercise its rights under this Agreement, (b) protect it with at least the same level of care it uses to protect its own similar information and at least reasonable care, and (c) share it only with its and its Affiliates’ employees, officers, advisers, subcontractors and benchmarking and audit firms who need to know it and who are bound by obligations that are no less protective than these. Provider’s Confidential Information includes the Provider Tools, its methodologies, pricing and Rate Card. The Recipient may disclose Confidential Information to the extent the law requires, provided it gives the Discloser prompt notice (where lawful) and reasonably cooperates with efforts to limit the disclosure. Confidential Information does not include information that (i) is or becomes public through no fault of the Recipient, (ii) the Recipient already knew without restriction, (iii) it receives from a third party who is free to disclose it, or (iv) it develops independently without use of the Discloser’s information. On the Discloser’s written request, the Recipient will return or destroy the Discloser’s Confidential Information, except for backups and copies it must keep by law. The obligations in this Article continue for five (5) years after this Agreement ends, and for trade secrets for as long as they remain trade secrets."
+    },
+    {
+      "paraindetifier": "p_0203",
+      "text": "20.2\tFurther Safeguards. Provider will follow the security procedures in Schedule E and will limit access to Client’s Confidential Information to Delivery Team members who need it for the Services and who are bound by written confidentiality obligations (“Authorised Personnel”). Provider will keep a record of the personnel who have been given access to Client’s Confidential Information in the form of its standard access-control logs, which Client may review once per Contract Year on request. Provider may add Authorised Personnel by notifying Client in writing. Client’s source code will be accessed only on the secure systems specified in Schedule E. In addition:"
+    },
+    {
+      "paraindetifier": "p_0204",
+      "text": "(a) Provider will instruct Authorised Personnel not to copy or disclose Client’s Confidential Information beyond what is needed for the Services;"
+    },
+    {
+      "paraindetifier": "p_0205",
+      "text": "(b) Provider will take prompt, reasonable action to prevent unauthorised use or disclosure of the information; and"
+    },
+    {
+      "paraindetifier": "p_0206",
+      "text": "(c) Provider will use no less care than a reasonably prudent service provider would use in similar circumstances."
+    },
+    {
+      "paraindetifier": "p_0207",
+      "text": "20.3\tUnauthorised Disclosure. If either Party becomes aware of any unauthorised access to or use or disclosure of the other Party’s Confidential Information, it will:"
+    },
+    {
+      "paraindetifier": "p_0208",
+      "text": "(a) tell the other Party promptly;"
+    },
+    {
+      "paraindetifier": "p_0209",
+      "text": "(b) share what it knows about the incident and reasonably help to investigate it and prevent a repeat;"
+    },
+    {
+      "paraindetifier": "p_0210",
+      "text": "(c) if the other Party asks, reasonably cooperate (at the other Party’s expense) in action against third parties; and"
+    },
+    {
+      "paraindetifier": "p_0211",
+      "text": "(d) take reasonable steps to prevent recurrence."
+    },
+    {
+      "paraindetifier": "p_0212",
+      "text": "Each Party will bear its own costs of complying with this Section, except where the incident results from the other Party’s breach, in which case the breaching Party will bear the reasonable and documented costs."
+    },
+    {
+      "paraindetifier": "p_0213",
+      "text": "ARTICLE 21\tREPRESENTATIONS AND WARRANTIES"
+    },
+    {
+      "paraindetifier": "p_0214",
+      "text": "21.1\tClient’s Statements. Client represents and warrants that:"
+    },
+    {
+      "paraindetifier": "p_0215",
+      "text": "(a) it is a limited liability company duly organised, validly existing and in good standing under the laws of the State of Texas;"
+    },
+    {
+      "paraindetifier": "p_0216",
+      "text": "(b) it has the full power and authority to sign and perform this Agreement;"
+    },
+    {
+      "paraindetifier": "p_0217",
+      "text": "(c) it has duly authorised the signing and performance of this Agreement, and doing so will not conflict with its constitutional documents, any law or any other agreement binding on it;"
+    },
+    {
+      "paraindetifier": "p_0218",
+      "text": "(d) it has complied, and will comply, with the laws applicable to its business and its obligations here, and holds all permits and licences required of it;"
+    },
+    {
+      "paraindetifier": "p_0219",
+      "text": "(e) it has the right to give Provider the Client Materials, the Client Data and access to the Client Systems for the purposes of this Agreement, and Provider’s use of them as permitted by this Agreement will not infringe or misappropriate any third party’s rights;"
+    },
+    {
+      "paraindetifier": "p_0220",
+      "text": "(f) it has the funds required to meet its payment obligations; and"
+    },
+    {
+      "paraindetifier": "p_0221",
+      "text": "(g) the specifications, requirements and instructions that it gives to Provider are complete and accurate in all material respects."
+    },
+    {
+      "paraindetifier": "p_0222",
+      "text": "21.2\tProvider’s Statements. Provider represents and warrants that:"
+    },
+    {
+      "paraindetifier": "p_0223",
+      "text": "(a) it is a corporation duly organised, validly existing and in good standing under the laws of the State of Delaware;"
+    },
+    {
+      "paraindetifier": "p_0224",
+      "text": "(b) it has corporate power and authority to sign and perform this Agreement;"
+    },
+    {
+      "paraindetifier": "p_0225",
+      "text": "(c) the signing and performance of this Agreement has been duly authorised and does not conflict with any agreement to which it is party in a way that would materially impair its ability to perform;"
+    },
+    {
+      "paraindetifier": "p_0226",
+      "text": "(d) it is qualified to do business in each jurisdiction where qualification is necessary, except where failure would not materially affect its ability to perform;"
+    },
+    {
+      "paraindetifier": "p_0227",
+      "text": "(e) it complies in all material respects with the laws applicable to its performance of the Services and holds the required permits;"
+    },
+    {
+      "paraindetifier": "p_0228",
+      "text": "(f) to Provider’s knowledge there is no pending or threatened litigation that would materially affect its ability to perform;"
+    },
+    {
+      "paraindetifier": "p_0229",
+      "text": "(g) Provider has the right to grant the licences stated in this Agreement;"
+    },
+    {
+      "paraindetifier": "p_0230",
+      "text": "(h) Provider has not offered improper inducements to Client personnel in connection with this Agreement; and"
+    },
+    {
+      "paraindetifier": "p_0231",
+      "text": "(i) to Provider’s knowledge, the Deliverables, when used by Client as contemplated in this Agreement, will not infringe the intellectual property rights of a third party, excluding infringement caused by Client Materials, Client specifications, modifications made by anyone other than Provider, or combinations with items not supplied by Provider."
+    },
+    {
+      "paraindetifier": "p_0232",
+      "text": "21.3\tLimited Warranty and Disclaimer. Provider warrants that for ninety (90) days after acceptance, each Deliverable will materially conform to its written specification. Client’s exclusive remedy for breach of this warranty is repair or replacement of the Deliverable or, if that is impractical, a refund of the fees paid for it, provided Client reports the non-conformity in writing within the warranty period. EXCEPT FOR THE EXPRESS WARRANTIES IN SECTIONS 21.2 AND 21.3, THE SERVICES, DELIVERABLES, PROVIDER TOOLS AND ALL OTHER ITEMS ARE PROVIDED “AS IS”, AND PROVIDER DISCLAIMS ALL OTHER WARRANTIES, EXPRESS, IMPLIED OR STATUTORY, INCLUDING ANY WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, TITLE AND NON-INFRINGEMENT, AND DOES NOT WARRANT THAT THE SERVICES WILL BE UNINTERRUPTED OR ERROR-FREE. CLIENT LIKEWISE ACKNOWLEDGES THAT, EXCEPT AS STATED IN SECTION 21.1, IT MAKES NO OTHER WARRANTIES."
+    },
+    {
+      "paraindetifier": "p_0233",
+      "text": "ARTICLE 22\tONGOING UNDERTAKINGS"
+    },
+    {
+      "paraindetifier": "p_0234",
+      "text": "22.1\tClient’s Undertakings. During the Term and the Exit Support Period, Client undertakes to Provider that:"
+    },
+    {
+      "paraindetifier": "p_0235",
+      "text": "(a) it will comply with all laws that apply to Client and obtain all permits needed for its obligations;"
+    },
+    {
+      "paraindetifier": "p_0236",
+      "text": "(b) the Client Materials and Client specifications will not infringe the rights of third parties, except to the extent caused by changes made by Provider without Client’s approval;"
+    },
+    {
+      "paraindetifier": "p_0237",
+      "text": "(c) it will provide timely access, information, decisions and cooperation as reasonably required for Provider to perform; and"
+    },
+    {
+      "paraindetifier": "p_0238",
+      "text": "(d) it will not use the Services or Deliverables for any unlawful purpose or in a way that breaches this Agreement."
+    },
+    {
+      "paraindetifier": "p_0239",
+      "text": "22.2\tProvider’s Undertakings. During the Term and the Exit Support Period, Provider undertakes to Client that:"
+    },
+    {
+      "paraindetifier": "p_0240",
+      "text": "(a) it will carry out the Services with reasonable skill and care, in a professional manner, using appropriately qualified personnel;"
+    },
+    {
+      "paraindetifier": "p_0241",
+      "text": "(b) it will comply with the laws applicable to Provider in performing the Services and obtain the permits it needs;"
+    },
+    {
+      "paraindetifier": "p_0242",
+      "text": "(c) it will promptly tell Client if it learns of any claim that the Deliverables infringe third-party rights;"
+    },
+    {
+      "paraindetifier": "p_0243",
+      "text": "(d) it will use commercially reasonable measures, consistent with industry practice, to prevent the introduction into the Systems of viruses, malware or other code intended to damage them, and if it discovers any, it will use reasonable efforts to remove it and to help Client restore affected data;"
+    },
+    {
+      "paraindetifier": "p_0244",
+      "text": "(e) it will not intentionally insert into the Software used for the Services any code designed to disable the Services, except for licence-management controls disclosed to Client; and"
+    },
+    {
+      "paraindetifier": "p_0245",
+      "text": "(f) its personnel will not make unauthorised statements on Client’s behalf or purport to bind Client unless authorised in writing."
+    },
+    {
+      "paraindetifier": "p_0246",
+      "text": "ARTICLE 23\tRESOLVING DISAGREEMENTS"
+    },
+    {
+      "paraindetifier": "p_0247",
+      "text": "23.1\tEscalation Process. The Parties will try to settle any dispute or claim arising out of or relating to this Agreement (a “Dispute”) as follows:"
+    },
+    {
+      "paraindetifier": "p_0248",
+      "text": "(a) Project Leads. Within ten (10) business days after one Party gives written notice of a Dispute, the Client Account Lead and the Provider Account Lead will meet, in person or remotely, and try in good faith to resolve it."
+    },
+    {
+      "paraindetifier": "p_0249",
+      "text": "(b) Senior Executives. If the Dispute is not resolved within that period, it will be referred to a senior executive of each Party with authority to settle it (at vice-president level or above), who will confer in good faith for up to fifteen (15) business days. Unless the executives agree otherwise in writing, either Party may start arbitration under Section 23.2 once that period ends."
+    },
+    {
+      "paraindetifier": "p_0250",
+      "text": "23.2\tBinding Arbitration. Any Dispute that is not settled under Section 23.1 will be finally resolved by confidential, binding arbitration administered by JAMS under its Comprehensive Arbitration Rules, before a single arbitrator who has experience in technology services agreements, with the seat in New York, New York. The arbitrator may award only damages and remedies that are permitted by this Agreement. Judgment on the award may be entered in any court that has jurisdiction. The Parties will share the arbitrator’s fees equally, and the arbitrator may award the prevailing Party its reasonable costs and attorneys’ fees."
+    },
+    {
+      "paraindetifier": "p_0251",
+      "text": "23.3\tCarve-Outs. Sections 23.1 and 23.2 do not apply to claims under Article 13 (Intellectual Property), Article 20 (Confidentiality), or Section 17.4 (to the extent of collection of undisputed Fees), and nothing in this Agreement prevents either Party from asking a court of competent jurisdiction for urgent injunctive or other equitable relief to protect its rights."
+    },
+    {
+      "paraindetifier": "p_0252",
+      "text": "23.4\tNo Stoppage During Disputes. While a Dispute is being resolved, the Parties will continue to perform their obligations under this Agreement in good faith, except that Provider is not required to keep performing Services in a Service Stream for which Client has failed to pay undisputed Fees, as permitted by Section 24.3(c)."
+    },
+    {
+      "paraindetifier": "p_0253",
+      "text": "ARTICLE 24\tENDING THE AGREEMENT"
+    },
+    {
+      "paraindetifier": "p_0254",
+      "text": "24.1\tClient’s Right to End Early. Client may terminate this Agreement, or any Service Stream, without cause by giving Provider at least one hundred eighty (180) days’ written notice, and in that case Client will pay the Early Exit Charge determined in accordance with Schedule B and Article 25. A reduction in the Delivery Team under Section 3.2(d) or an end of a Service Stream under the remedies in this Agreement is not a termination for convenience. After the Initial Period, Provider may also end this Agreement without cause on at least twelve (12) months’ written notice, in which case no Early Exit Charge is payable and Provider will provide Exit Support."
+    },
+    {
+      "paraindetifier": "p_0255",
+      "text": "24.2\tChange in Ownership of Client. If Client undergoes a Change of Control and the acquirer is a direct competitor of Provider or has a materially weaker financial standing than Client, Provider may terminate this Agreement on at least ninety (90) days’ written notice given within one hundred eighty (180) days after it learns of the Change of Control, and the Early Exit Charge will then be payable by Client."
+    },
+    {
+      "paraindetifier": "p_0256",
+      "text": "24.3\tTermination for Breach."
+    },
+    {
+      "paraindetifier": "p_0257",
+      "text": "(a) Opportunity to Remedy. If a Party materially breaches this Agreement and the breach can be remedied, the non-breaching Party will give written notice describing the breach, and the breaching Party will have thirty (30) days from receipt (the “Cure Window”), or a longer period that the Parties agree or that is reasonably needed for a diligent cure, to remedy it. A cure is effective if it reasonably addresses the failure."
+    },
+    {
+      "paraindetifier": "p_0258",
+      "text": "(b) Client’s Termination Rights. Client may terminate this Agreement, in whole or for the affected Service Stream, by written notice, without payment of an Early Exit Charge, if:"
+    },
+    {
+      "paraindetifier": "p_0259",
+      "text": "(i) Client is entitled to Service Credits for three (3) Critical Service Level failures in any six (6) consecutive months, after Provider has had the chance to implement a corrective plan under Section 7.3; or"
+    },
+    {
+      "paraindetifier": "p_0260",
+      "text": "(ii) Provider commits a material breach that substantially deprives Client of the benefit of the Agreement and that Provider has not remedied within the Cure Window."
+    },
+    {
+      "paraindetifier": "p_0261",
+      "text": "(c) Provider’s Rights on Non-Payment. If Client fails to pay any undisputed amount when due, and does not pay within fifteen (15) days after Provider’s written notice (the “Payment Cure Period”), Provider may suspend all or any part of the Services without liability until payment is made. If non-payment continues for thirty (30) days after suspension begins, Provider may terminate this Agreement by written notice, and Client will then pay the Early Exit Charge. Provider may also terminate on notice, after the Cure Window, for Client’s other material breach that Client has not remedied."
+    },
+    {
+      "paraindetifier": "p_0262",
+      "text": "24.4\tInsolvency and Credit Events. Either Party may terminate this Agreement by written notice if the other Party (a) becomes unable to pay its debts as they fall due or admits in writing that it cannot, (b) makes a general assignment for the benefit of creditors, (c) has a receiver, trustee, liquidator or similar official appointed over all or a substantial part of its assets, (d) commences or consents to any bankruptcy, insolvency, reorganisation or winding-up proceeding, or (e) is subject to an involuntary proceeding of that kind that is not dismissed within sixty (60) days. In addition, if Client’s credit rating by a recognised agency falls below investment grade, or if Provider has reasonable grounds to doubt Client’s ability to pay, Provider may require Client to give reasonable security or pay in advance, and if Client does not do so within fifteen (15) days of request, Provider may terminate the Agreement on written notice, in which case the Early Exit Charge applies."
+    },
+    {
+      "paraindetifier": "p_0263",
+      "text": "ARTICLE 25\tEARLY EXIT CHARGES"
+    },
+    {
+      "paraindetifier": "p_0264",
+      "text": "25.1\tAmount and Timing. The Early Exit Charge payable on a termination for which this Agreement provides is set out in Schedule B. It is calculated as the remaining Minimum Commitment for the unexpired part of the Initial Period or the then-current Renewal Period, reduced by a declining percentage that is stated in Schedule B, plus any unrecovered onboarding costs, and is due on the termination date."
+    },
+    {
+      "paraindetifier": "p_0265",
+      "text": "25.2\tNo Additional Charges. Apart from the Early Exit Charge stated in this Agreement, and fees and expenses already incurred, no other termination charge is payable by Client. Provider will not bill Client twice for the same resource."
+    },
+    {
+      "paraindetifier": "p_0266",
+      "text": "ARTICLE 26\tEXIT SUPPORT AND TRANSITION OUT"
+    },
+    {
+      "paraindetifier": "p_0267",
+      "text": "26.1\tExit Support. On Client’s written request made before or within thirty (30) days after the end of the Term, and for up to six (6) months afterward (the “Exit Support Period”), Provider will provide the reasonable transition services described in Schedule Q (“Exit Support Services”) to enable Client or its replacement provider (a “Successor”) to take over the Services in an orderly way. Provider will use reasonable efforts to maintain the level of service that applied during the Term. Provider has no obligation to provide Exit Support Services if Client has an unpaid undisputed balance, unless Client pays in advance."
+    },
+    {
+      "paraindetifier": "p_0268",
+      "text": "26.2\tCharges for Exit Support. Exit Support Services are charged at the Rate Card, except that Provider will not charge for time spent on administrative matters concerning the Delivery Center closure. Client will designate which Delivery Team members work on Exit Support Services, subject to their availability, and will pay for transportation of equipment. After the Exit Support Period, Provider will answer Successor’s questions at its standard rates and will return any Client-owned reports and documents still in its possession. The terms of the Agreement continue to apply to Exit Support Services. If Client requests Exit Support Services after Provider has terminated for Client’s breach, Client will pay for them in advance."
+    },
+    {
+      "paraindetifier": "p_0269",
+      "text": "26.3\tHandover Items."
+    },
+    {
+      "paraindetifier": "p_0270",
+      "text": "(a) Client Property. At Client’s request during the Exit Support Period, and following payment of all undisputed amounts then due and the Early Exit Charge (if any), Provider will return Client-owned equipment, a current copy of the Client Materials and the Custom Output, in the form last used. The rights granted to Provider under Section 13.4 end on the last day of the Exit Support Period and Provider will delete or return all copies of Client Materials, subject to Section 14.3, and, on request, will certify that it has done so."
+    },
+    {
+      "paraindetifier": "p_0271",
+      "text": "(b) Provider Intellectual Property and Support. Provider is not required to deliver its Provider Tools or source code, except under an escrow arrangement under Section 13.9 or a separate licence. At Client’s request, Provider will offer to provide support and maintenance for Provider-owned software and Custom Output on terms to be agreed at Provider’s then-current standard rates."
+    },
+    {
+      "paraindetifier": "p_0272",
+      "text": "(c) Third-Party Software."
+    },
+    {
+      "paraindetifier": "p_0273",
+      "text": "(i) Where the relevant third-party licences allow, and at Client’s request and expense, Provider will help to assign to Client or the Successor those licences that were obtained specifically for Client’s work, and will use reasonable efforts to help Client obtain the necessary rights for other third-party items."
+    },
+    {
+      "paraindetifier": "p_0274",
+      "text": "(ii) Client will pay the actual costs of any consent or transfer fee charged by the third party."
+    },
+    {
+      "paraindetifier": "p_0275",
+      "text": "(d) Remote Access. If Client asks, and the Parties agree commercial terms, Provider may give Client or the Successor remote access to software or tools operated at a Provider Site during the Exit Support Period at Provider’s then-current standard prices."
+    },
+    {
+      "paraindetifier": "p_0276",
+      "text": "(e) Contracts and Equipment. At Client’s request, Provider may, at its discretion and at Client’s cost, (i) assign to Client or a designee the equipment leases and third-party service contracts that were used primarily for the Services, to the extent that assignment is permitted, and (ii) sell to Client the equipment used primarily for the Services at the greater of its net book value and fair market value, free from liens."
+    },
+    {
+      "paraindetifier": "p_0277",
+      "text": "(f) Network Services. If Client’s network has been integrated into Provider’s network, Provider will continue to provide network services during the Exit Support Period at the rates then in effect, so that Client or the Successor can establish its own network in an orderly fashion."
+    },
+    {
+      "paraindetifier": "p_0278",
+      "text": "ARTICLE 27\tINDEMNIFICATION"
+    },
+    {
+      "paraindetifier": "p_0279",
+      "text": "27.1\tIndemnity by Client. Client will defend, indemnify and hold Provider harmless against all Losses arising out of any third-party claim that:"
+    },
+    {
+      "paraindetifier": "p_0280",
+      "text": "(a) the Client Materials, Client Data, Client specifications or any item that Client supplied or instructed Provider to use, or their use by Provider as permitted by this Agreement, infringe or misappropriate third-party rights;"
+    },
+    {
+      "paraindetifier": "p_0281",
+      "text": "(b) relates to the inaccuracy or breach of any representation, warranty or undertaking made by Client in Sections 21.1 or 22.1;"
+    },
+    {
+      "paraindetifier": "p_0282",
+      "text": "(c) results from Client’s or its Affiliates’ or contractors’ failure to obtain or comply with required permits, licences or consents;"
+    },
+    {
+      "paraindetifier": "p_0283",
+      "text": "(d) involves bodily injury (including death) or damage to property caused by the negligence or wilful misconduct of Client, its personnel or Client Third-Party Vendors;"
+    },
+    {
+      "paraindetifier": "p_0284",
+      "text": "(e) arises from the use of the Deliverables or the Services by Client, its Affiliates or their customers, other than claims for which Provider is responsible under Section 27.2;"
+    },
+    {
+      "paraindetifier": "p_0285",
+      "text": "(f) concerns Client’s processing of personal data or Client’s instructions regarding it; or"
+    },
+    {
+      "paraindetifier": "p_0286",
+      "text": "(g) is brought by Client’s employees or contractors, or by those of its Affiliates or Client Third-Party Vendors, in connection with this Agreement."
+    },
+    {
+      "paraindetifier": "p_0287",
+      "text": "27.2\tIndemnity by Provider. Provider will defend Client against third-party claims, and will pay the damages and costs finally awarded or agreed in settlement, to the extent that the claim:"
+    },
+    {
+      "paraindetifier": "p_0288",
+      "text": "(a) alleges that a Deliverable or Provider Tool, as delivered by Provider and used in accordance with this Agreement, infringes a third party’s copyright, patent or trade secret rights;"
+    },
+    {
+      "paraindetifier": "p_0289",
+      "text": "(b) alleges bodily injury (including death) or damage to tangible property caused by the negligence or wilful misconduct of Provider’s personnel while at a Client Site;"
+    },
+    {
+      "paraindetifier": "p_0290",
+      "text": "(c) is brought by Provider’s own personnel and arises out of their employment with Provider, including claims for wages, benefits or unlawful discrimination by Provider;"
+    },
+    {
+      "paraindetifier": "p_0291",
+      "text": "(d) concerns Taxes that are Provider’s responsibility under Article 18; or"
+    },
+    {
+      "paraindetifier": "p_0292",
+      "text": "(e) results from Provider’s breach of Article 20 (Confidentiality) or its unauthorised disclosure of Client Data."
+    },
+    {
+      "paraindetifier": "p_0293",
+      "text": "Provider has no obligation under Section 27.2(a) for claims that arise from Client Materials, Client specifications, modifications not made by Provider, combinations with items not supplied by Provider, use in breach of this Agreement, or continued use after Provider offered a non-infringing alternative."
+    },
+    {
+      "paraindetifier": "p_0294",
+      "text": "27.3\tInfringement Remedies. If a Deliverable or Provider Tool becomes, or in Provider’s reasonable opinion is likely to become, the subject of a claim of infringement or is enjoined, Provider may, at its option and expense, (a) obtain for Client the right to keep using it, (b) modify it so that it no longer infringes without materially reducing its functionality, (c) replace it with a functionally equivalent non-infringing alternative, or (d) if none of those is commercially reasonable, withdraw it and refund the fees paid for it, less a reasonable amount for the period of use. This Section 27.3 and Section 27.2(a) state Provider’s entire liability and Client’s exclusive remedy for infringement claims."
+    },
+    {
+      "paraindetifier": "p_0295",
+      "text": "27.4\tHandling of Claims. A Party seeking indemnification (the “Indemnified Party”) will promptly notify the other (the “Indemnifying Party”) in writing of the third-party claim, though delay releases the Indemnifying Party only to the extent that it is prejudiced. The Indemnifying Party may take sole control of the defence and settlement of the claim with counsel of its choice, and the Indemnified Party will give reasonable cooperation at the Indemnifying Party’s expense. The Indemnified Party may take part in the defence with its own counsel at its own cost. The Indemnifying Party may not settle the claim in a way that imposes non-monetary obligations on, or admits fault of, the Indemnified Party without its prior written consent, which may not be unreasonably withheld. If the Indemnifying Party does not assume the defence within a reasonable time, the Indemnified Party may defend the claim and recover its reasonable costs."
+    },
+    {
+      "paraindetifier": "p_0296",
+      "text": "ARTICLE 28\tLIMITS ON LIABILITY"
+    },
+    {
+      "paraindetifier": "p_0297",
+      "text": "28.1\tExclusion of Indirect Losses; Cap. NEITHER PARTY WILL BE LIABLE TO THE OTHER FOR INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, PUNITIVE OR CONSEQUENTIAL DAMAGES, OR FOR LOST PROFITS, LOST REVENUE, LOST SAVINGS, LOSS OF GOODWILL OR LOSS OR CORRUPTION OF DATA, ARISING OUT OF OR RELATING TO THIS AGREEMENT, WHETHER IN CONTRACT, TORT (INCLUDING NEGLIGENCE), STATUTE OR OTHERWISE, EVEN IF ADVISED OF THEIR POSSIBILITY. PROVIDER’S TOTAL AGGREGATE LIABILITY FOR ALL CLAIMS ARISING OUT OF OR RELATING TO THIS AGREEMENT WILL NOT EXCEED THE FEES ACTUALLY PAID BY CLIENT TO PROVIDER DURING THE TWELVE (12) MONTHS IMMEDIATELY BEFORE THE EVENT GIVING RISE TO THE FIRST CLAIM."
+    },
+    {
+      "paraindetifier": "p_0298",
+      "text": "28.2\tRisk Allocation Rationale. Each Party recognises that the limitations in this Article are a fundamental basis of the bargain and that the Fees and other terms would have been different without them."
+    },
+    {
+      "paraindetifier": "p_0299",
+      "text": "28.3\tMatters Outside the Limits. The limitations in Section 28.1 do not apply to (a) Client’s obligation to pay the Fees, the Early Exit Charge and other amounts due, (b) Client’s indemnity obligations under Section 27.1, (c) either Party’s liability for fraud, gross negligence or wilful misconduct, (d) Client’s misuse or infringement of Provider’s intellectual property or breach of the restrictions in Article 13, or (e) liability that cannot be limited under applicable law. Provider’s liability for breach of Article 20 and its obligations under Sections 27.2(a) to 27.2(e) is subject to a separate cap equal to two (2) times the cap in Section 28.1."
+    },
+    {
+      "paraindetifier": "p_0300",
+      "text": "ARTICLE 29\tINSURANCE"
+    },
+    {
+      "paraindetifier": "p_0301",
+      "text": "29.1\tEvidence of Cover. Provider will give Client, within thirty (30) days after a written request, certificates showing the insurance required by this Article, and thereafter on each renewal if Client requests them. The insurers will have an A.M. Best rating of at least A- VII. Provider’s insurance is not a limit on its liability, and neither is it a waiver of Provider’s other rights. Failure by Client to request certificates does not relieve Provider of its obligation to maintain cover, but nor does it expand Provider’s liability."
+    },
+    {
+      "paraindetifier": "p_0302",
+      "text": "29.2\tRequired Cover. During the Term, Provider will maintain at its own expense:"
+    },
+    {
+      "paraindetifier": "p_0303",
+      "text": "(i) commercial general liability insurance with limits of at least USD 2,000,000 per occurrence and in the annual aggregate;"
+    },
+    {
+      "paraindetifier": "p_0304",
+      "text": "(ii) technology errors and omissions (professional liability) cover with limits of at least USD 3,000,000 per claim and in the aggregate;"
+    },
+    {
+      "paraindetifier": "p_0305",
+      "text": "(iii) workers’ compensation insurance as required by law, and employer’s liability with limits of at least USD 1,000,000 per occurrence;"
+    },
+    {
+      "paraindetifier": "p_0306",
+      "text": "(iv) automobile liability insurance of at least USD 1,000,000 combined single limit for owned and hired vehicles; and"
+    },
+    {
+      "paraindetifier": "p_0307",
+      "text": "(v) property insurance covering the replacement value of Client-owned property at Provider Sites, subject to usual exclusions and deductibles."
+    },
+    {
+      "paraindetifier": "p_0308",
+      "text": "If Provider’s cover is written on a claims-made basis, Provider will keep it in force, or buy extended-reporting cover, for at least one (1) year after the end of the Term."
+    },
+    {
+      "paraindetifier": "p_0309",
+      "text": "29.3\tPolicy Terms. On Client’s request, Provider will name Client as an additional insured on its commercial general liability policy, to the extent of the liability assumed by Provider under this Agreement and to the extent the insurer permits, and Provider’s policies will be primary in respect of claims arising from Provider’s negligence. Client may rely on Provider’s cover only for losses within Provider’s responsibility under this Agreement."
+    },
+    {
+      "paraindetifier": "p_0310",
+      "text": "29.4\tLoss of Property. Each Party bears the risk of loss of or damage to its own property. Client bears the risk of loss or damage to Client property located at a Provider Site, except to the extent the loss or damage is caused by the gross negligence or wilful misconduct of Provider’s personnel."
+    },
+    {
+      "paraindetifier": "p_0311",
+      "text": "ARTICLE 30\tCENTER TRANSFER RIGHT"
+    },
+    {
+      "paraindetifier": "p_0312",
+      "text": "30.1\tBuy-Out Option. At any time after the third (3rd) anniversary of the Effective Date, and subject to Provider’s consent (not to be unreasonably withheld, but Provider may withhold consent if the transfer would materially harm other customers of the Delivery Center), Client may propose to acquire the dedicated assets and infrastructure used to provide the Services and to offer employment to the Delivery Team members, under a transfer agreement that the Parties will negotiate in good faith (the “Transfer Agreement”). The Transfer Agreement will contain customary representations, covenants and conditions for a transaction of this kind."
+    },
+    {
+      "paraindetifier": "p_0313",
+      "text": "30.2\tPrice and Conditions. The consideration for the transfer is described in Schedule R and includes the purchase price of the assets, a conversion fee for each transferring employee and the payment of all fees accrued up to the transfer date. The Parties confirm that Schedule R sets out the whole of the compensation to Provider for the transfer."
+    },
+    {
+      "paraindetifier": "p_0314",
+      "text": "ARTICLE 31\tGENERAL PROVISIONS"
+    },
+    {
+      "paraindetifier": "p_0315",
+      "text": "31.1\tCompeting Engagements. Provider is free to supply services similar to the Services to any other customer, including Client’s competitors, subject to Section 11.9 and Article 20. Client will not, during the Term and for twelve (12) months afterwards, hire or engage Provider’s Delivery Team to perform substantially similar services as an alternative to the Services without complying with Section 11.4(d)."
+    },
+    {
+      "paraindetifier": "p_0316",
+      "text": "31.2\tTransfer of Rights. Client may not assign or transfer this Agreement, or its rights or obligations, including the right to receive Services, without Provider’s prior written consent. Provider may assign this Agreement or any amounts payable under it, without Client’s consent, to an Affiliate or to a successor to all or substantially all of its relevant business or assets, and may delegate performance to Affiliates. Any attempted assignment in breach of this Section is void. This Agreement binds and benefits the Parties and their permitted successors and assigns."
+    },
+    {
+      "paraindetifier": "p_0317",
+      "text": "31.3\tNotices. All notices under this Agreement must be in writing and are effective: (a) on delivery by hand or reputable international courier (as shown by the courier’s records); (b) three (3) business days after dispatch by registered or certified mail with return receipt; or (c) when sent by email to the address below, if a copy is also sent by one of the methods in (a) or (b) within two (2) business days. Notices are to be sent to:"
+    },
+    {
+      "paraindetifier": "p_0318",
+      "text": "Client: Halcyon Retail Group, LLC, Attention: General Counsel, 4200 Commerce Street, Suite 1100, Dallas, Texas 75226, USA. Email: legal-notices@halcyon-retail.example. Copy to: Chief Financial Officer, at the same address."
+    },
+    {
+      "paraindetifier": "p_0319",
+      "text": "Provider: Meridian Bytecraft Inc., Attention: Vice President, Global Delivery, 77 Harbor Point Drive, Suite 300, Wilmington, Delaware 19801, USA. Email: contracts@meridianbytecraft.example. Copy to: General Counsel, at the same address."
+    },
+    {
+      "paraindetifier": "p_0320",
+      "text": "A Party may change its notice details by giving the other at least ten (10) days’ notice."
+    },
+    {
+      "paraindetifier": "p_0321",
+      "text": "31.4\tSigning in Parts. This Agreement may be signed in counterparts, each of which is an original and all of which together form one instrument. Signatures delivered electronically or by scanned copy are as valid as originals."
+    },
+    {
+      "paraindetifier": "p_0322",
+      "text": "31.5\tIndependent Parties. The Parties are independent contractors. Nothing in this Agreement creates a partnership, joint venture, agency, franchise or employment relationship between them, other than the limited authority granted under Section 13.6, and neither Party may bind the other. Provider’s personnel are not Client’s employees, agents or contractors."
+    },
+    {
+      "paraindetifier": "p_0323",
+      "text": "31.6\tMinimum Commitment. Client commits to purchase Services at the minimum monthly volume, set out in Schedule B (the “Minimum Commitment”), whether or not it uses them. Subject to that commitment, this Agreement is not exclusive, and Client may obtain similar services from others, and Provider may serve other customers."
+    },
+    {
+      "paraindetifier": "p_0324",
+      "text": "31.7\tReasonableness. Unless this Agreement states otherwise, each consent, approval or request required of a Party must be reasonable and will not be unreasonably withheld, conditioned or delayed."
+    },
+    {
+      "paraindetifier": "p_0325",
+      "text": "31.8\tPartial Invalidity. If a court or arbitrator finds any provision of this Agreement unenforceable, the provision will be enforced to the maximum extent permissible and the remainder of the Agreement will continue in effect."
+    },
+    {
+      "paraindetifier": "p_0326",
+      "text": "31.9\tNo Waiver. Failure or delay by a Party in exercising a right is not a waiver of it. A waiver of a breach does not waive any later or other breach. A waiver is effective only if in writing and signed by the waiving Party."
+    },
+    {
+      "paraindetifier": "p_0327",
+      "text": "31.10\tTime and Remedies. Time is not of the essence for either Party’s obligations unless a Work Order expressly says so for a specified date. The remedies expressly provided in this Agreement are the Parties’ exclusive remedies for the matters they address, but they are cumulative with each other and, in other respects, with rights available at law or in equity."
+    },
+    {
+      "paraindetifier": "p_0328",
+      "text": "31.11\tComplete Agreement. This Agreement, including its Schedules and Work Orders, is the entire agreement of the Parties about its subject matter and replaces all earlier proposals, negotiations, understandings and agreements about it. Terms in a purchase order or other Client form do not apply."
+    },
+    {
+      "paraindetifier": "p_0329",
+      "text": "31.12\tModifications. An amendment or modification of this Agreement is effective only if it is in writing and signed by an authorised signatory of each Party. A Change Request signed by the Account Leads is effective to change a Work Order."
+    },
+    {
+      "paraindetifier": "p_0330",
+      "text": "31.13\tProvisions That Continue. Articles 1, 13, 14, 17 (as to amounts owed), 18, 19, 20, 23, 26, 27, 28 and 31, and any other provisions that by their nature are intended to continue, survive the expiry or termination of this Agreement."
+    },
+    {
+      "paraindetifier": "p_0331",
+      "text": "31.14\tOutsiders’ Rights. This Agreement is for the benefit of the Parties and their permitted successors only. Client Affiliates that have signed a joinder may receive Services, but may enforce rights under this Agreement only through Client."
+    },
+    {
+      "paraindetifier": "p_0332",
+      "text": "31.15\tApplicable Law and Forum. This Agreement and any Dispute will be governed by the laws of the State of New York, excluding any conflict-of-laws rules that would apply the law of another place and excluding the United Nations Convention on Contracts for the International Sale of Goods. Subject to Article 23, the Parties submit to the exclusive jurisdiction of the state and federal courts located in New York County, New York for any proceeding to compel arbitration, to enforce an award, or to seek relief under Section 23.3, and each waives any objection to that venue."
+    },
+    {
+      "paraindetifier": "p_0333",
+      "text": "31.16\tEquitable Relief. Each Party acknowledges that breach of Article 13 or Article 20 could cause irreparable harm for which damages are not an adequate remedy and that the harmed Party may therefore seek injunctive relief, without having to post a bond, in addition to other remedies. Seeking such relief in any other country, including India, does not affect the Parties’ agreement on governing law and forum in Section 31.15."
+    },
+    {
+      "paraindetifier": "p_0334",
+      "text": "31.17\tProvider Group Representation. Meridian Bytecraft Inc. and Meridian Bytecraft Solutions Private Limited each enter this Agreement. Meridian Bytecraft Inc. is authorised to give approvals, agree amendments and otherwise act for both Provider entities, and is Client’s single point of contact. Each Provider entity is responsible for its own performance and obligations, and neither is liable for those of the other except as provided by the Work Order under which the relevant Services are supplied. Provider’s aggregate liability under this Agreement is as stated in Article 28 regardless of the number of Provider entities."
+    },
+    {
+      "paraindetifier": "p_0335",
+      "text": "31.18\tFurther Acts. After signing, each Party will sign any additional documents and take any further actions that are reasonably necessary to carry out the purposes of this Agreement, without further consideration."
+    },
+    {
+      "paraindetifier": "p_0336",
+      "text": "31.19\tInsolvency Law Protection. The Parties agree that the licences of intellectual property that Provider grants to Client under this Agreement are licences of rights to “intellectual property” for purposes of Section 365(n) of the United States Bankruptcy Code, to the extent those licences have been paid for, and that Client will have the protections of that Section in respect of those licences only."
+    },
+    {
+      "paraindetifier": "p_0337",
+      "text": "31.20\tExport Controls. Each Party will comply with applicable export and re-export laws and will not knowingly send any computer system, component, software or technical data under this Agreement to a destination, person or end use that is prohibited by United States law or the laws of India."
+    },
+    {
+      "paraindetifier": "p_0338",
+      "text": "31.21\tImproper Payments. Neither Party will offer, give or accept any bribe, kickback or improper benefit in connection with this Agreement, and neither will give gifts or entertainment of significant value to the other’s personnel, or to their designees, in breach of the other’s written policy that has been notified to it. Provider will include a similar requirement in its subcontracts that relate to the Services."
+    },
+    {
+      "paraindetifier": "p_0339",
+      "text": "31.22\tPublic Statements. Neither Party will issue a press release about this Agreement without the other’s prior written approval, which will not be unreasonably withheld. Provider may nevertheless identify Client as a customer by name and logo in client lists and credentials presentations, unless Client objects in writing."
+    },
+    {
+      "paraindetifier": "p_0340",
+      "text": "31.23\tHonest Dealing. Both Parties agree that their dealings under this Agreement are governed by the principle of acting honestly and fairly towards one another, except where this Agreement expressly provides otherwise."
+    },
+    {
+      "paraindetifier": "p_0341",
+      "text": "The Parties have signed this Agreement through their authorised representatives as of the Effective Date."
+    },
+    {
+      "paraindetifier": "p_0342",
+      "text": "| HALCYON RETAIL GROUP, LLC     By: ____________________  Name: ___________________  Title: ____________________  Date: ____________________   | MERIDIAN BYTECRAFT INC.     By: ____________________  Name: ___________________  Title: ____________________  Date: ____________________   |"
+    },
+    {
+      "paraindetifier": "p_0343",
+      "text": "| MERIDIAN BYTECRAFT SOLUTIONS PRIVATE LIMITED     By: ____________________  Name: ___________________  Title: ____________________  Date: ____________________   |  |"
+    },
+    {
+      "paraindetifier": "p_0344",
+      "text": "LIST OF SCHEDULES"
+    },
+    {
+      "paraindetifier": "p_0345",
+      "text": "The following Schedules are referred to in this Agreement. For this synthetic test document their contents are intentionally omitted."
+    },
+    {
+      "paraindetifier": "p_0346",
+      "text": "| Schedule   | Title   |"
+    },
+    {
+      "paraindetifier": "p_0347",
+      "text": "| A   | Glossary of Defined Terms   |"
+    },
+    {
+      "paraindetifier": "p_0348",
+      "text": "| B   | Fees, Rate Card, Minimum Commitment, Reduction Charge and Early Exit Charge   |"
+    },
+    {
+      "paraindetifier": "p_0349",
+      "text": "| C   | Service Levels, Service Credits and Measurement Tools   |"
+    },
+    {
+      "paraindetifier": "p_0350",
+      "text": "| D   | Governance and Operations Handbook   |"
+    },
+    {
+      "paraindetifier": "p_0351",
+      "text": "| E   | Security Measures (E-1: Data Processing Terms)   |"
+    },
+    {
+      "paraindetifier": "p_0352",
+      "text": "| F   | Delivery Center, Provider Sites and Client Sites   |"
+    },
+    {
+      "paraindetifier": "p_0353",
+      "text": "| G   | Disaster Recovery Plan   |"
+    },
+    {
+      "paraindetifier": "p_0354",
+      "text": "| H   | Client Technology Standards and Minimum Configuration   |"
+    },
+    {
+      "paraindetifier": "p_0355",
+      "text": "| I   | Standard Reports   |"
+    },
+    {
+      "paraindetifier": "p_0356",
+      "text": "| J   | Onboarding Plan (framework)   |"
+    },
+    {
+      "paraindetifier": "p_0357",
+      "text": "| K   | Satisfaction Survey Method   |"
+    },
+    {
+      "paraindetifier": "p_0358",
+      "text": "| L   | Approved Benchmarkers   |"
+    },
+    {
+      "paraindetifier": "p_0359",
+      "text": "| M   | Shared Common Services   |"
+    },
+    {
+      "paraindetifier": "p_0360",
+      "text": "| N   | Personnel Standards and Key Staff   |"
+    },
+    {
+      "paraindetifier": "p_0361",
+      "text": "| O   | Client Competitor List   |"
+    },
+    {
+      "paraindetifier": "p_0362",
+      "text": "| Q   | Exit Support Services   |"
+    },
+    {
+      "paraindetifier": "p_0363",
+      "text": "| R   | Center Transfer Terms   |"
+    }
+  ]
+}

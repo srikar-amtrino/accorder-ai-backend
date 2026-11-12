@@ -23,7 +23,7 @@ class EmbeddingClient:
         self,
         url: str | None = None,
         timeout: float = 120.0,
-        batch_size: int = 4,
+        batch_size: int = 16,
         max_retries: int = 3,
     ) -> None:
         self._url = url or os.getenv(

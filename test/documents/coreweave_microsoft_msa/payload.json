@@ -1,0 +1,488 @@
+{
+  "textinformation": [
+    {
+      "text": "Master Services Agreement",
+      "paraindetifier": "7FAA9223"
+    },
+    {
+      "text": "Customer Full Legal Name:",
+      "paraindetifier": "3BE9B181"
+    },
+    {
+      "text": "Microsoft Corporation",
+      "paraindetifier": "0F4B79D5"
+    },
+    {
+      "text": "Customer Address:",
+      "paraindetifier": "1CD839F0"
+    },
+    {
+      "text": "One Microsoft Way, Redmond, WA 981052",
+      "paraindetifier": "2E33710C"
+    },
+    {
+      "text": "This Master Services Agreement, including all Exhibits attached hereto, (“Agreement”) is between CoreWeave, Inc. a Delaware corporation (“CoreWeave” or “Coreweave”) and the Customer named above. This Agreement is effective as of the last date beneath the parties’ signatures below (“Effective Date”). CoreWeave and Customer will each be referred to individually as a “Party” and together as the “Parties”.",
+      "paraindetifier": "2E3198F7"
+    },
+    {
+      "text": "The Parties agree as follows:",
+      "paraindetifier": "2964FFAF"
+    },
+    {
+      "text": "DEFINITIONS. The following capitalized terms will have the following meanings whenever used in this Agreement:",
+      "paraindetifier": "22B1A3AF"
+    },
+    {
+      "text": "“Acceptable Use Policy” or “AUP” means CoreWeave’s acceptable use policy, in the form attached as Exhibit B.",
+      "paraindetifier": "13E13284"
+    },
+    {
+      "text": "“Affiliate” means any entity that directly or indirectly controls, is controlled by, or is under common control with the subject entity. “Control,” for purposes of this definition, means direct or indirect ownership or control of more than 50% of the voting interests of the subject entity.",
+      "paraindetifier": "415B9F6F"
+    },
+    {
+      "text": "“Bulk Credits” means prepaid credits for on-demand use of CoreWeave’s full range of compute as set forth in a Bulk Credits Order Form.",
+      "paraindetifier": "730048FA"
+    },
+    {
+      "text": "“Data Processing Agreement” means CoreWeave’s data processing agreement, in the form attached as Exhibit C.",
+      "paraindetifier": "6CFC8EFC"
+    },
+    {
+      "text": "“Documentation” means the documentation located at https://docs.coreweave.com and any other technical documents and specifications provided to Customer either electronically or in hard copy form regarding the Services.",
+      "paraindetifier": "3006569A"
+    },
+    {
+      "text": "“End User” means any individual who Customer grants access or use to the Services under the rights granted to Customer pursuant to this Agreement.",
+      "paraindetifier": "7E3531ED"
+    },
+    {
+      "text": "“Feedback” means any suggestion, enhancement request, recommendation, correction or other feedback provided by Customer or End User; provided for the sake of clarity that Customer Confidential Information is not Feedback.",
+      "paraindetifier": "59C94516"
+    },
+    {
+      "text": "“Hardware Failure” means breakage of a GPU node that causes that node to fail.",
+      "paraindetifier": "196C3DBA"
+    },
+    {
+      "text": "“Maintenance Policy” means CoreWeave’s maintenance policy, in the form attached as Exhibit D.",
+      "paraindetifier": "6888CF27"
+    },
+    {
+      "text": "“Malicious Code” means code, files, scripts, agents or programs intended to do harm, including, for example, viruses, worms, time bombs and Trojan horses.",
+      "paraindetifier": "637FE90D"
+    },
+    {
+      "text": "“Order Form” means an ordering document specifying the services to be provided hereunder that is entered into between CoreWeave and Customer or any Customer Affiliate, including any addenda and supplements thereto, or any separate on-demand compute consumption by Customer or any Customer Affiliate. By entering into an Order Form (or using any on-demand compute consumption), an Affiliate agrees to be bound by the terms of this Agreement as if it were an original party hereto.",
+      "paraindetifier": "3D1C886A"
+    },
+    {
+      "text": "“Privacy Policy” means CoreWeave’s Privacy Policy found at https://docs.coreweave.com/resources/terms-of-service/privacy-policy.",
+      "paraindetifier": "55DE8CCE"
+    },
+    {
+      "text": "“Processed Customer Data” means information, documents, images, files or materials uploaded, created, modified, or stored in the Services by or as permitted by Customer or Customer’s End Users or Representatives.",
+      "paraindetifier": "55CC8DC8"
+    },
+    {
+      "text": "“Reserved Instances” means the exclusive use of a specified amount and type of compute configuration as set forth in a Reserved Instance Order Form.",
+      "paraindetifier": "23680E6B"
+    },
+    {
+      "text": "“Security Incident” means that (irrespective of cause): (i) the other Party’s Confidential Information has been lost, misplaced, disclosed to or accessed by an unauthorized party (other than due to any action or omission by such Party in breach of this Agreement); (ii) CoreWeave, any of its subcontractor’s facilities associated with the Customer’s Confidential Information have been accessed by an unauthorized party; or (iii) there has been a material breach of the Security Standards or a material weakness in a Party’s or any of its subcontractor’s, security practices or systems, and such breach or weakness could reasonably be expected to result in unauthorized access to the Customer’s Confidential Information.",
+      "paraindetifier": "69FDF3C3"
+    },
+    {
+      "text": "“Services” means the infrastructure-as-a-service, platform-as-a-service, products, and solutions provided by CoreWeave to Customer, as further detailed in an Order Form and Documentation.",
+      "paraindetifier": "4E7D7853"
+    },
+    {
+      "text": "“Representatives” means a Party’s personnel, agents, subcontractors, suppliers and/or consultants.",
+      "paraindetifier": "3E7DE4FD"
+    },
+    {
+      "text": "SERVICES.",
+      "paraindetifier": "24060EEF"
+    },
+    {
+      "text": "Access to the Services. Subject to and conditioned on Customer’s payment of fees in compliance with all the terms and conditions of this Agreement, Customer has the right to access and use the Services solely for Customer’s business operations (which include provision of services by Customer or its End Users to its customers and engagement of Representatives by Customer to enable such provision of services). Coreweave will not subcontract the performance of any compute Services provided to Customer. CoreWeave may subcontract its non-compute obligations under this Agreement with Customer’s prior written consent in each case.",
+      "paraindetifier": "17779DC0"
+    },
+    {
+      "text": "Service Features. Customer may request features or functionality not already offered through the Services. If CoreWeave determines that Customer’s request is feasible, CoreWeave may choose to provide those features or functionalities to Customer for an additional fee, subject to the Parties executing either a separate Order Form or an addendum to an existing Order Form with respect to such customizations. CoreWeave reserves the right, in its sole discretion, to modify or (if deemed necessary in its reasonable opinion) remove the features, functionality, or other aspects of the Services at any time; provided however that Coreweave will notify Customer with as much advance notice as possible prior to any such modification or removal and will use best efforts to provide Customer with twelve",
+      "paraindetifier": "62EB87B2"
+    },
+    {
+      "text": "(12) months’ notice prior to removing any features, functionality, or other aspect of the Services that could have a material effect on Customer’s use of the Services. This section 2(b) shall not relieve Coreweave of its obligations to perform the Services in accordance with the specifications set forth in an Order Form, the Documentation, or the Service Level Objectives. Customer and CoreWeave may mutually agree via amended Order Form to retrofit the hardware during the Term to different servers to accommodate Customer’s needs.",
+      "paraindetifier": "00C1934E"
+    },
+    {
+      "text": "Maintenance. CoreWeave will provide maintenance for the Services in accordance with CoreWeave’s Maintenance Policy. CoreWeave will be responsible for the smarthands support for Customer. Customer and CoreWeave will agree on a ticketing process and SLAs for CoreWeave to respond and remediate any breakfix needed in the datacenter by smarthands for both compute and networking.",
+      "paraindetifier": "1D3CD06F"
+    },
+    {
+      "text": "Dedicated Fiber. Coreweave shall provision diverse dedicated fiber infrastructure from the CoreWeave data centers hosting the GPU nodes to mutually agreed express route edge locations ahead of go live.",
+      "paraindetifier": "7608F3BA"
+    },
+    {
+      "text": "Hardware and Supp ly Chain. Customer may require CoreWeave to update hardware in addition to what is provided in any Order Form to align with Customer’s requirements. Customer acknowledges and agrees that any hardware updates will constitute a change or modification of Services and may result in additional cost to Customer. CoreWeave will be responsible for managing the supply chain, negotiating the contracts including warranty and spares with its vendors for all of the agreed-upon hardware (Networking and Compute) deployed in the CoreWeave locations. CoreWeave will manage the supply chain prioritization with suppliers to meet deal timelines set forth in Order Form .",
+      "paraindetifier": "507B1D2E"
+    },
+    {
+      "text": "Suspension of Service. Without limiting CoreWeave’s termination rights herein, CoreWeave reserves the right, at any time, in CoreWeave’s reasonable discretion, to temporarily suspend access to or use of the Services, without being deemed to be in breach of this Agreement, (a) as necessary to comply with a judicial or other governmental demand or order, subpoena or law enforcement request that expressly or by reasonable implication requires CoreWeave to do so, or (b) to the extent necessary in Coreweave’s reasonable opinion to protect the Services from imminent material threat. CoreWeave will use reasonable efforts to notify Customer prior to such suspension and such suspension will be for the shortest duration required to resolve the cause of such suspension. Suspension by CoreWeave as permitted in this Section 2(d) shall not be deemed “Downtime” under the Service Level Objectives; provided that, CoreWeave shall immediately notify Customer as soon as it becomes aware of a cause for suspension, and for so long as such suspension continues, CoreWeave shall use best efforts to recommence its performance hereunder without undue delay. CoreWeave shall promptly notify Customer when the cause of suspension has abated or can be circumvented. To the extent the suspension continues for a period of two (2) consecutive business days, then Customer’s payment obligations pursuant to Section 11(a) for fees payable for Services not performed due to the suspension shall be canceled with respect to such services. Payment obligations will not recommence until such time that the suspension is resolved and Services are restored.",
+      "paraindetifier": "1E1B5C3C"
+    },
+    {
+      "text": "Code of Conduct. CoreWeave will comply with Customer’s most current Supplier Code of Conduct at https://aka.ms/scoc and the most current Anti-Corruption Policy for Customer Representatives at http://aka.ms/microsoftethics/representatives, and any other Policies (e.g., physical or information security Policies) or training identified by Customer in an Order Form or otherwise mutually agreed to during the Term.",
+      "paraindetifier": "1AAE1A34"
+    },
+    {
+      "text": "Geographies. Unless otherwise agreed, all services under this Agreement will be provided within the United States.",
+      "paraindetifier": "242FFD68"
+    },
+    {
+      "text": "CUSTOMER RESPONSIBILITIES & RESTRICTIONS.",
+      "paraindetifier": "43EBA5A7"
+    },
+    {
+      "text": "Customer Use and CoreWeave Responsibility. Customer shall use, and shall cause their End Users and Representatives to use, and CoreWeave shall provide, the Services in accordance with this Agreement, the Order Form, AUP, Maintenance Policy, Data Processing Agreement, Documentation and Privacy Policy (as each may be applicable). Accordingly, any material violation of the Order Form, AUP, Maintenance Policy, Data Processing Agreement, Documentation or Privacy Policy (as each may be applicable) by either Party shall constitute a material breach of this Agreement. Coreweave is not responsible for Customer’s system requirements for use of the Services.",
+      "paraindetifier": "423EE0B8"
+    },
+    {
+      "text": "Account Usage. Customer is solely responsible for the activity that occurs on its account, regardless of whether the activities are undertaken by Customer or its End Users or Representatives. Customer shall ensure that its End Users and Representatives are aware of the terms of and conditions of this Agreement, and Customer is responsible for each of its End User’s and Representative’s compliance with this Agreement and use of the Services.",
+      "paraindetifier": "268B7E87"
+    },
+    {
+      "text": "Restrictions. In addition to the restrictions set forth in the AUP, except as permitted under this Agreement, Customer shall not, and shall use commercially reasonable efforts to not permit any End User or Representative to, directly or indirectly: (i) decipher, decompile, disassemble, reverse engineer or otherwise attempt to derive any source code or underlying algorithms of any part of the Services (except to the extent such restriction is prohibited by applicable law); (ii) modify, translate, or otherwise create derivative works of any part of the Services; (iii) copy, rent, lease , resell or otherwise distribute the Services to any non-Affiliate third party unless mutually agreed;",
+      "paraindetifier": "5081C2E7"
+    },
+    {
+      "text": "assign or transfer any of the rights that Customer receives hereunder to any third party (other than as expressly permitted hereunder);",
+      "paraindetifier": "1D1F0B29"
+    },
+    {
+      "text": "knowingly use the Services in a manner that compromises the integrity of Services or the confidentiality of other users of the Service;",
+      "paraindetifier": "4AFBE54E"
+    },
+    {
+      "text": "input, upload, transmit, or otherwise provide to or through the Services, any information or materials that are unlawful or injurious,",
+      "paraindetifier": "3C98D121"
+    },
+    {
+      "text": "knowlingly input, upload, transmit, or otherwise provide to or through the Services, any information or materials that contain, transmit, or activate any Malicious Code; or (viii) use the Service or Documentation for any purpose that to Customer’s knowledge infringes, misappropriates, or otherwise violates any intellectual property right or other right of any person, or that violates any applicable law. Customer shall abide by all applicable local, state, national and international laws and regulations.",
+      "paraindetifier": "4D9BB920"
+    },
+    {
+      "text": "CoreWeave Access to Information. Subject to its restrictions in Section 4(a), CoreWeave reserves the right to access and disclose information solely for the purpose of and to the extent it reasonably believes is necessary to (i) respond to any applicable law, regulation, legal process or valid governmental request; (ii) enforce this Agreement, including investigation of potential violations hereof; (iii) detect, prevent, or otherwise address fraud, security or technical issues; or (iv) respond to user support requests by Customer. Relative to this Section 3(d)(i,unless prohibited by the applicable request, before responding to such request, CoreWeave will redirect the entity seeking information to Customer and notify Customer of the request. Except for as described in the preceding sentence or pursuant to section 6 (Confidentiality), CoreWeave will not disclose any Customer Confidential Information to any third party without Customer’s prior written consent.",
+      "paraindetifier": "6A19EE2B"
+    },
+    {
+      "text": "OFAC Compliance. The Services may be subject to compliance with the trade and economic sanctions maintained by the Office of Foreign Assets Control (“OFAC”). By accessing the Services, Customer agrees to comply with these laws and regulations. Specifically, Customer represents and warrants that it is not: (i) located in any country that is subject to OFAC’s trade and economic sanctions; and (ii) an individual or entity included on any U.S. lists of prohibited parties including, the Treasury Department’s List of Specially Designated Nationals List (“SDN List”) and Sectoral Sanctions List (“SSI List”). Additionally, Customer agrees not to (directly or indirectly) sell, export, reexport, transfer, divert, or otherwise dispose of any Services received from CoreWeave in contradiction with these laws and regulations.",
+      "paraindetifier": "7FD2D6E3"
+    },
+    {
+      "text": "Customer Security Protocols. Customer shall employ commercially reasonable and appropriate, in accordance with applicable industry standards, physical, administrative, and technical controls, screening, and security procedures and other safeguards designed to securely administer the distribution and use of its account access credentials and protect against any unauthorized access to or use of the Service. Customer must utilize proper security protocols, such as setting strong passwords and access control mechanisms, safeguarding access to all logins and passwords, and verifying the trustworthiness of persons who are entrusted with account access information. Customer is responsible for any unauthorized access to the Customer’s account (except to the extent caused by a breach of CoreWeave’s obligations under the Security Standards or otherwise arising from a Security Incident of CoreWeave). FOR FURTHER CLARITY, CUSTOMER IS RESPONSIBLE FOR APPLYING APPROPRIATE SECURITY MEASURES TO PROCESSED CUSTOMER DATA, INCLUDING ENCRYPTING SENSITIVE DATA AND TAKING APPROPRIATE STEPS TO PREVENT UNAUTHORIZED ACCESS TO ANY PROCESSED CUSTOMER DATA.",
+      "paraindetifier": "568AB88D"
+    },
+    {
+      "text": "Notification by Customer of Security Incidents. Customer will notify CoreWeave promptly if and when Customer becomes aware of any Security Incidents, including unauthorized access to Customer’s account or account credentials, and shall aid in any investigation or legal action that is taken by authorities and/or CoreWeave to investigate and cure such Security Incident to the extent caused by the Customer account or Customer’s or its End Users’ or Representatives’ use of the Services or failure to comply with Section 3(f) above.",
+      "paraindetifier": "701478F1"
+    },
+    {
+      "text": "PROCESSED CUSTOMER DATA.",
+      "paraindetifier": "68A0B9F6"
+    },
+    {
+      "text": "Processed Customer Data. CoreWeave will not access or use or share Processed Customer Data, except as necessary to provide the Services to Customer or otherwise as required under applicable law. As between Customer and CoreWeave, Customer is and will remain the sole and exclusive owner of all right, title and interest in and to all Processed Customer Data. Subject to this Agreement, by providing Processed Customer Data to or via the Services, Customer grants CoreWeave a license under all of its copyrights embodied in the Processed Customer Data during the Term to host, store, transfer, display, perform, reproduce, modify for the purpose of formatting for display, and distribute Processed Customer Data solely and exclusively for the purpose of providing the Services to Customer. CoreWeave has no obligation to assess Processed Customer Data in order to identify information subject to any specific legal requirements. With respect to Processed Customer Data that is Personal Data (as defined in the Data Processing Agreement), CoreWeave will abide by the terms of the Data Processing Agreement.",
+      "paraindetifier": "790B0B00"
+    },
+    {
+      "text": "Customer Responsibilities. Customer is solely responsible for its Processed Customer Data and agrees that CoreWeave is not and will not in any way be liable for the content of the Processed Customer Data. By providing Processed Customer Data, Customer affirms, represents and warrants that: (i) to Customer’s knowledge its Processed Customer Data and use thereof will not violate this Agreement (including the AUP) or any applicable law or regulation; (ii) Customer is solely responsible for Customer’s development, moderation, operation, maintenance, support and use of Processed Customer Data, including when Processed Customer Data is provided by Customer’s End Users or Representatives; (iii) to its knowledge, Customer’s Processed Customer Data and its use thereof does not and will not:",
+      "paraindetifier": "37B1E9C6"
+    },
+    {
+      "text": "(A) infringe, violate, or misappropriate any third party right, including any copyright, trademark, patent, trade secret, moral right, privacy right, right of publicity, or any other intellectual property or proprietary right; (B) slander, defame, libel, or invade a right of privacy, publicity or other property rights of any other person; or (C) cause Coreweave to violate any law, regulation or rule, or the rights of any third party; and (iv) except for the specific Services provided under this Agreement, Customer is solely responsible for the technical operation of Processed Customer Data, including on behalf of Customer’s End Users and Representatives. COREWEAVE SHALL BEAR NO LIABILITY WITH RESPECT TO PROCESSED CUSTOMER DATA THAT IS LOST OR DAMAGED AS A RESULT OF THE ACTIONS OF CUSTOMER, ITS END USERS, REPRESENTATIVES OR THE ACTIONS OF ANY INDIVIDUAL WHO USES THE SERVICE ON CUSTOMER’S OR ITS END USERS’ OR REPRESENTATIVES’ BEHALF EXCEPT WHERE COREWEAVE IS IN",
+      "paraindetifier": "3F6224A0"
+    },
+    {
+      "text": "BREACH OF ITS OBLIGATIONS UNDER THIS AGREEMENT. For the sake of clarity, nothing in this Section 4(b) shall relieve Coreweave of its express obligations with respect to the moderation, operation, maintenance, support and use of Processed Customer Data by Coreweave under this Agreement.",
+      "paraindetifier": "3323E3D8"
+    },
+    {
+      "text": "Deletion of Processed Customer Data. CoreWeave will implement a zero retention policy in accordance with the Security Standards (defined below), and subject to, applicable law.",
+      "paraindetifier": "02E8A785"
+    },
+    {
+      "text": "Privacy Policy. CoreWeave’s provision of the Services are subject to the Privacy Policy. The Privacy Policy applies only to the Services and does not apply to any third-party website. In the event of a conflict between the Privacy Policy and the DPA or the confidentiality provisions herein, the DPA and this Agreement shall control.",
+      "paraindetifier": "326F48D2"
+    },
+    {
+      "text": "CoreWeave Security Requirements. CoreWeave shall maintain appropriate administrative, physical and technical safeguards to protect the security, confidentiality and integrity of the Services and Processed Customer Data, which includes, but is not limited to, the minimum security measures attached as Exhibit E (the “Security Standards”).",
+      "paraindetifier": "6D63DF09"
+    },
+    {
+      "text": "Notification by CoreWeave of a Security Incident. CoreWeave will notify Customer without undue delay, but in any event within forty-eight (48) hours, after becoming aware of a Security Incident, and will take all appropriate steps to minimize harm and secure the Services, including the Processed Customer Data, and cooperate fully with Customer in investigating and responding to such Security Incident. CoreWeave’s notification of a Security Incident will summarize, to the extent possible, the nature of the incident, the measures taken to mitigate the potential risks and the measures CoreWeave recommends Customer take to address the Security Incident. Notification(s) of any Security Incident(s) will be delivered to the Customer account holder’s email address with a copy to [*] CoreWeave’s notification of or response to a Security Incident under this section will not be construed as an acknowledgement by CoreWeave of any fault or liability with respect to said incident.",
+      "paraindetifier": "2B704672"
+    },
+    {
+      "text": "Aggregate Statistics. In the course of providing the Services, CoreWeave may monitor Customer’s use of the Service to collect and compile statistical data and performance information, analytics, meta-data, generated through instrumentation and logging systems, regarding the operation of the Service, including Customer’s use of the Service (“Aggregated Statistics”). All right, title, and interest in Aggregated Statistics, and all intellectual property rights therein, belong to and are retained solely by CoreWeave. Aggregated Statistics",
+      "paraindetifier": "0D4B45BB"
+    },
+    {
+      "text": "(a) will not include any Processed Customer Data or Customer Confidential Information and (b) must be anonymised and aggregated by Coreweave such that it is not possible to identify Customer or any Customer End User, Affiliate, or Representative.",
+      "paraindetifier": "1BBEC0E5"
+    },
+    {
+      "text": "PROPRIETARY RIGHTS AND LICENSES.",
+      "paraindetifier": "56797633"
+    },
+    {
+      "text": "Ownership. CoreWeave owns all right, title, and interest in and to the Services (including without limitation all software used to provide the Service and all graphics, user interfaces, logos, and trademarks used to provide the Service), and CoreWeave’s Confidential Information, including all intellectual property rights contained therein. CoreWeave may internally use any Feedback that Customer provides to it; provided that this does not include a license under any copyright or patent; provided further that Feedback may not be disclosed to third parties if attributed to, or otherwise identifiable as coming from, Customer. Further, CoreWeave owns all right, title and interest in and to the equipment, hardware, infrastructure and other systems utilized by CoreWeave to provide the Services (“CoreWeave Systems”). Subject to the limited rights expressly granted under this Agreement, CoreWeave, its Affiliates, and its licensors reserve all of their right, title and interest in and to the Services, including all of their related intellectual property rights, and the CoreWeave Systems. No rights are granted to Customer under this Agreement other than as expressly set forth in this Agreement or the applicable Order Form.",
+      "paraindetifier": "0CB86E0E"
+    },
+    {
+      "text": "Use of Third Party Marks. The Services may contain references to other entities’ trademarks and service marks, but such references are for identification purposes only and are used with permission of their respective owners. CoreWeave does not claim ownership in, or any affiliation with, or endorsement or warranty of, any third-party trademarks or service marks appearing in the Services.",
+      "paraindetifier": "1A62B54D"
+    },
+    {
+      "text": "REPRESENTATIONS AND WARRANTIES; DISCLAIMER.",
+      "paraindetifier": "046C28AA"
+    },
+    {
+      "text": "Customer Representations and Warranties. Customer represents and warrants to CoreWeave that: (i) it has the full right and authority to enter into, execute, and perform its obligations under this Agreement; (ii) it has accurately identified itself and to its knowledge, it has not provided any inaccurate information about itself or its End Users to or through the Service; and (iii) the information Customer provides in registering for the Service is accurate and the Customer has the right to use and disclose such information to CoreWeave.",
+      "paraindetifier": "4460C51E"
+    },
+    {
+      "text": "CoreWeave Representations and Warranties. CoreWeave represents and warrants that (i) it has the full right and authority to enter into, execute, and perform its obligations under this Agreement; (ii) during the Term (a) CoreWeave will not materially decrease the overall security of the Service, and (b) the Services will perform materially in accordance with the applicable Documentation and any Order Form (the Order Form controlling in the event of any conflict), (iii) neither the Services or Documentation, nor their provision, receipt or use, in accordance with the applicable Order, infringe or misappropriate any intellectual property or other proprietary right of any third party;",
+      "paraindetifier": "4F76F50D"
+    },
+    {
+      "text": "it has accurately identified itself and to its knowledge, it has not provided any inaccurate information about itself or its subcontractors, and; (v) it does and will comply with all applicable laws and regulations in connection with the Services.",
+      "paraindetifier": "21A3D5CE"
+    },
+    {
+      "text": "DISCLAIMER. EXCEPT AS OTHERWISE PROVIDED UNDER THIS AGREEMENT, COREWEAVE MAKES NO REPRESENTATIONS OR WARRANTIES OF ANY KIND, WHETHER EXPRESS, IMPLIED, STATUTORY OR OTHERWISE REGARDING THE SERVICES, INCLUDING ANY WARRANTY THAT THE SERVICES WILL BE UNINTERRUPTED, ERROR FREE OR FREE OF HARMFUL COMPONENTS, OR THAT ANY CONTENT, INCLUDING PROCESSED CUSTOMER DATA, WILL BE SECURE OR NOT OTHERWISE LOST OR DAMAGED. CUSTOMER ACKNOWLEDGES THAT COREWEAVE DOES NOT CONTROL OR MONITOR THE TRANSFER OF DATA OVER THE INTERNET, AND THAT INTERNET ACCESSIBILITY CARRIES WITH IT THE RISK THAT CUSTOMER’S PRIVACY, CONFIDENTIAL INFORMATION AND PROPERTY MAY BE LOST OR COMPROMISED. EXCEPT AS OTHERWISE PROVIDED UNDER THIS AGREEMENT OR TO THE EXTENT PROHIBITED BY LAW, COREWEAVE DISCLAIMS ALL WARRANTIES, INCLUDING ANY IMPLIED WARRANTIES OF MERCHANTABILITY, TITLE, FITNESS FOR A PARTICULAR PURPOSE, AND ANY WARRANTIES ARISING FROM A COURSE OF DEALING, USAGE OR TRADE PRACTICE.",
+      "paraindetifier": "254E10C3"
+    },
+    {
+      "text": "LIMITATION OF LIABILITY.",
+      "paraindetifier": "0F7335B8"
+    },
+    {
+      "text": "LIMITATION OF LIABILITY. EXCEPT FOR EITHER PARTY’S WILLFUL MISCONDUCT, GROSS NEGLIGENCE OR OBLIGATIONS UNDER SECTION 9(A)Y OR 9(B)(i) (INFRINGEMENT INDEMNIFICATION), OR EITHER PARTY’S BREACH OF SECTIONS 6 (CONFIDENTIALITY), IN NO EVENT SHALL THE AGGREGATE LIABILITY OF EACH PARTY TOGETHER WITH ALL OF ITS AFFILIATES ARISING OUT OF OR RELATED TO THIS AGREEMENT EXCEED THE FEES PAID OR PAYABLE BY CUSTOMER IN THE [SIX MONTHS] PRECEDING THE EVENT GIVING RISE TO THE CLAIM; PROVIDED THAT, NOTWITHSTANDING THE FOREGOING, EACH PARTY’S AGGREGATE LIABILITY WITH RESPECT TO ANY OTHER BREACH OF CONFIDENTIALITY, BREACH OF SECTIONS 4(E) (WITH RESPECT TO COREWEAVE) or 3(F) (WITH RESPECT TO CUSTOMER), OR THE DATA PROCESSING AGREEMENT, SHALL NOT EXCEED THE FEES PAID OR PAYABLE BY CUSTOMER IN THE [TWELVE MONTHS] PRECEDING THE EVENT GIVING RISE TO THE CLAIM. THE FOREGOING LIMITATION WILL APPLY WHETHER AN ACTION IS IN CONTRACT OR TORT AND REGARDLESS OF THE THEORY OF LIABILITY, BUT WILL NOT LIMIT CUSTOMER’S AND ITS AFFILIATES’ PAYMENT OBLIGATIONS UNDER THE “FEES AND PAYMENT” SECTION ABOVE.",
+      "paraindetifier": "51E09BD9"
+    },
+    {
+      "text": "EXCLUSION OF CONSEQUENTIAL AND RELATED DAMAGES. EXCEPT FOR EITHER PARTY’S OBLIGATIONS ARISING UNDER SECTION 6 (CONFIDENTIALITY) AND SECTION 9(A)(Y) (INFRINGEMENT INDEMNIFICATION) AND SECTION 9(B)",
+      "paraindetifier": "56CED006"
+    },
+    {
+      "text": "(i) (INFRINGEMENT INDEMNIFICATION), IN NO EVENT WILL EITHER PARTY OR ITS AFFILIATES HAVE ANY LIABILITY ARISING OUT OF OR RELATED TO THIS AGREEMENT FOR ANY LOST PROFITS, REVENUES, GOODWILL, OR INDIRECT, SPECIAL, INCIDENTAL, CONSEQUENTIAL, COVER, BUSINESS INTERRUPTION OR PUNITIVE DAMAGES, WHETHER AN ACTION IS IN CONTRACT OR TORT AND REGARDLESS OF THE THEORY OF LIABILITY, EVEN IF A PARTY OR ITS AFFILIATES HAVE BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES OR IF A PARTY’S OR ITS AFFILIATES’ REMEDY OTHERWISE FAILS OF ITS ESSENTIAL PURPOSE. THE FOREGOING DISCLAIMER WILL NOT APPLY TO THE EXTENT PROHIBITED BY LAW. NOTWITHSTANDING ANYTHING HEREIN TO THE CONTRARY, THE PARTIES AGREE THAT THE FOLLOWING DAMAGES, COSTS, EXPENSES AND/OR LOSSES SHALL BE DEEMED “DIRECT DAMAGES”: FINES OR SETTLEMENT AMOUNTS OWED TO A STATE OR FEDERAL GOVERNMENTAL AGENCY, THE COST OF NOTIFICATIONS TO INDIVIDUALS OR GOVERNMENT AGENCIES, CREDIT MONITORING AND/OR IDENTITY THEFT INSURANCE FOR AFFECTED INDIVIDUALS FOR A PERIOD NOT TO EXCEED ONE YEAR, OR OTHER MITIGATION EFFORTS REQUIRED TO COMPLY WITH APPLICABLE LAW.",
+      "paraindetifier": "570F5D5B"
+    },
+    {
+      "text": "INDEMNIFICATION.",
+      "paraindetifier": "789EB256"
+    },
+    {
+      "text": "Indemnification by CoreWeave. CoreWeave will indemnify, defend, and hold harmless Customer, its Affiliates and their Representatives against any claim, demand, suit or proceeding made or brought against Customer by a third party arising out of, related to or in connection with any allegation of (X) a Security Incident (as defined under this Agreement or the Data Processing Agreement), except to the extent caused by an act or omission of Customer or its End Users or Representatives, or (Y) infringement or misappropriation of any third party’s intellectual property rights or privacy rights by CoreWeave or the Service (a “Claim Against Customer”), and will indemnify Customer from any damages, reasonable attorney fees and costs incurred by Customer as a result of, or for amounts paid by Customer under a settlement approved by CoreWeave in writing of, a Claim Against Customer. Customer will (i) promptly give CoreWeave written notice of the Claim Against Customer, (ii) give CoreWeave sole control of the defense and settlement of the Claim Against Customer (except that CoreWeave, without Customer’s consent, may not settle any Claim Against Customer, its Affiliates, or Representatives unless it unconditionally releases Customer, its Affiliates, or their Representatives, as applicable, of all liability), and (iii) give CoreWeave all reasonable assistance, at CoreWeave’s expense. If CoreWeave receives information about an infringement or misappropriation claim related to the Service, CoreWeave may in its discretion and at no cost to Customer (A) modify the Service so that it is no longer claimed to infringe or misappropriate so long as it does not result in a breach of CoreWeave’s warranties under “CoreWeave Warranties” above,",
+      "paraindetifier": "7B2C77C9"
+    },
+    {
+      "text": "(B) obtain a license for Customer’s continued use of that Service in accordance with this Agreement, or (C) terminate the applicable Order Form for that Service upon thirty (30) days’ written notice and refund Customer any prepaid fees covering the remainder of the Term with respect to the terminated Service. The above defense and indemnification obligations do not apply to the extent that (1) a Claim Against Customer arises from the use or combination of the Service or any part thereof with software, hardware, data, or processes that are inconsistent with the intended use of the Service, not provided by or on behalf of CoreWeave or not otherwise approved by Coreweave in writing, if the Service or use thereof would not infringe without such combination, (2) the alleged infringement arises from a modification of the Service other than by or on behalf of CoreWeave or at the written direction of Coreweave, or (3) the alleged infringement arises from a failure to timely implement modifications, upgrades, replacements, or enhancements made available to Customer by or on behalf of CoreWeave.",
+      "paraindetifier": "73FC659C"
+    },
+    {
+      "text": "Indemnification by Customer. Customer will indemnify, defend, and hold harmless CoreWeave, its Affiliates and their Representatives against any claim, demand, suit or proceeding made or brought against CoreWeave by a third party arising out of, related to or in connection with (i) an allegation that any Processed Customer Data or Customer’s or its End Users’ use of Processed Customer Data infringes or misappropriates such third party’s intellectual property rights or privacy rights, or (ii) Customer’s or its End Users’ or Representatives’ use of the Service in an unlawful manner or in violation of the Agreement, Order Form, AUP, Maintenance Policy, Data Processing Agreement, Privacy Policy or the Documentation (each a “Claim Against CoreWeave”), and will indemnify CoreWeave from any damages, reasonable attorney fees and costs finally awarded against CoreWeave as a result of, or for any amounts paid by CoreWeave under a settlement approved by Customer in writing of, a Claim Against CoreWeave, provided CoreWeave (A) promptly gives Customer notice of the Claim Against CoreWeave, (B) gives Customer sole control of the defense and settlement of the Claim Against CoreWeave (except that Customer may not settle any Claim Against CoreWeave unless it unconditionally releases CoreWeave of all liability), and (C) gives Customer all reasonable assistance, at Customer’s expense.",
+      "paraindetifier": "34D2FACC"
+    },
+    {
+      "text": "Settling Claims and Separate Counsel. Notwithstanding the foregoing,",
+      "paraindetifier": "4FC4DA74"
+    },
+    {
+      "text": "Neither party will stipulate, admit, or acknowledge fault or liability by the other without their prior written consent. The indemnifying party will not publicize any settlement without the other party’s prior written consent.",
+      "paraindetifier": "4DFD789E"
+    },
+    {
+      "text": "An indemnified party may employ separate counsel and participate in the defense of a Claim Against CoreWeave or Claim Against Customer, as applicable, at its own expense.",
+      "paraindetifier": "1009357F"
+    },
+    {
+      "text": "Exclusive Remedy. This Section 9 states the indemnifying party’s sole liability to, and the indemnified party’s exclusive remedy against, the other party for any third party claim described in this Section 9.",
+      "paraindetifier": "4C55F26C"
+    },
+    {
+      "text": "TERM AND TERMINATION.",
+      "paraindetifier": "35928C04"
+    },
+    {
+      "text": "Term. This Agreement commences on the Effective Date and continues until all Order Forms entered into pursuant hereto have expired or been terminated in accordance with the Section 10(b) (“Term”).",
+      "paraindetifier": "52123717"
+    },
+    {
+      "text": "Termination. A Party may terminate this Agreement (including each Order Form) for cause (i) upon forty-five (45) days written notice to the other Party of a material breach if such material breach remains uncured at the expiration of such period, or (ii) if the other Party becomes the subject of a petition in bankruptcy or any other proceeding relating to insolvency, receivership, liquidation or assignment for the benefit of creditors.",
+      "paraindetifier": "1FD84BB1"
+    },
+    {
+      "text": "Refund or Payment Upon Termination; Partial Termination. If this Agreement or any Order Form is terminated by Customer in accordance with Section 10(b) of the “Termination” section above, CoreWeave will refund Customer any prepaid fees covering the remainder of the term of all applicable Order Forms after the effective date of termination. If this Agreement or an Order Form is terminated by CoreWeave in accordance with Section 10(b) of the “Termination” section above, then subject to the terms below in this Section 10(c), for the period of time from termination by CoreWeave through the date CoreWeave transfers away from Customer all of the Contract Servers pursuant to the below terms (“Termination Period”): (i) during the Termination Period, Customer will continue to pay any unpaid fees covering the remainder of the term of all applicable Order Forms in accordance with Section 11(a) below, and (ii) to the extent CoreWeave has received any prepaid amounts, CoreWeave may, immediately without notice to Customer, setoff any amounts owed to CoreWeave with such prepaid amounts; provided, that in no event will Customer pay any fees (whether by setoff or otherwise) for any Services that Customer does not receive from CoreWeave (provided for the sake of clarity that Customer cannot refuse to receive Services during the Termination Period to avoid such fees). In no event will termination relieve Customer of its obligation to pay any fees payable to CoreWeave for the period prior to the effective date of termination. In the event of a Reserved Instance, if Customer has not cured a breach during the cure period specified in accordance with Section 10(b) above or 11(a) below, during the Termination Period, CoreWeave may, subject to its confidentiality obligations, transfer or sell any part of the Contract Servers configured with respect to Customer’s Reserved Instance, without recourse or liability owed to Customer, or configure any part of the Contract Servers for a new customer of CoreWeave, without recourse or liability owed to Customer. Any revenue generated from such transfers or sales of any part of the Contract Servers configured with respect to Customer’s Reserved Instance will be deducted from the amounts Customer owes to CoreWeave. For the avoidance of doubt, subject to CoreWeave’s confidentiality obligations, such partial termination and transfer described in the immediately preceding sentences shall not relieve Customer of its remaining obligations with respect to any untransferred or unsold part of the Contract Servers provided that CoreWeave continues to provide the Services for such untransferred or unsold part of the Contract Servers during the Termination Period. To the extent CoreWeave continues to provide Services during the Termination Period, then both parties shall continue to abide by the terms and conditions set forth in this Agreement with respect to the provision or receipt of such Services. Notwithstanding anything set forth herein to the contrary, (i) nothing in this Section 10(c) shall prevent either party from pursuing any remedy available to such party under this Agreement or in equity or under law; and (ii) in the event that CoreWeave terminates this Agreement pursuant to Section 10(b) for a material breach by Customer arising out of (A) Customer’s material violation of law that cannot be cured and that would reasonably be expected to cause damage to CoreWeave if the Services were continued, (B) Customer’s failure to pay properly invoiced and undisputed fees pursuant to the terms of this Agreement; provided Customer has not cured such failure pursuant to the cure periods provided for under this Agreement (including, for the avoidance of doubt, the [45 day cure period] following receipt of notice from CoreWeave of a material breach such non-payment), or (C) Customer’s gross negligence, willful misconduct or fraud, and CoreWeave chooses, in its reasonable discretion, not to continue to provide the Services during the Termination Period, then Customer shall pay the lesser of (I) fees due for the remainder of the term minus proceeds from CoreWeave’s transfer or sale of the Contract Servers, or (II) from the commencement date of this Agreement through the termination date, the difference between fees paid and fees charged at CoreWeave’s on-demand rates. CoreWeave acknowledges and agrees that it will use all reasonable efforts to transfer or sell the remaining Contract Services on commercially reasonable terms to minimize the fees payable by Customer pursuant to this Section 10(c).",
+      "paraindetifier": "2FA1A566"
+    },
+    {
+      "text": "Survival. Upon termination or expiration of this Agreement (or any Order Form), each term that by its nature shall survive such termination or expiration will survive.",
+      "paraindetifier": "6752F9E4"
+    },
+    {
+      "text": "PAYMENT OF FEES.",
+      "paraindetifier": "2328B49E"
+    },
+    {
+      "text": "Payment of Fees. Fees for either Reserved Compute Instances or Bulk Credits are due and payable in accordance with the applicable Order Forms and this Agreement. Any on-demand use by Customer will be billed monthly in arrears based on the Customer’s prior month’s usage. Customer will pay CoreWeave fees stated in each Order Form. CoreWeave is responsible for expenses it incurs unless agreed otherwise in an Order Form. CoreWeave will not markup expenses Customer agrees to pay. CoreWeave will not offset against amounts Customer owes unless agreed otherwise expressly set forth in this Agreement or in an Order Form. After Customer accepts Services and receives a proper and undisputed invoice, it will pay Fees and approved expenses",
+      "paraindetifier": "6BA5D0DC"
+    },
+    {
+      "text": "Net 10 days less a [*]% discount on the invoiced amount (provided, for clarity, this discount is not available in connection with the payment of the Upfront Payment identified in an Order Form); or",
+      "paraindetifier": "534A825B"
+    },
+    {
+      "text": "Net 60 days with [*].",
+      "paraindetifier": "6C77AF67"
+    },
+    {
+      "text": "PO Terms and Conditions and CoreWeave compensation. For each Order Form, purchase order(s) are issued to CoreWeave (or a CoreWeave Affiliate) to enable Customer (or Customer Affiliate) payment capabilities, and each purchase order references purchase order terms and conditions (“PO Terms and Conditions”). Notwithstanding anything to the contrary in this Agreement or any PO Terms and Conditions, if the PO Terms and Conditions issued in connection with an Order Form conflict with, or have any terms additional to, the terms in this Section, then those PO Terms and Conditions will govern, but solely with respect to the applicable Order Form. Notwithstanding the foregoing the terms of the Order Form attached to this Agreement with respect to the Upfront Payment superseded the terms in this Section.",
+      "paraindetifier": "4690F429"
+    },
+    {
+      "text": "MS Invoice. CoreWeave will invoice Customer using MS Invoice according to SupplierWeb (microsoft.com). CoreWeave will not charge Customer for researching, reporting on, or correcting invoice-related errors. CoreWeave will not date its invoices earlier than the date Customer may be paid under an applicable Order Form. If a date is not specified in a Order Form CoreWeave may issue invoices monthly in arrears.",
+      "paraindetifier": "4EC36400"
+    },
+    {
+      "text": "Disputed amounts. Customer may dispute any invoice amount (each, a “Disputed Amount”) by providing written notice to CoreWeave. Partial payment is notice from Customer of a Disputed Amount. Customer will make commercially reasonable efforts to notify CoreWeave in writing of any Disputed Amount within 60 days of receiving the invoice. Customer’s failure to provide notice or payment of an invoice does not waive any of its claims or rights Customer will pay CoreWeave within 60 days from the date of dispute resolution.",
+      "paraindetifier": "38E021C7"
+    },
+    {
+      "text": "Late invoices. Customer is not obligated to pay any invoice received 120 days or more after the date CoreWeave was required to invoice Customer under this Agreement or an applicable Order Form. This does not apply to:",
+      "paraindetifier": "097C979A"
+    },
+    {
+      "text": "amounts paid after a dispute;",
+      "paraindetifier": "0BD0AD4A"
+    },
+    {
+      "text": "rejected invoices that are first received timely and then corrected;",
+      "paraindetifier": "5F94A827"
+    },
+    {
+      "text": "invoices delayed due to Microsoft’s actions or omissions; or",
+      "paraindetifier": "6503C9D1"
+    },
+    {
+      "text": "delays the parties have agreed to in writing.",
+      "paraindetifier": "5D62351C"
+    },
+    {
+      "text": "Taxes. Except as otherwise provided below, the amounts to be paid by Customer to CoreWeave do not include taxes. Customer is not liable for any taxes CoreWeave is legally obligated to pay, including net income or gross receipts taxes, franchise taxes, and property taxes. Customer will pay CoreWeave sales, use, or value added taxes it owes due to this Agreement that applicable law requires CoreWeave to collect from Customer. Customer will not be involved in the importation of the goods/services, and import taxes are the responsibility of CoreWeave unless otherwise agreed in an Order Form. If Customer provides CoreWeave a valid exemption certification, CoreWeave will not collect the taxes covered by such certificate. If applicable law requires Customer to withhold taxes from payments to CoreWeave, Customer may withhold those taxes and pay them to the appropriate taxing authority; provided that such taxes shall be in addition to all fees due and payable under each Order Form. Customer will deliver to CoreWeave an official receipt for such taxes. Customer will use reasonable efforts to minimize taxes withheld to the extent allowed by Law.",
+      "paraindetifier": "1B9C5960"
+    },
+    {
+      "text": "AVAILABILITY OF SERVICE.",
+      "paraindetifier": "00077B31"
+    },
+    {
+      "text": "Maintenance. Interruptions of data processing and access may occur due to planned or emergency maintenance and repair by CoreWeave, or due to a Force Majeure Event (as defined in Section 13.c.). Subject to the Service Level Objective, under no circumstances will CoreWeave be held liable for any financial or other damages due to such interruptions. For the purposes of this Section 12, maintenance shall include, planned maintenance windows (scheduled and communicated to Customer using best commercial efforts to notify in as much advance as possible, as needed, but in no event less than five (5) business days in advance), planned critical maintenance (communicated to Customer using best commercial efforts to notify in as much advance time, as needed, but in no event less than 24 hours’ notice in advance) and emergency unplanned maintenance windows (critical, unforeseen maintenance needed for the security or performance of the Services). CoreWeave will use best efforts to conduct maintenance at non-peak hours (as may be communicated by Customer from time to time) and inform Customer in advance if CoreWeave plans to exercise a quarterly planned maintenance window.",
+      "paraindetifier": "3A0DC61E"
+    },
+    {
+      "text": "Service Level Objective. CoreWeave provides the Services to Customer at the service levels objectives (“Service Level Objective” or “SLO”) detailed in Exhibit A.",
+      "paraindetifier": "3D763308"
+    },
+    {
+      "text": "Hardware Failures. CoreWeave shall promptly notify Customer in the event a Hardware Failure occurs and, for so long as such Hardware Failure continues, CoreWeave shall use best efforts to repair the hardware without undue delay. CoreWeave shall promptly notify Customer when the Hardware Failure has been resolved. To the extent the Hardware Failure continues for a period of two (2) consecutive business days, then Customer’s payment obligations pursuant to Section 11(a) for fees payable for Services not performed due to the Hardware Failure shall be canceled with respect to such Services. Payment obligations for such hardware will not recommence until such time that the Hardware Failure is resolved and Services of such hardware are restored.",
+      "paraindetifier": "068E9EBF"
+    },
+    {
+      "text": "Hardware Spares: Coreweave shall maintain the right amount of spares in all locations to replace the network switches or compute nodes that cannot be remediated from a hardware failure beyond the 2 consecutive business days.",
+      "paraindetifier": "286CA90E"
+    },
+    {
+      "text": "GENERAL.",
+      "paraindetifier": "31869477"
+    },
+    {
+      "text": "No Publicity. Coreweave shall not disclose to any third party for use in advertising, publicity or similar initiatives: (i) the identity of Customer or any of its Affiliates or Representatives or End Users as a customer or the existence or nature of the relationship of the parties under this Agreement; or (ii) any name or logo of Customer, any of its Affiliates or Representatives or End Users. Any breach of this Section 13(a) shall be deemed a material breach of this Agreement.",
+      "paraindetifier": "12FA6549"
+    },
+    {
+      "text": "Governing Law; Venue. This Agreement shall be governed by and interpreted in accordance with the laws of the State of New York, without regard to its principles regarding conflicts of law. Each Party hereby irrevocably submits to, and waives any objection to, the exclusive personal jurisdiction and venue of the courts located within the city and county of New York County, New York.",
+      "paraindetifier": "2B0C6302"
+    },
+    {
+      "text": "Force Majeure. CoreWeave will not be liable for any delay or failure to perform the Services under this Agreement due to circumstances beyond CoreWeave’s reasonable control, including acts of God, acts of government, flood, fire, earthquakes, pandemics, civil unrest, acts of terror, strikes or other labor problems, regional shortage of adequate power or telecommunications or transportation, internet or other service disruptions involving hardware, software or power systems not within CoreWeave’s possession or reasonable control, and denial of service attacks (“Force Majeure Event”). CoreWeave shall promptly notify Customer in the event a Force Majeure Event occurs and, for so long as such Force Majeure Event continues, CoreWeave shall use best efforts to recommence its performance hereunder without undue delay. CoreWeave shall promptly notify Customer when the Force Majeure Event has abated or can be circumvented. To the extent the Force Majeure Event continues for a period of two (2) consecutive business days, then Customer’s payment obligations pursuant to Section 11(a) for fees payable for Services not performed due to the Force Majeure Event shall be canceled with respect to such services. Payment obligations will not recommence until such time that the Force Majeure Event is cured and Services are restored. For clarity, CoreWeave shall only be excused from performance under this Section 13(c) to the extent CoreWeave has implemented its disaster recovery and business continuity plan but was unable to resume performance despite enacting such plans.",
+      "paraindetifier": "153F1421"
+    },
+    {
+      "text": "Anti-Corruption. Neither Party has received or been offered any illegal or improper bribe, kickback, payment, gift, or thing of value from an employee or agent of the other Party in connection with this Agreement. Reasonable gifts and entertainment provided in the ordinary course of business do not violate the above restriction.",
+      "paraindetifier": "2FF3E5A5"
+    },
+    {
+      "text": "Entire Agreement. This Agreement (including all documents, policies, agreements and addendums incorporated herein by reference) is the entire agreement between the Parties regarding Customer’s use of the Services and supersedes all prior and contemporaneous agreements, proposals or representations, written or oral, concerning its subject matter. In the event of any conflict or inconsistency among the following documents, the order of precedence shall be: (i) the applicable Order Form, (ii) any exhibit, schedule or addendum to this Agreement (including to the extent incorporated by reference), (iii) the body of this Agreement, and (iv) the Documentation. Titles and headings of sections of this Agreement are for convenience only and shall not affect the construction of any provision of this Agreement.",
+      "paraindetifier": "3ABDB280"
+    },
+    {
+      "text": "Notices; Electronic Communications. CoreWeave may send notices pursuant to this Agreement to the email designated in Customer’s account, and such notices will be deemed received 24 hours after they are sent. Any notices to be provided to CoreWeave or questions with respect to the terms of this Agreement shall be sent to legalnotices@coreweave.com, and such notices will be deemed received 24 hours after they are sent.",
+      "paraindetifier": "22063CFE"
+    },
+    {
+      "text": "Assignment. Neither Party may assign this Agreement, whether by operation of law or otherwise, without the other Party’s prior written consent (not to be unreasonably withheld); provided, however, either Party may assign this Agreement in its entirety (including all Order Forms), without the other Party’s consent, in connection with a merger, acquisition, corporate reorganization, or sale of all or substantially all of its assets. Customer reserves the right to terminate in the event of CoreWeave acquisition. Customer may assign this Agreement to any of its Affiliates upon written notice to CoreWeave. If a Party is acquired by, sells substantially all of its assets to, or undergoes a change of control in favor of, a direct competitor of the other Party, then such other Party may terminate this Agreement upon written notice. Subject to the foregoing, this Agreement will bind and inure to the benefit of the Parties, their respective successors and permitted assigns.",
+      "paraindetifier": "645E9A16"
+    },
+    {
+      "text": "Waiver. Failure to exercise or enforce any right or provision of this Agreement shall not constitute a waiver of such right or provision.",
+      "paraindetifier": "1C4A3894"
+    },
+    {
+      "text": "Independent Contractors. The Parties are independent contractors and shall so represent themselves in all regards. Neither Party is the agent of the other, and neither may make commitments on the other’s behalf.",
+      "paraindetifier": "66693F89"
+    },
+    {
+      "text": "Third-Party Software. Any use of or access to third-party software granted by CoreWeave shall be identified to Customer in writing prior to Customer’s access or use and such writing shall identify the license terms and conditions of such third-party software to which CoreWeave may be bound.",
+      "paraindetifier": "6EB74654"
+    },
+    {
+      "text": "Severability. In the event any one or more of the provisions of this Agreement shall for any reason be held to be invalid, illegal or unenforceable, the same shall not affect the validity or enforceability of any other provisions of the Agreement.",
+      "paraindetifier": "0812035F"
+    },
+    {
+      "text": "Counterparts. This Agreement may be executed electronically and in counterparts.",
+      "paraindetifier": "36181AEB"
+    },
+    {
+      "text": "Signed by each Party’s authorized representative:",
+      "paraindetifier": "48C7D96F"
+    },
+    {
+      "text": "CoreWeave, Inc.\tCustomer",
+      "paraindetifier": "6E019666"
+    },
+    {
+      "text": "By:  /s/ Michael Intrator\tBy:  /s/ Dave O’Hara",
+      "paraindetifier": "1AD9F00A"
+    },
+    {
+      "text": "Print Name: Michael Intrator\tPrint Name: Dave O’ Hara",
+      "paraindetifier": "35DA80B5"
+    },
+    {
+      "text": "Title: CEO\tTitle: EVP & CFO, Commercial",
+      "paraindetifier": "1A8867C3"
+    },
+    {
+      "text": "Feb 22, 2023\tFeb 22, 2023",
+      "paraindetifier": "7E016CAB"
+    }
+  ],
+  "party_represented": "Customer (Microsoft Corporation)",
+  "review_objective": "Review the Master Services Agreement from the Customer's perspective to identify risks, unfavorable terms and gaps in protection, and recommend revisions.",
+  "specific_concerns": "Service levels, hardware failure and maintenance remedies; limitation of liability and indemnification; fees, Bulk Credits and Reserved Instances commitments; data processing and security incident obligations; termination rights and Acceptable Use Policy restrictions.",
+  "agreement_type": "Master Services Agreement (cloud infrastructure / compute services)"
+}

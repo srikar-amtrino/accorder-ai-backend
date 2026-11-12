@@ -35,6 +35,12 @@ class IngestionService:
         from src.core.container import get_embedding_service
 
         self.embedding_service: BaseEmbeddingService = get_embedding_service()
+        if self.embedding_service is None:
+            raise RuntimeError(
+                "IngestionService requires a local embedding service (HuggingFace/SentenceTransformers) "
+                "which is unavailable on this machine (torch.dll blocked by OS Application Control). "
+                "IngestionService will not be initialized."
+            )
 
     async def _parse_data(self, data: Union[BytesIO, Dict[str, Any]], session_data: SessionData = None) -> ParseResult:
         """Parse data using the registry services."""

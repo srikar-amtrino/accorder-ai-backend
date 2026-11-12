@@ -277,6 +277,11 @@ class DocxParser(BaseParser):
         from src.core.container import get_embedding_service
 
         self.embedding_service: BaseEmbeddingService = get_embedding_service()
+        if self.embedding_service is None:
+            raise RuntimeError(
+                "SemanticParser requires a local embedding service (HuggingFace/SentenceTransformers) "
+                "which is unavailable on this machine (torch.dll blocked by OS Application Control)."
+            )
         self.vector_store = get_faiss_vector_store(self.embedding_service.get_embedding_dimensions())
         self._embed_sem = asyncio.Semaphore(_MAX_CONCURRENT_BATCHES)
 

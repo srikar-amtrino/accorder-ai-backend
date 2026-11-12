@@ -100,6 +100,80 @@ class Suggestion(BaseModel):
         return {"Minor": "Low", "Moderate": "Medium", "Severe": "High", "Major": "High", "Critical": "High"}.get(canonical, canonical)
 
 
+class CriterionAnswerRaw(BaseModel):
+    """A single criterion evaluation from the extraction LLM call."""
+
+    criterion_id: str = Field(description="ID of the criterion evaluated, e.g. 'LOL-01' or 'GEN-01'")
+    answer: Literal["Met", "Partly met", "Not met", "Unclear", "Not applicable"] = Field(
+        description="The evaluation outcome"
+    )
+    quote: Optional[str] = Field(default=None, description="Exact verbatim quote from the clause text, or 'Not stated in text'")
+    source_para_id: Optional[str] = Field(default=None, description="The paragraph identifier where the issue/quote is located")
+
+    @field_validator("answer", mode="before")
+    @classmethod
+    def _normalize_answer(cls, value: Any) -> Any:
+        if not isinstance(value, str):
+            return value
+        v = value.strip().replace("_", " ").title()
+        mapping = {
+            "Met": "Met",
+            "Partly Met": "Partly met",
+            "Not Met": "Not met",
+            "Unclear": "Unclear",
+            "Not Applicable": "Not applicable",
+            "N/A": "Not applicable",
+            "Na": "Not applicable",
+        }
+        return mapping.get(v, v)
+
+
+class ExtractionResponse(BaseModel):
+    """Response model for the criteria extraction stage."""
+
+    is_type_match: bool = Field(
+        default=True,
+        description="Whether the clause text actually pertains to the assigned clause type"
+    )
+    answers: List[CriterionAnswerRaw] = Field(default_factory=list, description="List of answers for each criterion")
+
+    @field_validator("answers", mode="before")
+    @classmethod
+    def _parse_answers_array(cls, value: Any) -> Any:
+        """Parse answers array if Bedrock serialized it as a JSON string."""
+        if isinstance(value, str):
+            stripped = value.strip()
+            if stripped.startswith("```"):
+                stripped = stripped.strip("`").removeprefix("json").strip()
+            try:
+                return json.loads(stripped)
+            except json.JSONDecodeError:
+                return json.loads(_escape_inner_quotes(stripped))
+        return value
+
+
+class ExplanationResponse(BaseModel):
+    """Response model for the explanation and rewrite stage."""
+
+    reason: str = Field(description="Plain-language justification for the change, grounded in the clause text")
+    suggested_fix: str = Field(description="Complete revised replacement for original_text")
+
+
+class FragmentFindingRaw(BaseModel):
+    """A single defect finding on an orphaned fragment."""
+
+    defect_id: str = Field(description="FRG-01 or FRG-02")
+    reason: str = Field(description="Short plain-language explanation of the drafting defect")
+    suggested_fix: str = Field(description="Corrected replacement for the paragraph")
+    risk_level: Literal["Low", "Medium", "High"] = Field(default="Low", description="Risk level (always Low)")
+
+
+class FragmentDefectResponse(BaseModel):
+    """Response model for the fragment defect check."""
+
+    findings: List[FragmentFindingRaw] = Field(default_factory=list, description="List of drafting defects found")
+
+
 class GeneralReviewResponse(BaseModel):
     """Response from the general review endpoint."""
 

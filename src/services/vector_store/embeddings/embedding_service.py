@@ -1,7 +1,10 @@
 import time
 from typing import Any, Dict, List, Optional
 
-from sentence_transformers import SentenceTransformer
+try:
+    from sentence_transformers import SentenceTransformer
+except (ImportError, OSError):
+    SentenceTransformer = None
 
 from src.config.logging import get_logger
 from src.config.settings import get_settings
@@ -21,6 +24,14 @@ class HuggingFaceEmbeddingService(BaseEmbeddingService):
 
         self.settings = get_settings()
         self.model_name = self.settings.huggingface_minilm_embedding_model
+
+        if SentenceTransformer is None:
+            raise RuntimeError(
+                "sentence_transformers / torch is not available on this machine "
+                "(blocked by OS Application Control policy or not installed). "
+                "HuggingFaceEmbeddingService cannot be initialised. "
+                "The Qdrant embedding client will be used instead."
+            )
 
         self.tokenizer = SentenceTransformer(model_name_or_path=self.model_name)
         logger.info("Initialized HuggingFace Model", model_name=self.model_name)

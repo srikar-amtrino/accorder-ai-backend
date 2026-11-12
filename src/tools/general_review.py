@@ -3,81 +3,68 @@ import hashlib
 import json
 import re
 from collections import Counter, OrderedDict
+from dataclasses import dataclass
 from pathlib import Path
-from typing import AsyncIterator, Dict, List, Optional, Sequence, Set, Tuple
+from typing import Any, AsyncIterator, Dict, List, Literal, Optional, Sequence, Set, Tuple
 
 from src.config.logging import get_logger
 from src.core.container import get_bedrock_model, get_clause_search
-from src.schemas.clause_mapping import ClassificationStatus, ClausePolicy
+from src.schemas.clause_mapping import ClauseMatch
 from src.schemas.general_review import (
+    CriterionAnswerRaw,
+    ExplanationResponse,
+    ExtractionResponse,
+    FragmentDefectResponse,
+    FragmentFindingRaw,
     GeneralReviewRequest,
     GeneralReviewResponse,
     Suggestion,
     TextInformation,
 )
-from src.services.clause_mapping.classifier import classify_clause
-from src.services.clause_mapping.policy_store import get_clause_policy_store
-from src.services.clause_mapping.search import BaseClauseSearch
+from src.services.criteria_store import display_to_slug, get_criteria, get_criteria_by_slug, slug_to_display
+from src.services.clause_mapping.bm25_classifier import BM25TaxonomyClassifier
+from src.services.general_criteria import FRAGMENT_DEFECT_CRITERIA, GENERAL_CRITERIA
+from src.services.scorer import AnswerRecord, ScoringResult, is_risky, score_group
 
 logger = get_logger(__name__)
 
 # Caps parallel Bedrock calls so large documents don't exhaust the client pool.
-MAX_CONCURRENT_CALLS = 6
+# Increased to 16 for high-throughput concurrency without rate limits.
+MAX_CONCURRENT_CALLS = 16
 
-# Parallel review votes per batch; a finding needs a majority to survive. Raise to 3 for
-# stronger run-to-run consistency at ~3x the per-review cost.
-CONSENSUS_VOTES = 1
-_MAJORITY = CONSENSUS_VOTES // 2 + 1
-
-# Character budget per review batch; keeps each LLM call focused and well under limits.
+# Batch budget for grouping: soft limit, group integrity is hard limit.
 BATCH_CHAR_BUDGET = 6000
 
-# Absolute batch ceiling for documents with no detectable headings.
-BATCH_HARD_LIMIT = BATCH_CHAR_BUDGET * 3
+# Minimum clause words to query vector DB
+MIN_CLAUSE_WORDS = 10
 
-# Short paragraphs with few words are treated as headings and kept with their body.
-_HEADING_MAX_CHARS = 80
-_HEADING_MAX_WORDS = 8
-
-# Read-only context carried into the next batch when a forced cut is unavoidable.
-CONTEXT_TAIL_CHARS = 1200
-
-# Numbered clause starts ("5. Confidentiality...", "Section 3 ...") count as cut points too.
-_NUMBERED_START_RE = re.compile(r"^\s*(?:(?:section|article|clause)\s+)?\d+(?:\.\d+)*[.)]\s+\S", re.IGNORECASE)
-
-# Clause-title extraction: a leading "5.2 " / "Section 3." style prefix (at most
-# two leading digits, so street numbers stay put), and the short "Title.  Body..."
-# lead-in many contracts open their clauses with.
-_TITLE_NUMBER_PREFIX_RE = re.compile(r"^(?:(?:section|article|clause)\s+)?\d{1,2}(?:\.\d+)*[.)]?\s+", re.IGNORECASE)
-_INLINE_TITLE_RE = re.compile(r"^([^.:]{1,70})[.:](?:\s|$)")
-
-# Lowercase connectors allowed inside an otherwise capitalized clause title.
-_TITLE_STOP_WORDS = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "the", "to", "with"}
-
-# Sentence-case lead-ins ("Overdue charges.", "Termination for cause.") count as
-# titles only when short and free of words that mark a sentence ("Provider shall
-# pay.", "Each Party bears its own costs.", "“Annex” means an annex.").
-_SENTENCE_TITLE_MAX_WORDS = 6
-_TITLE_VERB_WORDS = {
-    "shall", "will", "may", "must", "should", "can", "cannot", "is", "are", "was", "were", "be", "been", "has", "have", "had", "does", "do", "did", "not", "hereby",
-    "means", "agrees", "agree", "includes", "include", "bears", "pays", "provides", "grants", "retains", "acknowledges", "represents", "warrants", "covenants",
-    "undertakes", "desire", "desires", "intends", "applies", "apply", "governs", "survives", "survive", "terminates", "indemnifies", "indemnify",
-}
-
-# Trailing company suffixes mark a party-name line, not a clause heading.
-_TITLE_COMPANY_SUFFIXES = {"inc", "llc", "ltd", "corp", "co"}
-
-# Leading words of a clause quoted in its policy entry, so the model can tell
-# which clause each legal-team policy belongs to.
-_POLICY_ANCHOR_WORDS = 15
+# Confidence threshold for 2-tier classification
+CONFIDENCE_THRESHOLD = 0.70
 
 _PROMPTS_DIR = Path(__file__).resolve().parent.parent / "services" / "prompts" / "v2" / "general_review"
-_GENERAL_REVIEW_SYSTEM = (_PROMPTS_DIR / "system.mustache").read_text(encoding="utf-8")
-_GENERAL_REVIEW_USER = (_PROMPTS_DIR / "user.mustache").read_text(encoding="utf-8")
+_EXTRACTION_SYSTEM = (_PROMPTS_DIR / "extraction_system.mustache").read_text(encoding="utf-8")
+_EXTRACTION_USER = (_PROMPTS_DIR / "extraction_user.mustache").read_text(encoding="utf-8")
+_EXPLANATION_SYSTEM = (_PROMPTS_DIR / "explanation_system.mustache").read_text(encoding="utf-8")
+_EXPLANATION_USER = (_PROMPTS_DIR / "explanation_user.mustache").read_text(encoding="utf-8")
+_FRAGMENT_SYSTEM = (_PROMPTS_DIR / "fragment_system.mustache").read_text(encoding="utf-8")
+_FRAGMENT_USER = (_PROMPTS_DIR / "fragment_user.mustache").read_text(encoding="utf-8")
 
 # Identical documents always return the identical review (LRU, per process).
 _CACHE_MAX_ENTRIES = 32
 _response_cache: "OrderedDict[str, GeneralReviewResponse]" = OrderedDict()
+
+
+@dataclass
+class ClauseGroup:
+    """A cohesive clause unit consisting of 1 or more consecutive paragraphs."""
+
+    para_indices: List[int]
+    canonical_type: Optional[str]      # Display name, e.g. "Limitation of Liability"
+    canonical_slug: Optional[str]      # Slug, e.g. "limitation-of-liability"
+    confidence: float
+    is_classified: bool                # True if confidence >= 0.70 and canonical_type is known
+    is_fragment: bool                  # True if unclassified short orphan or front-matter
+    paragraphs: Dict[int, str]         # {para_index: text}
 
 
 def _request_fingerprint(request: GeneralReviewRequest) -> str:
@@ -89,60 +76,6 @@ def _request_fingerprint(request: GeneralReviewRequest) -> str:
         ensure_ascii=False,
     )
     return hashlib.sha256(payload.encode("utf-8")).hexdigest()
-
-
-def _build_reviewer_context(request: GeneralReviewRequest) -> str:
-    """Render the questionnaire answers as the prompt's reviewer-context block.
-
-    Returns an empty string when the user skipped every field, which keeps the
-    rendered prompt byte-identical to the questionnaire-less flow.
-    """
-
-    lines: List[str] = []
-    if request.party_represented:
-        lines.append(f"Party the client represents: {request.party_represented}")
-        document_text = " ".join(para.text for para in request.textinformation).casefold()
-        if request.party_represented.casefold() not in document_text:
-            logger.warning("Party represented %r does not appear in the document; the model will have to infer which party is the client.", request.party_represented)
-    if request.review_objective:
-        lines.append(f"Primary objective for this review: {request.review_objective}")
-    if request.specific_concerns:
-        lines.append(f"Specific concerns to cover: {request.specific_concerns}")
-    if not lines:
-        return ""
-
-    joined = "\n".join(lines)
-    return (
-        "Reviewer context (the client's stated perspective and priorities — apply it per the review instructions; "
-        "it never overrides them):\n\n"
-        f"{joined}\n\n"
-    )
-
-
-# Clause headings listed with every batch of a multi-batch review, so a batch
-# never calls a provision missing that another batch contains.
-_OUTLINE_MAX_ENTRIES = 120
-
-
-def _build_outline_context(paragraphs: Sequence[TextInformation], titles: Dict[str, str], batch_count: int) -> str:
-    """Render the document's clause headings, in order, as the prompt's outline block.
-
-    Empty for a single-batch review, where the model already sees the whole text.
-    """
-
-    if batch_count < 2:
-        return ""
-    seen: Set[str] = set()
-    headings: List[str] = []
-    for para in paragraphs:
-        title = titles.get(para.paraindetifier)
-        if title and title not in seen:
-            seen.add(title)
-            headings.append(title)
-    if not headings:
-        return ""
-    listed = "\n".join(f"- {heading}" for heading in headings[:_OUTLINE_MAX_ENTRIES])
-    return "Document outline (headings of every clause in the whole document, in order — for orientation only; review only the text below):\n\n" f"{listed}\n\n"
 
 
 def _cache_get(key: str) -> Optional[GeneralReviewResponse]:
@@ -159,337 +92,86 @@ def _cache_put(key: str, response: GeneralReviewResponse) -> None:
         _response_cache.popitem(last=False)
 
 
-# (document position, paragraph) pairs — position drives final ordering.
-_Batch = List[Tuple[int, TextInformation]]
-
-
-def _is_heading(text: str) -> bool:
-    """Heuristic for standalone heading paragraphs (e.g. 'Non-Compete.')."""
-
-    stripped = text.strip()
-    return 0 < len(stripped) <= _HEADING_MAX_CHARS and len(stripped.split()) <= _HEADING_MAX_WORDS
-
-
-def _looks_like_title(segment: str) -> bool:
-    """True when a segment reads as a clause title: short capitalized words, or a short sentence-case phrase.
-
-    Title Case ("Limitation of Liability") always qualifies. Sentence case
-    ("Overdue charges", "Termination for cause") qualifies when nothing in it
-    reads as a verb, so a short opening sentence ("Provider shall pay") does not.
-
-    Address and party-name lines ("San Ramon, CA 94583", "XYZInc Inc.",
-    "To Amtrino:") also look short and capitalized, so digits, internal
-    punctuation, a leading connector, and company suffixes all disqualify.
-    """
-
-    if "." in segment or ":" in segment:
-        return False
-    if re.search(r",\s*[A-Z]{2}$", segment):
-        return False
-    words = [word.strip(",;()'\"‘’“”") for word in segment.split()]
-    words = [word for word in words if any(char.isalnum() for char in word)]
-    if not words or len(words) > _HEADING_MAX_WORDS:
-        return False
-    if words[0].lower() in _TITLE_STOP_WORDS or not words[0][0].isupper():
-        return False
-    if words[-1].lower() in _TITLE_COMPANY_SUFFIXES:
-        return False
-    if any(any(char.isdigit() for char in word) for word in words):
-        return False
-    if all(word[0].isupper() or word.lower() in _TITLE_STOP_WORDS for word in words):
+def _is_general_review_party(party: Optional[str]) -> bool:
+    if not party:
         return True
-    return len(words) <= _SENTENCE_TITLE_MAX_WORDS and not any(word.lower() in _TITLE_VERB_WORDS for word in words)
+    cleaned = party.strip().casefold()
+    return cleaned in {
+        "general review",
+        "general",
+        "none",
+        "n/a",
+        "na",
+        "both",
+        "both parties",
+        "neutral",
+        "general side",
+        "neither",
+        "unspecified",
+        "general review or empty",
+    }
 
 
-def _clause_title(text: str) -> Optional[str]:
-    """Extract this paragraph's own clause title, or None when it has none.
+def _build_reviewer_context(request: GeneralReviewRequest) -> str:
+    """Render the questionnaire answers as the prompt's reviewer-context block.
 
-    Handles both a standalone heading paragraph ('Non-Compete.') and an inline
-    lead-in ('Return of Advances.  In the event...', '7.3 Security Measures. ...').
+    Explicitly separates:
+    1. Client Advocacy Mode (when a specific party is represented) - carries commanding weight.
+    2. Neutral General Review Mode (when party is empty or 'General Review') - objective bilateral review.
+    Also ensures review_objective and specific_concerns carry commanding weight.
     """
 
-    # Signature-block lines ("Name: ______") are never clause titles.
-    if "___" in text:
-        return None
-    stripped = _TITLE_NUMBER_PREFIX_RE.sub("", text.strip(), count=1)
-    if _is_heading(stripped):
-        candidate = stripped.rstrip(".:").strip()
-        if _looks_like_title(candidate):
-            return candidate
-    # A short paragraph may still open with a lead-in ("Liability cap. See Clause 13.").
-    match = _INLINE_TITLE_RE.match(stripped)
-    if match and _looks_like_title(match.group(1).strip()):
-        return match.group(1).strip()
-    return None
+    party = request.party_represented
+    is_general = _is_general_review_party(party)
 
+    sections: List[str] = []
 
-def _build_clause_titles(paragraphs: Sequence[TextInformation]) -> Dict[str, str]:
-    """Map each paragraph id to its clause title, extracted from the document itself.
-
-    A paragraph's title is its own heading/lead-in when it has one, otherwise
-    the most recent titled paragraph above it. Paragraphs with no determinable
-    title (e.g. a lone selected body paragraph whose heading was not sent) are
-    omitted so the model's own label stays as the fallback.
-    """
-
-    titles: Dict[str, str] = {}
-    current = ""
-    for para in paragraphs:
-        if not para.text.strip():
-            continue
-        own = _clause_title(para.text)
-        if own:
-            current = own
-        if current:
-            titles[para.paraindetifier] = current
-    return titles
-
-
-def _is_clause_start(text: str) -> bool:
-    """A paragraph where a new clause begins — the only safe place to cut a batch."""
-
-    stripped = text.strip()
-    return _is_heading(stripped) or bool(_NUMBERED_START_RE.match(stripped))
-
-
-def _context_tail(batch: _Batch) -> str:
-    """Trailing paragraphs of a batch, carried as read-only context after a forced cut."""
-
-    tail: List[str] = []
-    size = 0
-    for _, para in reversed(batch):
-        text = para.text.strip()
-        if size + len(text) > CONTEXT_TAIL_CHARS and tail:
-            break
-        tail.insert(0, text)
-        size += len(text)
-    return "\n\n".join(tail)
-
-
-def _build_batches(paragraphs: Sequence[TextInformation]) -> List[Tuple[_Batch, str]]:
-    """Split paragraphs into document-ordered (batch, context) pairs, cutting only at clause starts.
-
-    Once a batch exceeds the char budget it closes at the next clause start
-    (heading or numbered paragraph), so a clause's paragraphs always stay
-    together. If a document has no detectable clause starts, the hard limit
-    forces a cut and the next batch carries the previous tail as read-only
-    context so nothing is judged without its surroundings.
-    """
-
-    indexed = [(idx, para) for idx, para in enumerate(paragraphs) if para.text.strip()]
-
-    batches: List[Tuple[_Batch, str]] = []
-    current: _Batch = []
-    current_size = 0
-    pending_context = ""
-
-    for item in indexed:
-        clean_cut = current_size >= BATCH_CHAR_BUDGET and _is_clause_start(item[1].text)
-        forced_cut = current_size >= BATCH_HARD_LIMIT
-        if current and (clean_cut or forced_cut):
-            batches.append((current, pending_context))
-            pending_context = _context_tail(current) if forced_cut else ""
-            current = []
-            current_size = 0
-        current.append(item)
-        current_size += len(item[1].text)
-
-    if current:
-        batches.append((current, pending_context))
-    return batches
-
-
-def _format_document(batch: _Batch) -> str:
-    """Render a batch as plain paragraphs — identifiers stay out of the prompt."""
-
-    return "\n\n".join(para.text.strip() for _, para in batch)
-
-
-# A mapped clause: how confidently it was typed, and the policies that came with it.
-_MappedClause = Tuple[ClassificationStatus, List[ClausePolicy]]
-
-
-def _build_clause_units(paragraphs: Sequence[TextInformation], titles: Dict[str, str]) -> List[List[int]]:
-    """Group paragraph positions into clauses for vector mapping.
-
-    Consecutive paragraphs under the same clause title form one clause; a
-    paragraph with no title stands alone.
-    """
-
-    units: List[List[int]] = []
-    previous: Optional[str] = None
-    for idx, para in enumerate(paragraphs):
-        if not para.text.strip():
-            continue
-        title = titles.get(para.paraindetifier)
-        if units and title is not None and title == previous:
-            units[-1].append(idx)
-        else:
-            units.append([idx])
-        previous = title
-    return units
-
-
-def _clause_type_label(canonical_type: str) -> str:
-    """Readable name for a clause type slug: 'fees-and-payment' -> 'Fees and Payment'."""
-
-    words = canonical_type.replace("-", " ").replace("_", " ").split()
-    return " ".join(word if word in _TITLE_STOP_WORDS else word.capitalize() for word in words)
-
-
-def _describe_policy(policy: ClausePolicy) -> List[str]:
-    """Render one policy as prompt lines, leaving out fields the legal team has not filled in yet."""
-
-    type_label = _clause_type_label(policy.canonical_type)
-    label = f"{type_label} — {policy.sub_type}" if policy.sub_type else type_label
-    lines = [f"{label} (inherent risk tier: {policy.inherent_risk_tier})"]
-    if policy.acceptable_standard:
-        lines.append(f"Acceptable standard: {policy.acceptable_standard}")
-    if policy.unacceptable_triggers:
-        lines.append("Unacceptable triggers: " + "; ".join(policy.unacceptable_triggers))
-    if policy.fallback_guidelines:
-        lines.append(f"Fallback position: {policy.fallback_guidelines}")
-    return lines
-
-
-def _render_policy_block(batch: _Batch, mapped: Dict[int, _MappedClause], unit_of: Dict[int, int]) -> str:
-    """Render the policy entries for the clauses in one batch, in document order."""
-
-    entries: List[str] = []
-    rendered: Set[int] = set()
-    for idx, para in batch:
-        unit = unit_of.get(idx)
-        if unit is None or unit in rendered:
-            continue
-        rendered.add(unit)
-        status, policies = mapped[unit]
-
-        words = para.text.split()
-        anchor = " ".join(words[:_POLICY_ANCHOR_WORDS]) + ("..." if len(words) > _POLICY_ANCHOR_WORDS else "")
-        lines = [f'Clause beginning "{anchor}"']
-        if status is ClassificationStatus.NEEDS_CONFIRMATION:
-            lines.append("Possible clause types (apply only the one that fits this clause; if none fits, review it without a policy):")
-        elif len(policies) > 1:
-            lines.append("Clause types (the clause covers several topics; apply every policy below):")
-        else:
-            lines.append("Clause type:")
-        for policy in policies:
-            first, *rest = _describe_policy(policy)
-            lines.append(f"- {first}")
-            lines.extend(f"  {line}" for line in rest)
-        entries.append("\n".join(lines))
-
-    if not entries:
-        return ""
-    return "Legal team policies for clauses in the text below (apply each only to the clause it names):\n\n" + "\n\n".join(entries) + "\n\n"
-
-
-# Total time the clause mapping may spend per review. Embedding is slow and
-# serial (about a second per clause), so a long document can take minutes;
-# past this budget the remaining batches are reviewed without policies.
-POLICY_MAPPING_BUDGET_SECONDS = 240.0
-
-# A clause unit shorter than this is a bare article heading ("CONFIDENTIALITY"),
-# a list item ("Business line margin and performance review"), or a fragment: it
-# never classifies, so it is not worth an embedding call. A real clause — heading
-# plus at least one sentence of body — is always longer.
-MIN_CLAUSE_WORDS = 10
-
-# One policy block per batch, resolved as that batch's clauses are mapped.
-_PolicyContexts = List["asyncio.Future[str]"]
-
-
-def _start_policy_mapping(request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str) -> Tuple[_PolicyContexts, Optional["asyncio.Task[None]"]]:
-    """Begin mapping clauses to the legal team's policies, one batch at a time, ahead of the review.
-
-    Returns a future per batch that resolves to that batch's policy block, and
-    the background task doing the mapping (None when no clause search is
-    configured). Each batch's review awaits only its own block, so the first
-    LLM call starts after the first batch's clauses are mapped rather than
-    after the whole document is. The mapping never blocks or fails a review:
-    a search failure or an exhausted budget resolves the remaining blocks
-    empty — the policy-free review.
-    """
-
-    loop = asyncio.get_running_loop()
-    contexts: _PolicyContexts = [loop.create_future() for _ in batches]
-    search = get_clause_search()
-    if search is None or not batches:
-        for context in contexts:
-            context.set_result("")
-        return contexts, None
-    task = asyncio.create_task(_map_policies(search, request, batches, titles, session_id, contexts))
-    return contexts, task
-
-
-async def _map_policies(search: BaseClauseSearch, request: GeneralReviewRequest, batches: List[Tuple[_Batch, str]], titles: Dict[str, str], session_id: str, contexts: _PolicyContexts) -> None:
-    """Map each batch's clauses in document order and resolve its policy block.
-
-    Clauses go to the shared vector DB, classify_clause applies the score
-    thresholds, and each accepted or candidate clause type brings its policy.
-    """
-
-    paragraphs = request.textinformation
-    units = _build_clause_units(paragraphs, titles)
-    # A clause belongs to the batch holding its first paragraph.
-    batch_of: Dict[int, int] = {idx: number for number, (batch, _) in enumerate(batches) for idx, _ in batch}
-    batch_units: List[List[List[int]]] = [[] for _ in batches]
-    for unit in units:
-        number = batch_of.get(unit[0])
-        if number is not None:
-            batch_units[number].append(unit)
-
-    store = get_clause_policy_store()
-    mapped: Dict[int, _MappedClause] = {}
-    unit_of: Dict[int, int] = {}
-    status_counts: Dict[str, int] = {status.value: 0 for status in ClassificationStatus}
-    started = asyncio.get_running_loop().time()
-    completed = 0
-    try:
-        for number, ((batch, _), units_here) in enumerate(zip(batches, batch_units)):
-            if asyncio.get_running_loop().time() - started > POLICY_MAPPING_BUDGET_SECONDS:
-                logger.warning("Clause mapping budget of %.0fs spent after %d of %d batch(es); reviewing the rest without clause policies.", POLICY_MAPPING_BUDGET_SECONDS, number, len(batches))
-                break
-
-            texts = ["\n\n".join(paragraphs[idx].text.strip() for idx in unit) for unit in units_here]
-            searchable = [(unit, text) for unit, text in zip(units_here, texts) if len(text.split()) >= MIN_CLAUSE_WORDS]
-            status_counts[ClassificationStatus.UNCLASSIFIED.value] += len(units_here) - len(searchable)
-            hits = await search.search([text for _, text in searchable], request.agreement_type, session_id) if searchable else []
-            if len(hits) != len(searchable):
-                raise RuntimeError(f"clause search returned {len(hits)} result list(s) for {len(searchable)} clause(s)")
-
-            for (unit, _), unit_hits in zip(searchable, hits):
-                classification = classify_clause(unit_hits)
-                status_counts[classification.status.value] += 1
-                policies: List[ClausePolicy] = []
-                for match in classification.matches:
-                    policy = store.get(match.canonical_type, match.sub_type, request.agreement_type)
-                    if policy is not None:
-                        policies.append(policy)
-                if not policies:
-                    continue
-                # A clause is keyed by its first paragraph position.
-                mapped[unit[0]] = (classification.status, policies)
-                for idx in unit:
-                    unit_of[idx] = unit[0]
-
-            contexts[number].set_result(_render_policy_block(batch, mapped, unit_of))
-            completed = number + 1
-    except Exception:
-        logger.exception("Clause search failed after %d of %d batch(es); reviewing the rest without clause policies.", completed, len(batches))
-    finally:
-        for context in contexts:
-            if not context.done():
-                context.set_result("")
-        logger.info(
-            "Clause mapping: %d of %d clause(s) mapped to legal-team policies across %d of %d batch(es) in %.1fs (%s).",
-            len(mapped),
-            sum(status_counts.values()),
-            completed,
-            len(batches),
-            asyncio.get_running_loop().time() - started,
-            ", ".join(f"{status}={count}" for status, count in status_counts.items()),
+    if is_general:
+        sections.append(
+            "=== REVIEW PERSPECTIVE: NEUTRAL GENERAL REVIEW ===\n"
+            "Mode: NEUTRAL / BILATERAL GENERAL REVIEW (No single party is represented; this is an objective review for general commercial fairness).\n"
+            "MANDATORY INSTRUCTIONS FOR NEUTRAL GENERAL REVIEW:\n"
+            "- You are NOT representing or favoring either party. Do not adopt a one-sided client bias.\n"
+            "- Review the agreement from an objective, neutral commercial perspective to ensure bilateral fairness, mutual balance, and operational clarity.\n"
+            "- Flag provisions that are one-sided in favor of either party, unreciprocated, ambiguous, or lacking market-standard protections.\n"
+            "- In 'suggested_fix', balance the clause mutually (e.g., make obligations bilateral or insert reciprocal protections) rather than shifting advantage to one side."
         )
+    else:
+        document_text = " ".join(para.text for para in request.textinformation).casefold()
+        if party and party.casefold() not in document_text:
+            logger.warning(
+                "Party represented %r does not appear in the document; the model will infer which party is the client.",
+                party,
+            )
+        sections.append(
+            "=== REVIEW PERSPECTIVE: CLIENT ADVOCACY REVIEW (COMMANDING WEIGHT) ===\n"
+            f"Party Represented: {party}\n"
+            "MANDATORY INSTRUCTIONS FOR CLIENT ADVOCACY REVIEW:\n"
+            f"- You are acting as dedicated legal counsel representing {party}.\n"
+            f"- This client perspective carries COMMANDING WEIGHT in your analysis, risk assessment, explanation, and redlining.\n"
+            f"- Vigorously protect {party}'s legal, operational, and financial interests against one-sided, overreaching, or ambiguous terms.\n"
+            f"- In the 'reason', explicitly articulate the practical operational, financial, and legal risk TO {party} by name.\n"
+            f"- In the 'suggested_fix', surgically amend the text to shield {party} from liability, eliminate unilateral counterparty discretion, and establish necessary rights and remedies for {party}."
+        )
+
+    if request.agreement_type:
+        sections.append(f"Agreement Type: {request.agreement_type}")
+
+    if request.review_objective and request.review_objective.strip():
+        sections.append(
+            "=== PRIMARY REVIEW OBJECTIVE (COMMANDING WEIGHT) ===\n"
+            f"Primary Objective: {request.review_objective.strip()}\n"
+            "MANDATORY INSTRUCTION: This objective carries commanding weight. Scrutinize every clause through this lens. If a clause affects or frustrates this objective, highlight it in the 'reason' and tailor the 'suggested_fix' to fulfill this objective."
+        )
+
+    if request.specific_concerns and request.specific_concerns.strip():
+        sections.append(
+            "=== SPECIFIC CLIENT CONCERNS (COMMANDING WEIGHT) ===\n"
+            f"Specific Concerns: {request.specific_concerns.strip()}\n"
+            "MANDATORY INSTRUCTION: These specific concerns carry commanding weight. Give elevated scrutiny to any clause touching upon these topics. The 'reason' must explicitly explain how the clause impacts these concerns, and the 'suggested_fix' must directly resolve and mitigate them."
+        )
+
+    return "\n\n".join(sections) + "\n\n"
 
 
 # Character families the model tends to normalize while copying; each matches all variants.
@@ -517,137 +199,1164 @@ def _tolerant_pattern(needle: str) -> str:
     return r"\s+".join(tokens)
 
 
-def _ground(original_text: str, batch: _Batch) -> Optional[Tuple[int, TextInformation, str]]:
-    """Find original_text inside a single paragraph and return (position, paragraph, exact source text).
-
-    Exact match first; then a whitespace/quote-tolerant match that recovers the
-    true verbatim substring, so the returned text always applies cleanly.
-    """
+def _ground(original_text: str, candidates: Sequence[Tuple[int, TextInformation]]) -> Optional[Tuple[int, TextInformation, str]]:
+    """Find original_text inside candidate paragraphs and return (position, paragraph, exact source text)."""
 
     needle = original_text.strip()
     if not needle:
         return None
 
-    for idx, para in batch:
+    for idx, para in candidates:
         if needle in para.text:
             return idx, para, needle
 
     pattern = _tolerant_pattern(needle)
-    for idx, para in batch:
+    for idx, para in candidates:
         match = re.search(pattern, para.text)
         if match:
             return idx, para, match.group(0)
     return None
 
 
-def _expand_to_paragraph(suggestion: Suggestion, para: TextInformation, exact_text: str) -> Tuple[str, str]:
+def _expand_to_paragraph(suggestion_fix: str, para: TextInformation, exact_text: str) -> Tuple[str, str]:
     """Return (original, fix) covering the complete paragraph, splicing a partial fix if needed."""
 
     if exact_text.strip() == para.text.strip():
-        return para.text, suggestion.suggested_fix
+        return para.text, suggestion_fix
 
     span = para.text.find(exact_text)
+    if span == -1:
+        return para.text, suggestion_fix
+
     prefix = para.text[:span]
     suffix = para.text[span + len(exact_text):]
 
-    # If the model already returned a full-paragraph rewrite, splicing would duplicate text.
-    fix = suggestion.suggested_fix
-    already_full = (len(prefix.strip()) < 20 or prefix.strip()[:30] in fix) and (len(suffix.strip()) < 20 or suffix.strip()[-30:] in fix)
-    full_fix = fix if already_full else prefix + fix + suffix
+    already_full = (len(prefix.strip()) < 20 or prefix.strip()[:30] in suggestion_fix) and (len(suffix.strip()) < 20 or suffix.strip()[-30:] in suggestion_fix)
+    full_fix = suggestion_fix if already_full else prefix + suggestion_fix + suffix
     return para.text, full_fix
 
 
-def _validate_batch(suggestions: List[Suggestion], batch: _Batch, seen_positions: Set[int], titles: Dict[str, str]) -> List[Tuple[int, Suggestion]]:
-    """Ground each suggestion to one paragraph, expand it to the full paragraph, and attach its id and clause title."""
+_CONNECTORS = {
+    "the", "such", "this", "these", "any", "all", "each", "in", "for", "if",
+    "provided", "subject", "pursuant", "notwithstanding"
+}
+_OBLIGATION_VERBS = {
+    "shall", "will", "must", "agrees", "agree", "warrants", "warrant",
+    "represents", "represent", "indemnifies", "indemnify", "covenants",
+    "covenant", "undertakes", "undertake"
+}
 
-    valid: List[Tuple[int, Suggestion]] = []
-    for suggestion in suggestions:
-        grounded = _ground(suggestion.original_text, batch)
-        if grounded is None:
-            logger.warning("Dropping suggestion for clause '%s' — original_text could not be grounded in a single source paragraph.", suggestion.clause)
+
+def _is_fragment(text: str) -> bool:
+    """Heuristic to detect orphaned text fragments or continuation paragraphs."""
+
+    words = text.split()
+    if len(words) < 25:
+        return True
+    lower_words = {w.lower().strip(".,;:()\"'“”‘’[]") for w in words}
+    if not any(v in lower_words for v in _OBLIGATION_VERBS):
+        return True
+    return False
+
+
+# ---------------------------------------------------------------------------
+# Universal Structural Boundary Patterns (Supporting Any Numbering Scheme)
+# ---------------------------------------------------------------------------
+_ROMAN_NUMERALS = r'(?:X[CL]|L?X{0,3})(?:I[XV]|V?I{0,3})'
+
+_EXECUTION_BLOCK_START = re.compile(
+    r'^\s*(?:IN\s+WITNESS\s+WHEREOF|(?:EXECUTION|SIGNATURE)\s+(?:PAGE|BLOCK|SECTION)|The\s+Parties\s+have\s+signed)',
+    re.IGNORECASE
+)
+
+_BACK_MATTER_START = re.compile(
+    r'^\s*(?:ANNEX|SCHEDULE|EXHIBIT|APPENDIX|ATTACHMENT|LIST\s+OF\s+SCHEDULES)\b',
+    re.IGNORECASE
+)
+
+_SECTION_BOUNDARY_PATTERNS = [
+    # Explicit prefix: "Section 1", "Article IV", "Clause 9", "Part 2", "Schedule A", "Annex A"
+    re.compile(r'^\s*(?:Section|Article|Clause|Part|Schedule|Annex|Exhibit)\s+(?:\d+|[A-Z]+|\b' + _ROMAN_NUMERALS + r'\b)[.:\s]', re.IGNORECASE),
+    # Numbered top-level: "1. DEFINITIONS", "13. LIMITATION OF LIABILITY"
+    re.compile(r'^\s*\d{1,3}[.)]\s+[A-Z]'),
+    # Roman top-level: "I. DEFINITIONS", "XIV. TERMINATION"
+    re.compile(r'^\s*\b' + _ROMAN_NUMERALS + r'\b[.)]\s+[A-Z]'),
+    # Alpha top-level: "A. DEFINITIONS", "B. SERVICES"
+    re.compile(r'^\s*[A-Z][.)]\s+[A-Z]'),
+    # Background / Recitals marker
+    re.compile(r'^\s*(?:BACKGROUND|RECITALS|WITNESSETH)[.:\s]*$', re.IGNORECASE),
+    # Signature block start: "IN WITNESS WHEREOF"
+    _EXECUTION_BLOCK_START,
+    # Annex / Schedule start
+    _BACK_MATTER_START,
+]
+
+_WORDS_OF_AGREEMENT = re.compile(
+    r'(?:NOW,?\s+THEREFORE|IT\s+IS\s+(?:HEREBY\s+)?AGREED|WHEREBY\s+IT\s+IS\s+AGREED|THE\s+PARTIES\s+(?:HEREBY\s+)?AGREE|IN\s+CONSIDERATION\s+OF.+?AGREE)',
+    re.IGNORECASE
+)
+
+# Sub-clause boundary pattern: "8.1", "31.2.1", "15.3:" etc.
+# Used to split oversized article groups into deterministic evaluation units.
+_SUB_CLAUSE_PATTERN = re.compile(r'^\s*\d{1,3}\.\d{1,3}(?:\.\d{1,3})?[.:\s\t]')
+
+# Maximum paragraphs in one ClauseGroup before we split at sub-clause boundaries.
+_MAX_GROUP_PARAGRAPHS = 8
+
+
+def _is_major_section_boundary(text: str) -> bool:
+    """Detect whether a paragraph begins a new major top-level section across any numbering scheme."""
+
+    stripped = text.strip()
+    first_line = stripped.split("\n")[0].strip()
+    words = first_line.split()
+
+    for pat in _SECTION_BOUNDARY_PATTERNS:
+        if pat.match(first_line):
+            return True
+
+    # Standalone short all-caps heading paragraph: e.g. "CONFIDENTIALITY", "LIMITATION OF LIABILITY"
+    if first_line.isupper() and 1 <= len(words) <= 8 and 3 <= len(first_line) <= 80:
+        if any(c.isalpha() for c in first_line):
+            return True
+
+    return False
+
+
+_HEADING_MAX_CHARS = 80
+_HEADING_MAX_WORDS = 10
+_TITLE_NUMBER_PREFIX_RE = re.compile(
+    r"^(?:(?:section|article|clause|part)\s+)?(?:(?:\d+|[A-Z])(?:\.\d+)*[.)]?\s+|(?:\([0-9a-zA-Z]+\)\s*)+)",
+    re.IGNORECASE
+)
+_INLINE_TITLE_RE = re.compile(r"^([^.:]{1,70})[.:](?:\s+|$)")
+_DEFINITION_TITLE_RE = re.compile(
+    r'^[“"\'‘]([^”"\'’]{1,60})[”"\'’](?:\s+or\s+[“"\'‘][^”"\'’]{1,60}[”"\'’])?\s+(?:means|shall mean|has the meaning)',
+    re.IGNORECASE
+)
+_TITLE_STOP_WORDS = {"a", "an", "and", "by", "for", "in", "of", "on", "or", "the", "to", "with", "&"}
+_TITLE_COMPANY_SUFFIXES = {"inc", "llc", "ltd", "corp", "co"}
+_ADDRESS_WORDS = {"street", "avenue", "way", "suite", "road", "boulevard", "drive", "lane", "box", "floor"}
+_TITLE_VERBS = {
+    "shall", "will", "may", "must", "should", "can", "cannot", "is", "are", "was", "were", "be", "been",
+    "has", "have", "had", "does", "do", "did", "not", "hereby", "means", "agrees", "agree", "includes",
+    "include", "bears", "pays", "provides", "grants", "retains", "acknowledges", "represents", "warrants"
+}
+
+
+def _is_heading_text(text: str) -> bool:
+    stripped = text.strip()
+    words = stripped.split()
+    return 0 < len(stripped) <= _HEADING_MAX_CHARS and 0 < len(words) <= _HEADING_MAX_WORDS
+
+
+def _looks_like_title(segment: str) -> bool:
+    if "." in segment or ":" in segment or "\t" in segment:
+        return False
+    if re.search(r",\s*[A-Z]{2}$", segment):
+        return False
+    words = [word.strip(",;()'\"‘’“”[]") for word in segment.split()]
+    words = [word for word in words if word]
+    if not words or len(words) > _HEADING_MAX_WORDS:
+        return False
+    # Allow party-specific lead-ins e.g. "By Company", "By Customer", "By Provider"
+    if words[0].lower() == "by" and len(words) <= 3 and len(words) >= 2 and words[1][0].isupper():
+        pass
+    elif words[0].lower() in _TITLE_STOP_WORDS:
+        return False
+    if any(w.lower() in _TITLE_COMPANY_SUFFIXES for w in words):
+        return False
+    if any(w.lower() in _ADDRESS_WORDS for w in words):
+        return False
+    if any(any(char.isdigit() for char in word) for word in words):
+        return False
+    if any(w.lower() in _TITLE_VERBS for w in words):
+        return False
+    clean_seg = "".join(c for c in segment if c.isalpha())
+    if clean_seg and clean_seg.isupper():
+        return True
+    return any(word[0].isupper() for word in words)
+
+
+def _extract_clause_title(text: str) -> str:
+    first_line = text.strip().split("\n")[0].strip()
+    stripped = _TITLE_NUMBER_PREFIX_RE.sub("", first_line).strip()
+    def_match = _DEFINITION_TITLE_RE.match(stripped) or _DEFINITION_TITLE_RE.match(first_line)
+    if def_match:
+        return f'“{def_match.group(1).strip()}”'
+    if _is_heading_text(stripped):
+        candidate = stripped.rstrip(".:;").strip()
+        if _looks_like_title(candidate):
+            return candidate
+    match = _INLINE_TITLE_RE.match(stripped)
+    if match:
+        cand = match.group(1).strip()
+        if _looks_like_title(cand):
+            return cand
+    match_raw = _INLINE_TITLE_RE.match(first_line)
+    if match_raw:
+        cand = match_raw.group(1).strip()
+        cand_clean = _TITLE_NUMBER_PREFIX_RE.sub("", cand).strip()
+        if _looks_like_title(cand_clean):
+            return cand_clean
+    return ""
+
+
+def _build_clause_titles(paragraphs: Sequence[TextInformation]) -> Dict[str, str]:
+    """Map each paragraph id to its actual heading from the contract.
+
+    Resolves to:
+    1. The paragraph's own inline title / sub-heading (e.g. 'Suspension', 'Fees and Expenses', 'Ownership').
+    2. Or the enclosing main section heading if the paragraph has no sub-heading of its own (e.g. 'LIMITATION OF LIABILITY').
+    3. Or 'Signature Block' once the execution block boundary is encountered.
+    """
+    titles: Dict[str, str] = {}
+    current_section = ""
+    in_execution_block = False
+    for p in paragraphs:
+        text = p.text.strip()
+        pid = p.paraindetifier
+        if not text:
             continue
-        position, para, exact_text = grounded
-        if position in seen_positions:
+        first_line = text.split("\n")[0].strip()
+
+        # Check execution block boundary (IN WITNESS WHEREOF / SIGNATURE PAGE)
+        if _EXECUTION_BLOCK_START.search(first_line):
+            in_execution_block = True
+            current_section = "Signature Block"
+            titles[pid] = "Signature Block"
             continue
-        seen_positions.add(position)
-        original, full_fix = _expand_to_paragraph(suggestion, para, exact_text)
-        # The document's own clause title keeps names identical across whole-doc
-        # and selection runs; the model's label only fills in when the payload
-        # carries no heading for this paragraph.
-        clause = titles.get(para.paraindetifier, suggestion.clause)
-        valid.append((position, suggestion.model_copy(update={"clause": clause, "original_text": original, "suggested_fix": full_fix, "para_identifier": para.paraindetifier})))
 
-    valid.sort(key=lambda pair: pair[0])
-    return valid
+        if in_execution_block:
+            titles[pid] = "Signature Block"
+            continue
+
+        own = _extract_clause_title(text)
+        if _is_heading_text(first_line) and own and not _DEFINITION_TITLE_RE.match(first_line):
+            current_section = own
+            titles[pid] = own
+        elif own:
+            titles[pid] = own
+        elif current_section:
+            titles[pid] = current_section
+    return titles
 
 
-async def _review_batch(batch: _Batch, context: str, reviewer_context: str, outline_context: str, policy_context: str, semaphore: asyncio.Semaphore, session_id: str) -> GeneralReviewResponse:
-    """Run the schema-enforced review call for one batch, with a single retry."""
+_HEADING_TAXONOMY_ALIASES: Dict[str, str] = {
+    "general provisions": "Miscellaneous / Other Provisions",
+    "general": "Miscellaneous / Other Provisions",
+    "miscellaneous": "Miscellaneous / Other Provisions",
+    "miscellaneous provisions": "Miscellaneous / Other Provisions",
+    "boilerplate": "Miscellaneous / Other Provisions",
+    "other provisions": "Miscellaneous / Other Provisions",
+    "other business activities": "Non-Exclusivity",
+    "non exclusivity": "Non-Exclusivity",
+    "dispute resolution and governing law": "Governing Law & Dispute Resolution",
+    "governing law and dispute resolution": "Governing Law & Dispute Resolution",
+    "governing law and jurisdiction": "Governing Law & Dispute Resolution",
+    "governing law": "Governing Law & Dispute Resolution",
+    "jurisdiction and governing law": "Governing Law & Dispute Resolution",
+    "resolving disagreements": "Governing Law & Dispute Resolution",
+    "dispute resolution": "Governing Law & Dispute Resolution",
+    "security measures and data protection": "Data Protection & Privacy",
+    "delivery locations and security": "Data Protection & Privacy",
+    "data protection and privacy": "Data Protection & Privacy",
+    "data protection": "Data Protection & Privacy",
+    "data privacy": "Data Protection & Privacy",
+    "client data": "Data Protection & Privacy",
+    "subscriptions and service capacity": "Service Levels",
+    "service levels": "Service Levels",
+    "performance standards": "Service Levels",
+    "client feedback surveys": "Service Levels",
+    "free services and free pilots": "Scope of Services",
+    "the services": "Scope of Services",
+    "center transfer right": "Scope of Services",
+    "services and provider obligations": "Service Provider Obligations",
+    "services and providers obligations": "Service Provider Obligations",
+    "provider personnel": "Service Provider Obligations",
+    "customer use of the services": "Customer Obligations",
+    "customers use of the services": "Customer Obligations",
+    "client obligations": "Customer Obligations",
+    "third party consents": "Customer Obligations",
+    "fees payment and taxes": "Fees & Payment",
+    "fees and payment": "Fees & Payment",
+    "fees and payment terms": "Fees & Payment",
+    "fees": "Fees & Payment",
+    "payment": "Fees & Payment",
+    "charges and payment": "Fees & Payment",
+    "price benchmarking": "Fees & Payment",
+    "taxes": "Taxes",
+    "duration": "Term & Termination",
+    "term and termination": "Term & Termination",
+    "suspension and termination": "Term & Termination",
+    "duration and termination": "Term & Termination",
+    "ending the agreement": "Term & Termination",
+    "early exit charges": "Term & Termination",
+    "exit support and transition out": "Term & Termination",
+    "termination": "Term & Termination",
+    "term": "Term & Termination",
+    "limitation of liability": "Limitation of Liability",
+    "limitations of liability": "Limitation of Liability",
+    "limits on liability": "Limitation of Liability",
+    "liability": "Limitation of Liability",
+    "mutual indemnification": "Indemnification",
+    "indemnification": "Indemnification",
+    "indemnity": "Indemnification",
+    "confidentiality": "Confidentiality",
+    "intellectual property": "Intellectual Property",
+    "intellectual property rights": "Intellectual Property",
+    "proprietary rights and licenses": "Intellectual Property",
+    "proprietary rights and licensing": "Intellectual Property",
+    "proprietary rights": "Intellectual Property",
+    "intellectual property and proprietary rights": "Intellectual Property",
+    "intellectual property rights and licenses": "Intellectual Property",
+    "intellectual property and licensing": "Intellectual Property",
+    "ip ownership and licenses": "Intellectual Property",
+    "ip and proprietary rights": "Intellectual Property",
+    "representations warranties and disclaimers": "Representations & Warranties",
+    "representations and warranties": "Representations & Warranties",
+    "ongoing undertakings": "Representations & Warranties",
+    "warranties": "Representations & Warranties",
+    "force majeure": "Force Majeure",
+    "business continuity and unforeseen events": "Force Majeure",
+    "definitions": "Definitions & Interpretation",
+    "definitions and interpretation": "Definitions & Interpretation",
+    "interpretation and defined terms": "Definitions & Interpretation",
+    "onboarding acquisitions and divestitures collaboration": "Statements of Work & Work Orders",
+    "additional service streams": "Statements of Work & Work Orders",
+    "order of precedence": "Order of Precedence",
+    "entire agreement": "Entire Agreement",
+    "severability": "Severability",
+    "assignment": "Assignment",
+    "notices": "Notices",
+    "insurance": "Insurance",
+    "compliance": "Compliance",
+    "audit and records": "Audit & Records",
+    "records and audits": "Audit & Records",
+    "subcontractors": "Subcontractors",
+    "governance and change management": "Change Control",
+}
+
+
+def _normalize_heading(text: str) -> str:
+    cleaned = re.sub(r'^(?:(?:Section|Article|Clause|Part)\s+)?\d+(?:\.\d+)*[.)]?\s+', '', text, flags=re.IGNORECASE).strip()
+    cleaned = re.sub(r'^[A-Z][.)]\s+', '', cleaned).strip()
+    cleaned = re.sub(r'^(?:X[CL]|L?X{0,3})(?:I[XV]|V?I{0,3})[.)]\s+', '', cleaned).strip()
+    cleaned = cleaned.replace('&', 'and').replace('’', "'").replace('–', '-').replace('—', '-')
+    cleaned = re.sub(r"['’]s\b|['’]", '', cleaned)
+    cleaned = re.sub(r'[^a-zA-Z0-9\s]', ' ', cleaned)
+    return re.sub(r'\s+', ' ', cleaned).strip().lower()
+
+
+def _match_heading_to_taxonomy(heading_text: str) -> Optional[str]:
+    """Match section heading text directly against taxonomy canonical types."""
+
+    from src.services.criteria_store import _load
+    taxonomy = _load()
+    all_types = list(taxonomy.get("types", {}).keys())
+
+    norm = _normalize_heading(heading_text)
+
+    # 1. Alias dictionary lookup
+    if norm in _HEADING_TAXONOMY_ALIASES:
+        return _HEADING_TAXONOMY_ALIASES[norm]
+
+    # 2. Exact match against taxonomy types
+    for t in all_types:
+        if norm == _normalize_heading(t):
+            return t
+
+    # 3. BM25 sparse index match
+    bm25 = _get_bm25_classifier()
+    bm25_match = bm25.get_top_match(norm, threshold=3.5)
+    if bm25_match:
+        top_name, _ = bm25_match
+        if top_name in all_types:
+            return top_name
+
+    # 4. Stemmed word overlap match
+    def stem(w: str) -> str:
+        for suffix in ("ions", "tion", "ing", "ies", "es", "s"):
+            if w.endswith(suffix) and len(w) > len(suffix) + 3:
+                return w[:-len(suffix)]
+        return w
+
+    stop = {"and", "of", "the", "or", "in", "to", "for", "with", "a", "an"}
+    h_stems = {stem(w) for w in norm.split() if w not in stop}
+
+    scores = []
+    for t in all_types:
+        t_norm = _normalize_heading(t)
+        t_stems = {stem(w) for w in t_norm.split() if w not in stop}
+        if not t_stems:
+            continue
+        overlap = len(h_stems & t_stems)
+        if overlap > 0:
+            scores.append((overlap / len(t_stems), overlap, t))
+
+    if scores:
+        scores.sort(key=lambda x: (x[0], x[1]), reverse=True)
+        if scores[0][0] >= 0.5:
+            return scores[0][2]
+
+    return None
+
+
+_BM25_CLASSIFIER: Optional[BM25TaxonomyClassifier] = None
+
+
+def _get_bm25_classifier() -> BM25TaxonomyClassifier:
+    """Lazy singleton for Okapi BM25 sparse index over criteria taxonomy."""
+    global _BM25_CLASSIFIER
+    if _BM25_CLASSIFIER is None:
+        clf = BM25TaxonomyClassifier()
+        try:
+            tax_path = Path(__file__).resolve().parent.parent / "services" / "clause_mapping" / "MSA_Criteria_Final_Taxonomy_Calibrated.json"
+            if tax_path.exists():
+                raw = json.loads(tax_path.read_text(encoding="utf-8"))
+                clf.build_from_taxonomy(raw, _HEADING_TAXONOMY_ALIASES)
+        except Exception as e:
+            logger.warning("Could not build BM25 classifier: %s", e)
+        _BM25_CLASSIFIER = clf
+    return _BM25_CLASSIFIER
+
+
+async def _classify_all_paragraphs(
+    request: GeneralReviewRequest,
+    session_id: str
+) -> Dict[int, ClauseMatch]:
+    """Query vector DB for operative paragraphs, chunked to avoid Qdrant timeouts.
+
+    Optimized:
+    - Pre-filters non-operative zones (front matter, execution block, back matter)
+      which are routed to PATH C defect checks and never use vector classification.
+      This saves ~50+ expensive remote embedding calls per document.
+    - Large documents are chunked into VECTOR_BATCH_SIZE (100) per Qdrant call.
+    """
+    VECTOR_BATCH_SIZE = 100   # paragraphs per Qdrant batch search call
+
+    search = get_clause_search()
+    if search is None:
+        logger.warning("No clause search configured; reviewing without vector classifications.")
+        return {}
+
+    paragraphs = request.textinformation
+
+    # Pre-filter non-operative zones to save embedding round trips
+    front_matter_end = -1
+    for i, item in enumerate(paragraphs):
+        if _WORDS_OF_AGREEMENT.search(item.text):
+            front_matter_end = i
+            break
+
+    execution_start = len(paragraphs)
+    for i, item in enumerate(paragraphs):
+        if _EXECUTION_BLOCK_START.search(item.text):
+            execution_start = i
+            break
+
+    back_matter_start = len(paragraphs)
+    for i, item in enumerate(paragraphs):
+        if _BACK_MATTER_START.search(item.text):
+            back_matter_start = i
+            break
+
+    cutoff_end = min(execution_start, back_matter_start)
+
+    eligible: List[Tuple[int, str]] = [
+        (idx, para.text.strip())
+        for idx, para in enumerate(paragraphs)
+        if len(para.text.split()) >= MIN_CLAUSE_WORDS
+        and (front_matter_end == -1 or idx > front_matter_end)
+        and idx < cutoff_end
+    ]
+    if not eligible:
+        return {}
+
+    matches: Dict[int, ClauseMatch] = {}
+
+    # Process in chunks so no single Qdrant batch search is too large
+    for chunk_start in range(0, len(eligible), VECTOR_BATCH_SIZE):
+        chunk = eligible[chunk_start : chunk_start + VECTOR_BATCH_SIZE]
+        indices = [idx for idx, _ in chunk]
+        texts = [text for _, text in chunk]
+
+        try:
+            results = await search.search(texts, request.agreement_type, session_id)
+            for idx, hit_list in zip(indices, results):
+                if hit_list:
+                    best_hit = max(hit_list, key=lambda h: h.score)
+                    matches[idx] = best_hit
+        except Exception as exc:
+            logger.exception(
+                "Clause vector search failed for batch starting at eligible[%d]: %s; "
+                "affected paragraphs will be reviewed unclassified.",
+                chunk_start, exc,
+            )
+            # Continue with remaining batches — partial classification is better than none
+
+    return matches
+
+
+def _smooth_classifications(
+    raw: Dict[int, ClauseMatch],
+    paragraphs: Sequence[TextInformation]
+) -> Dict[int, Optional[ClauseMatch]]:
+    """Apply the 3 smoothing rules across document paragraphs."""
+
+    n = len(paragraphs)
+    smoothed: Dict[int, Optional[ClauseMatch]] = {i: raw.get(i) for i in range(n)}
+
+    # Rule 1: Interior gap fill (X Y X -> X X X if Y.score < 0.70 or Y is None)
+    for i in range(1, n - 1):
+        prev_m = smoothed[i - 1]
+        next_m = smoothed[i + 1]
+        curr_m = smoothed[i]
+        if prev_m and next_m and prev_m.canonical_type == next_m.canonical_type:
+            if curr_m is None or curr_m.score < CONFIDENCE_THRESHOLD or curr_m.canonical_type != prev_m.canonical_type:
+                smoothed[i] = prev_m
+
+    # Rule 2: Boundary solo absorption (short/connector with score < 0.70 absorbed into adjacent group)
+    for i in range(n):
+        curr_m = smoothed[i]
+        if curr_m is None or curr_m.score < CONFIDENCE_THRESHOLD:
+            text = paragraphs[i].text.strip()
+            # A major section boundary starts a new section and must never be absorbed backwards
+            if _is_major_section_boundary(text):
+                continue
+            words = text.split()
+            first_word = words[0].lower().strip(".,;:()\"'“”‘’[]") if words else ""
+            is_continuation = len(words) < 25 or first_word in _CONNECTORS or _is_fragment(text)
+            if is_continuation:
+                # Guard: never absorb across a sub-clause number boundary
+                curr_text_sc = paragraphs[i].text.strip()
+                if _SUB_CLAUSE_PATTERN.match(curr_text_sc):
+                    continue
+                if i > 0 and smoothed[i - 1] is not None:
+                    prev_type = smoothed[i - 1].canonical_type
+                    if i > 1 and smoothed[i - 2] and smoothed[i - 2].canonical_type == prev_type:
+                        smoothed[i] = smoothed[i - 1]
+                        continue
+                if i < n - 1 and smoothed[i + 1] is not None:
+                    next_type = smoothed[i + 1].canonical_type
+                    if i < n - 2 and smoothed[i + 2] and smoothed[i + 2].canonical_type == next_type:
+                        smoothed[i] = smoothed[i + 1]
+                        continue
+
+    # Rule 3: Minimum run-length (run of 1 with score < 0.70 adjacent to different type -> None)
+    for i in range(n):
+        curr_m = smoothed[i]
+        if curr_m is not None and curr_m.score < CONFIDENCE_THRESHOLD:
+            prev_type = smoothed[i - 1].canonical_type if i > 0 and smoothed[i - 1] else None
+            next_type = smoothed[i + 1].canonical_type if i < n - 1 and smoothed[i + 1] else None
+            if curr_m.canonical_type != prev_type and curr_m.canonical_type != next_type:
+                smoothed[i] = None
+
+    return smoothed
+
+
+def _build_clause_groups(
+    smoothed: Dict[int, Optional[ClauseMatch]],
+    paragraphs: Sequence[TextInformation]
+) -> List[ClauseGroup]:
+    """Group paragraphs into unified section containers based on 4-zone contract architecture."""
+
+    if not paragraphs:
+        return []
+
+    # 1. Detect Front-Matter Boundary (Title, Parties, Background, Words of Agreement)
+    front_matter_end = -1
+    for i, item in enumerate(paragraphs):
+        if _WORDS_OF_AGREEMENT.search(item.text):
+            front_matter_end = i
+            break
+
+    # 2. Partition into 4-Zone Section Containers
+    containers: List[Dict[str, Any]] = []
+    current_paras: List[int] = []
+    current_title = "FRONT MATTER"
+    in_execution_block = False
+
+    for idx, item in enumerate(paragraphs):
+        if not item.text.strip():
+            continue
+        text = item.text.strip()
+        first_line = text.split("\n")[0].strip()
+
+        # Front-matter zone
+        if front_matter_end != -1 and idx <= front_matter_end:
+            current_paras.append(idx)
+            if idx == front_matter_end:
+                containers.append({
+                    "zone": "FRONT_MATTER",
+                    "title": "Front Matter (Title, Parties, Recitals)",
+                    "para_indices": current_paras,
+                })
+                current_paras = []
+            continue
+
+        # Execution block start (IN WITNESS WHEREOF / SIGNATURE PAGE)
+        if _EXECUTION_BLOCK_START.search(first_line):
+            if current_paras:
+                containers.append({
+                    "zone": "OPERATIVE",
+                    "title": current_title,
+                    "para_indices": current_paras,
+                })
+                current_paras = []
+            in_execution_block = True
+            current_paras.append(idx)
+            current_title = "Signature / Execution Block"
+            continue
+
+        # Back-matter boundary (Annex / Schedule / Exhibit)
+        if _BACK_MATTER_START.search(first_line):
+            if current_paras:
+                containers.append({
+                    "zone": "EXECUTION" if in_execution_block else "OPERATIVE",
+                    "title": current_title,
+                    "para_indices": current_paras,
+                })
+                current_paras = []
+            in_execution_block = False
+            current_paras.append(idx)
+            current_title = first_line
+            continue
+
+        if in_execution_block:
+            # Continue accumulating signature blocks until an Annex or end of document
+            current_paras.append(idx)
+            continue
+
+        # Operative section boundary
+        if _is_major_section_boundary(text) and current_paras:
+            containers.append({
+                "zone": "OPERATIVE",
+                "title": current_title,
+                "para_indices": current_paras,
+            })
+            current_paras = [idx]
+            current_title = first_line
+        else:
+            current_paras.append(idx)
+            if len(current_paras) == 1:
+                current_title = first_line
+
+    if current_paras:
+        containers.append({
+            "zone": "EXECUTION" if in_execution_block else ("BACK_MATTER" if _BACK_MATTER_START.search(current_title) else "OPERATIVE"),
+            "title": current_title,
+            "para_indices": current_paras,
+        })
+
+    # 2b. Split oversized OPERATIVE containers at sub-clause boundaries
+    split_containers: List[Dict[str, Any]] = []
+    for c in containers:
+        if c.get("zone") != "OPERATIVE" or len(c["para_indices"]) <= _MAX_GROUP_PARAGRAPHS:
+            split_containers.append(c)
+            continue
+        # Split at sub-clause boundaries within this article
+        sub_groups: List[List[int]] = []
+        current_sub: List[int] = []
+        for pi in c["para_indices"]:
+            first_line = paragraphs[pi].text.strip().split("\n")[0].strip()
+            # Start a new sub-group only when current sub-group has accumulated at least 4 paragraphs
+            # and a new numbered sub-clause boundary is encountered.
+            if len(current_sub) >= 4 and _SUB_CLAUSE_PATTERN.match(first_line):
+                sub_groups.append(current_sub)
+                current_sub = [pi]
+            else:
+                current_sub.append(pi)
+        if current_sub:
+            sub_groups.append(current_sub)
+        if len(sub_groups) <= 1:
+            split_containers.append(c)
+        else:
+            for sg in sub_groups:
+                split_containers.append({"zone": "OPERATIVE", "title": c["title"], "para_indices": sg})
+    containers = split_containers
+
+    # 3. Assemble ClauseGroup objects per container
+    groups: List[ClauseGroup] = []
+
+    for c in containers:
+        indices = c["para_indices"]
+        paras_dict = {i: paragraphs[i].text for i in indices}
+        title = c["title"]
+        zone = c.get("zone", "OPERATIVE")
+
+        # Case A: Front-Matter Container -> Routed to PATH C (Defect check only)
+        if zone == "FRONT_MATTER":
+            groups.append(
+                ClauseGroup(
+                    para_indices=indices,
+                    canonical_type="Front Matter",
+                    canonical_slug=None,
+                    confidence=1.0,
+                    is_classified=False,
+                    is_fragment=True,
+                    paragraphs=paras_dict,
+                )
+            )
+            continue
+
+        # Case B: Execution / Signature Block Container -> Routed to PATH C (Missing signature / date defect check)
+        if zone == "EXECUTION":
+            groups.append(
+                ClauseGroup(
+                    para_indices=indices,
+                    canonical_type="Signature Block",
+                    canonical_slug=None,
+                    confidence=1.0,
+                    is_classified=False,
+                    is_fragment=True,
+                    paragraphs=paras_dict,
+                )
+            )
+            continue
+
+        # Case C: Back-Matter Container (Annex / Schedule / Exhibit) -> Routed to PATH C (Defect & Placeholder check)
+        if zone == "BACK_MATTER" or _BACK_MATTER_START.search(title):
+            groups.append(
+                ClauseGroup(
+                    para_indices=indices,
+                    canonical_type="Schedule / Annex",
+                    canonical_slug=None,
+                    confidence=1.0,
+                    is_classified=False,
+                    is_fragment=True,
+                    paragraphs=paras_dict,
+                )
+            )
+            continue
+
+        # Case D: Operative Section Container -> Determine Dominant Type
+        # Check 1: Match heading directly to taxonomy
+        heading_match = _match_heading_to_taxonomy(title)
+
+        # Check 2: Tally body paragraph vector votes
+        body_slugs: List[str] = []
+        body_scores: Dict[str, float] = {}
+        for i in indices:
+            m = smoothed.get(i)
+            if m and m.canonical_type and m.score >= 0.65:
+                body_slugs.append(m.canonical_type)
+                body_scores[m.canonical_type] = max(body_scores.get(m.canonical_type, 0.0), m.score)
+
+        dominant_slug: Optional[str] = None
+        dominant_conf = 0.0
+
+        if body_slugs:
+            counts = Counter(body_slugs)
+            dominant_slug, _ = counts.most_common(1)[0]
+            dominant_conf = body_scores[dominant_slug]
+
+        # Heading match has priority if valid taxonomy type; else use dominant body vector
+        canonical_display = heading_match or (slug_to_display(dominant_slug) if dominant_slug else None)
+        canonical_slug = (display_to_slug(canonical_display) if canonical_display else None) or dominant_slug
+        is_classified = bool(canonical_display and (heading_match or dominant_conf >= CONFIDENCE_THRESHOLD))
+
+        is_frag = False
+        if not is_classified:
+            assembled_text = "\n\n".join(paras_dict[i].strip() for i in indices)
+            is_frag = _is_fragment(assembled_text)
+
+        groups.append(
+            ClauseGroup(
+                para_indices=indices,
+                canonical_type=canonical_display,
+                canonical_slug=canonical_slug,
+                confidence=dominant_conf if dominant_conf > 0 else 1.0,
+                is_classified=is_classified,
+                is_fragment=is_frag,
+                paragraphs=paras_dict,
+            )
+        )
+
+    return groups
+
+
+def _build_batches_v2(
+    groups: List[ClauseGroup],
+    paragraphs: Sequence[TextInformation]
+) -> List[List[ClauseGroup]]:
+    """Pack ClauseGroup objects into batches respecting BATCH_CHAR_BUDGET.
+
+    Hard rule: A ClauseGroup is NEVER split across batches.
+    """
+
+    batches: List[List[ClauseGroup]] = []
+    current_batch: List[ClauseGroup] = []
+    current_chars = 0
+
+    for group in groups:
+        group_chars = sum(len(paragraphs[i].text) for i in group.para_indices)
+        if current_batch and (current_chars + group_chars > BATCH_CHAR_BUDGET):
+            batches.append(current_batch)
+            current_batch = []
+            current_chars = 0
+        current_batch.append(group)
+        current_chars += group_chars
+
+    if current_batch:
+        batches.append(current_batch)
+
+    return batches
+
+
+async def _extraction_call(
+    group: ClauseGroup,
+    criteria: List[dict],
+    paragraphs: Sequence[TextInformation],
+    request: GeneralReviewRequest,
+    semaphore: asyncio.Semaphore,
+    session_id: str
+) -> ExtractionResponse:
+    """Run criteria extraction against the clause text with structured output."""
 
     llm_model = get_bedrock_model()
-    document = _format_document(batch)
-    if context:
-        document = f"Preceding portion of the document (read-only context — never raise suggestions for it):\n\n{context}\n\n--- TEXT TO REVIEW ---\n\n{document}"
+    reviewer_context = _build_reviewer_context(request)
+
+    lines = []
+    for idx in group.para_indices:
+        para = paragraphs[idx]
+        lines.append(f"[{para.paraindetifier}]: {para.text.strip()}")
+    clause_text_with_ids = "\n\n".join(lines)
+
+    criteria_summary = [
+        {
+            "criterion_id": c["criterion_id"],
+            "question": c.get("question") or c.get("question_for_llm") or c.get("criterion", ""),
+            "met_when": c.get("met_when", ""),
+            "partly_met_when": c.get("partly_met_when", ""),
+            "not_met_when": c.get("not_met_when", ""),
+            "applies_when": c.get("applies_when", ""),
+            "evidence_required": c.get("evidence_required", ""),
+        }
+        for c in criteria
+    ]
+    criteria_json = json.dumps(criteria_summary, indent=2, ensure_ascii=False)
 
     async with semaphore:
-        # The retry resamples at a higher temperature: at temp 0 a malformed
-        # response (e.g. the array serialized as a broken JSON string) would
-        # just be reproduced verbatim.
-        for attempt, temperature in ((1, 0.0), (2, 0.4)):
+        for attempt, temperature in ((1, 0.0), (2, 0.3)):
             try:
                 return await llm_model.generate(
-                    prompt=_GENERAL_REVIEW_USER,
-                    context={"document": document, "reviewer_context": reviewer_context, "outline_context": outline_context, "policy_context": policy_context},
-                    response_model=GeneralReviewResponse,
-                    system_message=_GENERAL_REVIEW_SYSTEM,
+                    prompt=_EXTRACTION_USER,
+                    context={
+                        "canonical_type": group.canonical_type or "General Clause",
+                        "reviewer_context": reviewer_context,
+                        "criteria_json": criteria_json,
+                        "clause_text_with_ids": clause_text_with_ids,
+                    },
+                    response_model=ExtractionResponse,
+                    system_message=_EXTRACTION_SYSTEM,
                     session_id=session_id,
                     temperature=temperature,
                 )
             except Exception:
                 if attempt == 2:
                     raise
-                logger.exception("Batch review failed on attempt %d; retrying once.", attempt)
-                await asyncio.sleep(2)
+                logger.warning("Extraction call failed on attempt %d; retrying once.", attempt)
+                await asyncio.sleep(1)
 
     raise RuntimeError("unreachable")
 
 
-async def _review_batch_consensus(
-    batch: _Batch, context: str, reviewer_context: str, outline_context: str, policy_context: "asyncio.Future[str]", semaphore: asyncio.Semaphore, session_id: str, titles: Dict[str, str]
+def _resolve_and_score(
+    extraction: ExtractionResponse,
+    group: ClauseGroup,
+    criteria: List[dict],
+    paragraphs: Sequence[TextInformation]
+) -> ScoringResult:
+    """Resolve evidence paragraphs for each answer and compute the deterministic score."""
+
+    pid_to_index = {paragraphs[i].paraindetifier: i for i in group.para_indices}
+    group_candidates = [(i, paragraphs[i]) for i in group.para_indices]
+
+    answers: List[AnswerRecord] = []
+    # Primary substantive body paragraph (skip standalone section title if multi-para)
+    default_substantive_idx = group.para_indices[1] if len(group.para_indices) > 1 else group.para_indices[0]
+
+    for raw_ans in extraction.answers:
+        resolved_idx: Optional[int] = None
+
+        # 1. Verbatim quote grounding takes precedence (100% exact, deterministic text match)
+        if raw_ans.quote and raw_ans.quote.strip() != "Not stated in text":
+            grounded = _ground(raw_ans.quote, group_candidates)
+            if grounded:
+                resolved_idx = grounded[0]
+
+        # 2. Match source_para_id if returned and valid for this group
+        if resolved_idx is None and raw_ans.source_para_id and raw_ans.source_para_id in pid_to_index:
+            cand_idx = pid_to_index[raw_ans.source_para_id]
+            # Avoid anchoring on a bare title paragraph when substantive body paragraphs exist
+            if len(group.para_indices) > 1 and cand_idx == group.para_indices[0]:
+                resolved_idx = default_substantive_idx
+            else:
+                resolved_idx = cand_idx
+
+        # 3. Default to the primary substantive body paragraph for omissions / unassigned
+        if resolved_idx is None and group.para_indices:
+            resolved_idx = default_substantive_idx
+
+        answers.append(
+            AnswerRecord(
+                criterion_id=raw_ans.criterion_id,
+                answer=raw_ans.answer,
+                quote=raw_ans.quote,
+                source_para_id=raw_ans.source_para_id,
+                source_para_index=resolved_idx,
+            )
+        )
+
+    return score_group(answers, criteria)
+
+
+async def _explanation_call(
+    para_index: int,
+    group: ClauseGroup,
+    scoring_result: ScoringResult,
+    criteria: List[dict],
+    request: GeneralReviewRequest,
+    semaphore: asyncio.Semaphore,
+    session_id: str,
+    clause_name: Optional[str] = None,
+) -> ExplanationResponse:
+    """Draft professional review finding with pre-computed, locked risk level."""
+
+    llm_model = get_bedrock_model()
+    para = request.textinformation[para_index]
+    criteria_map = {c["criterion_id"]: c for c in criteria}
+
+    para_failed = [a for a in scoring_result.failed_answers if a.source_para_index == para_index]
+    if not para_failed:
+        para_failed = scoring_result.failed_answers
+
+    issue_lines = []
+    for a in para_failed:
+        crit = criteria_map.get(a.criterion_id, {})
+        q_text = crit.get("question") or crit.get("question_for_llm") or crit.get("criterion", a.criterion_id)
+        evidence_str = f'Evidence quote: "{a.quote}"' if a.quote and a.quote.strip() != "Not stated in text" else "Evidence: Required element not stated in text."
+        issue_lines.append(f"- Issue: {q_text}\n  Outcome: {a.answer}\n  {evidence_str}")
+
+    failed_criteria_block = "\n".join(issue_lines)
+    reviewer_context = _build_reviewer_context(request)
+    resolved_clause_name = clause_name or group.canonical_type or "General Clause"
+
+    async with semaphore:
+        for attempt, temperature in ((1, 0.0), (2, 0.3)):
+            try:
+                return await llm_model.generate(
+                    prompt=_EXPLANATION_USER,
+                    context={
+                        "reviewer_context": reviewer_context,
+                        "clause_name": resolved_clause_name,
+                        "risk_level": scoring_result.final_level,
+                        "failed_criteria_block": failed_criteria_block,
+                        "original_text": para.text,
+                    },
+                    response_model=ExplanationResponse,
+                    system_message=_EXPLANATION_SYSTEM,
+                    session_id=session_id,
+                    temperature=temperature,
+                )
+            except Exception:
+                if attempt == 2:
+                    raise
+                logger.warning("Explanation call failed on attempt %d; retrying once.", attempt)
+                await asyncio.sleep(1)
+
+    raise RuntimeError("unreachable")
+
+
+async def _fragment_defect_call(
+    group: ClauseGroup,
+    paragraphs: Sequence[TextInformation],
+    semaphore: asyncio.Semaphore,
+    session_id: str,
+    titles: Optional[Dict[str, str]] = None,
 ) -> List[Tuple[int, Suggestion]]:
-    """Review one batch with parallel votes and keep only majority-backed findings."""
+    """Check orphaned fragments and front-matter for blanks, placeholders, and direct contradictions."""
 
-    # Wait for this batch's clauses to be mapped before taking a model slot.
-    policies = await policy_context
-    outcomes = await asyncio.gather(*[_review_batch(batch, context, reviewer_context, outline_context, policies, semaphore, session_id) for _ in range(CONSENSUS_VOTES)], return_exceptions=True)
+    llm_model = get_bedrock_model()
+    suggestions: List[Tuple[int, Suggestion]] = []
 
-    # A majority of votes must succeed; one lost vote never fails the review.
-    votes = [outcome for outcome in outcomes if isinstance(outcome, GeneralReviewResponse)]
-    if len(votes) < _MAJORITY:
-        raise next(outcome for outcome in outcomes if isinstance(outcome, BaseException))
-    if len(votes) < CONSENSUS_VOTES:
-        logger.warning("Batch consensus proceeding with %d of %d votes.", len(votes), CONSENSUS_VOTES)
+    for idx in group.para_indices:
+        para = paragraphs[idx]
+        # Only inspect paragraphs with potential defect markers
+        t = para.text.strip()
+        has_placeholder = any(marker in t for marker in ("[", "]", "___", "●", "TBD", "INSERT"))
+        if not has_placeholder and len(t.split()) >= 20:
+            continue
 
-    # One grounded finding per paragraph per vote, so vote counts stay honest.
-    per_vote: List[Dict[int, Suggestion]] = []
-    for vote in votes:
-        grounded: Dict[int, Suggestion] = {}
-        for position, suggestion in _validate_batch(vote.suggestions, batch, set(), titles):
-            grounded.setdefault(position, suggestion)
-        per_vote.append(grounded)
+        res = FragmentDefectResponse(findings=[])
+        async with semaphore:
+            for attempt, temperature in ((1, 0.0), (2, 0.3)):
+                try:
+                    res = await llm_model.generate(
+                        prompt=_FRAGMENT_USER,
+                        context={"text": t},
+                        response_model=FragmentDefectResponse,
+                        system_message=_FRAGMENT_SYSTEM,
+                        session_id=session_id,
+                        temperature=temperature,
+                    )
+                    break
+                except Exception:
+                    if attempt == 2:
+                        res = FragmentDefectResponse(findings=[])
+                        break
+                    await asyncio.sleep(1)
 
-    counts = Counter(position for grounded in per_vote for position in grounded)
-    picked: Dict[int, Suggestion] = {}
-    for grounded in per_vote:
-        for position, suggestion in grounded.items():
-            if counts[position] >= _MAJORITY and position not in picked:
-                picked[position] = suggestion
+        for finding in res.findings:
+            _, full_fix = _expand_to_paragraph(finding.suggested_fix, para, para.text.strip())
+            fallback_label = (
+                "Preamble / Front-Matter"
+                if group.canonical_type == "Front Matter"
+                else (
+                    "Signature Block"
+                    if group.canonical_type == "Signature Block"
+                    else (
+                        "Schedule / Annex"
+                        if group.canonical_type == "Schedule / Annex"
+                        else "General Clause"
+                    )
+                )
+            )
+            actual_label = (titles.get(para.paraindetifier) if titles else None) or fallback_label
+            sugg = Suggestion(
+                clause=actual_label,
+                reason=finding.reason,
+                risk_level="Low",
+                original_text=para.text,
+                suggested_fix=full_fix,
+                para_identifier=para.paraindetifier,
+            )
+            suggestions.append((idx, sugg))
 
-    return sorted(picked.items())
+    return suggestions
+
+
+async def _evaluate_group(
+    group: ClauseGroup,
+    request: GeneralReviewRequest,
+    semaphore: asyncio.Semaphore,
+    session_id: str,
+    titles: Optional[Dict[str, str]] = None,
+) -> List[Tuple[int, Suggestion]]:
+    """Route group through PATH A, B, or C and return resulting suggestions."""
+
+    paragraphs = request.textinformation
+
+    # PATH C: Fragment / Front-Matter Defect
+    if group.is_fragment:
+        return await _fragment_defect_call(group, paragraphs, semaphore, session_id, titles=titles)
+
+    # Determine criteria: PATH A (type-specific) or PATH B (general criteria)
+    criteria: List[dict] = []
+    if group.is_classified:
+        if group.canonical_type:
+            criteria = get_criteria(group.canonical_type)
+        if not criteria and group.canonical_slug:
+            criteria = get_criteria_by_slug(group.canonical_slug)
+
+    if not criteria:
+        criteria = list(GENERAL_CRITERIA)
+
+    # Call A: Criteria extraction
+    extraction = await _extraction_call(group, criteria, paragraphs, request, semaphore, session_id)
+
+    # Safety Net: LLM flagged type mismatch -> fall back to general criteria (PATH B)
+    if not extraction.is_type_match:
+        logger.info(
+            "Type mismatch flagged by LLM for group '%s' - falling back to general criteria (PATH B)",
+            group.canonical_type,
+        )
+        from src.services.general_criteria import GENERAL_CRITERIA
+        from src.schemas.clause_mapping import ClauseGroup
+        criteria = list(GENERAL_CRITERIA)
+        misclassified_group = ClauseGroup(
+            para_indices=group.para_indices,
+            canonical_type=group.canonical_type,
+            canonical_slug=None,
+            confidence=0.0,
+            is_classified=False,
+            is_fragment=group.is_fragment,
+            paragraphs=group.paragraphs,
+        )
+        extraction = await _extraction_call(misclassified_group, criteria, paragraphs, request, semaphore, session_id)
+        group = misclassified_group
+
+    # Deterministic scoring in Python
+    scoring_result = _resolve_and_score(extraction, group, criteria, paragraphs)
+
+    # Clean / non-risky clauses produce zero suggestions
+    if not is_risky(scoring_result.final_level, has_failed_answers=bool(scoring_result.failed_answers)):
+        return []
+
+    # Identify risky paragraphs that need an explanation call
+    risky_para_indices = scoring_result.risky_para_indices
+    # Never attach suggestions to a standalone section heading when substantive body paragraphs exist
+    if len(group.para_indices) > 1 and _is_major_section_boundary(paragraphs[group.para_indices[0]].text):
+        risky_para_indices = [pid for pid in risky_para_indices if pid != group.para_indices[0]]
+
+    if not risky_para_indices:
+        # Default to first substantive body paragraph (avoid section header)
+        risky_para_indices = [group.para_indices[1]] if len(group.para_indices) > 1 else [group.para_indices[0]]
+
+    canonical_name = group.canonical_type or "General Clause"
+
+    async def _explain_para(p_idx: int) -> Tuple[int, Suggestion]:
+        p = paragraphs[p_idx]
+        actual_heading = (titles.get(p.paraindetifier) if titles else None) or canonical_name
+        explanation = await _explanation_call(
+            p_idx, group, scoring_result, criteria, request, semaphore, session_id,
+            clause_name=actual_heading,
+        )
+        _, full_fix = _expand_to_paragraph(explanation.suggested_fix, p, p.text.strip())
+        sugg = Suggestion(
+            clause=actual_heading,
+            reason=explanation.reason,
+            risk_level=scoring_result.final_level,
+            original_text=p.text,
+            suggested_fix=full_fix,
+            para_identifier=p.paraindetifier,
+        )
+        return (p_idx, sugg)
+
+    # Concurrently generate explanations for all risky paragraphs in this group
+    explained_results = await asyncio.gather(*[_explain_para(pid) for pid in risky_para_indices])
+    return list(explained_results)
+
+
+async def _evaluate_batch(
+    batch: List[ClauseGroup],
+    request: GeneralReviewRequest,
+    semaphore: asyncio.Semaphore,
+    session_id: str,
+    titles: Optional[Dict[str, str]] = None,
+) -> List[Tuple[int, Suggestion]]:
+    """Evaluate all groups in a batch concurrently."""
+
+    if titles is None:
+        titles = _build_clause_titles(request.textinformation)
+
+    group_results = await asyncio.gather(
+        *[_evaluate_group(group, request, semaphore, session_id, titles=titles) for group in batch],
+        return_exceptions=True
+    )
+    batch_suggestions: List[Tuple[int, Suggestion]] = []
+    for res in group_results:
+        if isinstance(res, Exception):
+            logger.exception("Error evaluating clause group: %s", res)
+            continue
+        batch_suggestions.extend(res)
+    batch_suggestions.sort(key=lambda pair: pair[0])
+    return batch_suggestions
 
 
 async def general_review_service(request: GeneralReviewRequest, session_id: str) -> GeneralReviewResponse:
-    """Review the full document or the selected clauses the frontend sent."""
+    """Deterministic, rubric-driven general review pipeline."""
 
     fingerprint = _request_fingerprint(request)
     cached = _cache_get(fingerprint)
@@ -655,52 +1364,51 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
         logger.info("General review: cache hit — returning the stored review for this document.")
         return cached
 
-    batches = _build_batches(request.textinformation)
-    if not batches:
+    if not request.textinformation:
         return GeneralReviewResponse(suggestions=[])
 
-    reviewer_context = _build_reviewer_context(request)
-    titles = _build_clause_titles(request.textinformation)
-    outline_context = _build_outline_context(request.textinformation, titles, len(batches))
-    policy_contexts, mapping = _start_policy_mapping(request, batches, titles, session_id)
-    logger.info("General review: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
+    paragraphs = request.textinformation
 
+    # Step 1: Classify all paragraphs with vector DB
+    raw_matches = await _classify_all_paragraphs(request, session_id)
+
+    # Step 2: Smooth classifications to remove classification noise
+    smoothed = _smooth_classifications(raw_matches, paragraphs)
+
+    # Step 3: Build cohesive section containers
+    groups = _build_clause_groups(smoothed, paragraphs)
+
+    # Step 4: Build batches respecting clause group integrity
+    batches = _build_batches_v2(groups, paragraphs)
+    logger.info("General review: %d paragraphs in %d clause groups split into %d batches.", len(paragraphs), len(groups), len(batches))
+
+    titles = _build_clause_titles(paragraphs)
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
-    try:
-        results = await asyncio.gather(
-            *[_review_batch_consensus(batch, context, reviewer_context, outline_context, policy_context, semaphore, session_id, titles) for (batch, context), policy_context in zip(batches, policy_contexts)]
-        )
-    finally:
-        if mapping is not None:
-            mapping.cancel()
+    batch_results = await asyncio.gather(
+        *[_evaluate_batch(batch, request, semaphore, session_id, titles=titles) for batch in batches]
+    )
 
     seen_positions: Set[int] = set()
     positioned: List[Tuple[int, Suggestion]] = []
-    for batch_result in results:
-        for position, suggestion in batch_result:
-            if position in seen_positions:
+    for b_res in batch_results:
+        for pos, sugg in b_res:
+            if pos in seen_positions:
                 continue
-            seen_positions.add(position)
-            positioned.append((position, suggestion))
+            seen_positions.add(pos)
+            positioned.append((pos, sugg))
 
     positioned.sort(key=lambda pair: pair[0])
-    response = GeneralReviewResponse(suggestions=[suggestion for _, suggestion in positioned])
+    response = GeneralReviewResponse(suggestions=[sugg for _, sugg in positioned])
     _cache_put(fingerprint, response)
     return response
 
 
 async def general_review_streaming_service(request: GeneralReviewRequest, session_id: str) -> AsyncIterator[str]:
-    """Stream the review as SSE text fragments that concatenate into one valid JSON response.
-
-    Batches run in parallel; each batch's validated suggestions are emitted in
-    document order as soon as that batch completes.
-    """
+    """Stream the review as SSE text fragments that concatenate into one valid JSON response."""
 
     def frame(fragment: str) -> str:
         return f"data: {json.dumps(fragment)}\n\n"
 
-    tasks: List[asyncio.Task] = []
-    mapping: Optional["asyncio.Task[None]"] = None
     try:
         fingerprint = _request_fingerprint(request)
         cached = _cache_get(fingerprint)
@@ -714,17 +1422,24 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
             yield "data: [DONE]\n\n"
             return
 
-        batches = _build_batches(request.textinformation)
-        reviewer_context = _build_reviewer_context(request)
-        titles = _build_clause_titles(request.textinformation)
-        outline_context = _build_outline_context(request.textinformation, titles, len(batches))
-        policy_contexts, mapping = _start_policy_mapping(request, batches, titles, session_id)
-        logger.info("General review stream: %d paragraph(s) split into %d batch(es), %d votes each%s.", len(request.textinformation), len(batches), CONSENSUS_VOTES, ", with reviewer context" if reviewer_context else "")
+        if not request.textinformation:
+            yield frame('{"suggestions": []}')
+            yield "data: [DONE]\n\n"
+            return
 
+        paragraphs = request.textinformation
+        raw_matches = await _classify_all_paragraphs(request, session_id)
+        smoothed = _smooth_classifications(raw_matches, paragraphs)
+        groups = _build_clause_groups(smoothed, paragraphs)
+        batches = _build_batches_v2(groups, paragraphs)
+
+        logger.info("General review stream: %d paragraphs in %d clause groups split into %d batches.", len(paragraphs), len(groups), len(batches))
+
+        titles = _build_clause_titles(paragraphs)
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
         tasks = [
-            asyncio.create_task(_review_batch_consensus(batch, context, reviewer_context, outline_context, policy_context, semaphore, session_id, titles))
-            for (batch, context), policy_context in zip(batches, policy_contexts)
+            asyncio.create_task(_evaluate_batch(batch, request, semaphore, session_id, titles=titles))
+            for batch in batches
         ]
 
         yield frame('{"suggestions": [')
@@ -732,10 +1447,11 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         emitted: List[Suggestion] = []
         seen_positions: Set[int] = set()
         for task in tasks:
-            for position, suggestion in await task:
-                if position in seen_positions:
+            batch_result = await task
+            for pos, suggestion in batch_result:
+                if pos in seen_positions:
                     continue
-                seen_positions.add(position)
+                seen_positions.add(pos)
                 separator = "" if not emitted else ","
                 yield frame(separator + suggestion.model_dump_json())
                 emitted.append(suggestion)
@@ -745,10 +1461,6 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
 
     except Exception as exc:
         logger.exception("General review stream failed: %s", exc)
-        for task in tasks:
-            task.cancel()
-        if mapping is not None:
-            mapping.cancel()
         yield f"data: {json.dumps({'error': 'General review failed. Please try again.'})}\n\n"
 
     yield "data: [DONE]\n\n"

@@ -1,0 +1,24 @@
+{{{reviewer_context}}}
+Clause Name: {{{clause_name}}}
+Conclusive Risk Level: {{{risk_level}}}
+
+Issues Identified:
+{{{failed_criteria_block}}}
+
+Original Paragraph Text:
+{{{original_text}}}
+
+Instructions for Output:
+1. "reason":
+   - 2–4 sentences grounded in the clause text.
+   - If representing a specific client: Explicitly explain the concrete risk TO THE CLIENT BY NAME. If the client has stated a Primary Objective or Specific Concerns, explicitly tie your analysis to them.
+   - If in Neutral General Review: Explain the commercial, legal, or enforceability risk neutrally without favoring either party.
+   - Note any critical survival or cross-reference alignment at the end if applicable.
+
+2. "suggested_fix":
+   - SURGICAL, MINIMAL redline of Original Paragraph Text.
+   - Keep the length strictly comparable to original text (within ±20% word count). DO NOT bloat the paragraph.
+   - DO NOT insert laundry lists of statutes (e.g., CCPA, GDPR, HIPAA) or invent unrequested sub-clauses (a)(b)(c).
+   - Change ONLY the defective words or insert a minimal standard hinge/carve-out to resolve the identified issue.
+
+Draft the review finding ("reason" and "suggested_fix") and return only valid JSON adhering to the schema.

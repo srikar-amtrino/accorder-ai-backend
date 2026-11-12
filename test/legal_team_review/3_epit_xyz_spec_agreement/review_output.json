@@ -1,0 +1,60 @@
+{
+  "suggestions": [
+    {
+      "clause": "Preamble / Front-Matter",
+      "reason": "The phrase 'certain value with' is followed by an unfilled placeholder '(\"[PayPal API\")' \u2014 the bracketed text '[PayPal API]' appears to be an incomplete or placeholder reference that was never properly filled in or closed with a full description of the service/API being referenced.",
+      "risk_level": "Low",
+      "original_text": "One or more Epit customers (each a \u201cCustomer\u201d and collectively \u201cCustomers\u201d)  would like to engage You to provide certain value with  (\u201c[PayPal API\u201d).  You have requested that Epit provide You with access to Epit\u2019s currently available standard specifications for the following:",
+      "suggested_fix": "One or more Epit customers (each a \"Customer\" and collectively \"Customers\") would like to engage You to provide certain value-added services in connection with the PayPal API (\"PayPal API\"). You have requested that Epit provide You with access to Epit's currently available standard specifications for the following:",
+      "para_identifier": "00000005"
+    },
+    {
+      "clause": "Purpose",
+      "reason": "This provision grants XYZ Inc only a bare, unqualified right to use the Epit Specifications \"solely for the Purpose,\" without defining the scope of that right in terms that protect XYZ Inc's practical business needs. As drafted, the grant is entirely one-sided: it is silent on whether the right is non-exclusive, whether it can be exercised by XYZ Inc's affiliates or contractors working on XYZ Inc's behalf, and whether XYZ Inc may make copies or derivative works reasonably necessary to accomplish the Purpose. More critically, the clause acknowledges that the Epit Specifications may change over time but frames any update as something XYZ Inc may merely \"request\" \u2014 leaving Epit with no obligation to actually provide updated versions. This creates a material operational risk: XYZ Inc could be left working from outdated specifications while Epit's software has moved on, with no contractual recourse. The combination of a narrowly scoped grant and an illusory update mechanism places XYZ Inc in a commercially vulnerable position that should be corrected before execution.",
+      "risk_level": "High",
+      "original_text": "Epit Specifications.  Upon execution of this Agreement and subject to its terms and conditions, Epit grants You the right to use the Epit Specifications solely for the Purpose.  You understand that the Epit Specifications may change from time to time during the term of this Agreement as Epit releases new versions of its software.  In such event, You may request an updated version of the Epit Specifications.",
+      "suggested_fix": "Epit Specifications.  Upon execution of this Agreement and subject to its terms and conditions, Epit grants You a non-exclusive, non-transferable right to use the Epit Specifications solely for the Purpose, including the right to make a reasonable number of copies as necessary to accomplish the Purpose and to permit Your employees, affiliates, and contractors acting on Your behalf to use the Epit Specifications for the same Purpose, provided that such parties are bound by confidentiality obligations no less protective than those set forth in this Agreement.  You understand that the Epit Specifications may change from time to time during the term of this Agreement as Epit releases new versions of its software.  In such event, Epit shall provide You with an updated version of the Epit Specifications within a reasonable time following the release of any new version of its software that materially affects the Epit Specifications, and You may also request an updated version of the Epit Specifications at any time.",
+      "para_identifier": "0000000E"
+    },
+    {
+      "clause": "Purpose",
+      "reason": "The \"Entire Agreement\" clause references \"the Purpose\" as a defined or understood term governing the scope of this Agreement, but the Agreement fails to clearly and expressly define what that Purpose is within this provision or by adequate cross-reference. This creates a significant risk for XYZ Inc: if a dispute arises over whether a particular use of the Epit Specifications falls within or outside the permitted scope, the ambiguity around \"the Purpose\" could be exploited by the disclosing party to argue that XYZ Inc's use exceeded what was authorized, potentially exposing XYZ Inc to claims of breach or misappropriation. From a practical standpoint, XYZ Inc needs the Purpose to be explicitly stated so that the boundaries of its permitted use are clear, enforceable, and defensible. Additionally, the exclusive venue and governing law provision mandates Wisconsin courts without any qualification, which may impose a disproportionate litigation burden on XYZ Inc if it is not based in Wisconsin. The suggested fix inserts an express, plain-language description of the Purpose directly into this clause and softens the venue provision to permit XYZ Inc to bring claims in courts of competent jurisdiction in its own jurisdiction as an alternative.",
+      "risk_level": "High",
+      "original_text": "Entire Agreement and Governing Law.  This Agreement constitutes the entire agreement with respect to the Purpose and the Epit Specifications disclosed hereunder.  This Agreement may not be amended except by written agreement signed by authorized representatives of both parties.  The validity, construction and performance of this Agreement shall be governed by the laws of the State of Wisconsin and any action brought under this Agreement shall be brought exclusively in Wisconsin. The parties consent to the personal jurisdiction of the state and federal courts located in Wisconsin.  If any provision is invalid under any applicable statute or rule of law, the remaining provisions of this Agreement shall remain in full force and effect.",
+      "suggested_fix": "Entire Agreement and Governing Law.  This Agreement constitutes the entire agreement with respect to the Purpose, which is defined as the evaluation by XYZ Inc of the Epit Specifications solely to assess a potential business relationship or transaction between the parties, and the Epit Specifications disclosed hereunder.  This Agreement may not be amended except by written agreement signed by authorized representatives of both parties.  The validity, construction and performance of this Agreement shall be governed by the laws of the State of Wisconsin; provided, however, that either party may bring an action to enforce this Agreement in any court of competent jurisdiction in the jurisdiction where the defendant party is located or where the relevant Epit Specifications were disclosed or used.  The parties consent to the personal jurisdiction of the state and federal courts located in Wisconsin.  If any provision is invalid under any applicable statute or rule of law, the remaining provisions of this Agreement shall remain in full force and effect.",
+      "para_identifier": "00000027"
+    },
+    {
+      "clause": "General Clause",
+      "reason": "The signature block contains unfilled blanks \u2014 both signatory lines ('By:') are empty with no names, titles, or other required information filled in.",
+      "risk_level": "Low",
+      "original_text": "By:\t\t\t\t\t\t\tBy:",
+      "suggested_fix": "By: ___________________________          By: ___________________________\nName: [Authorized Signatory Name]     Name: [Authorized Signatory Name]\nTitle: [Title]                                          Title: [Title]\nDate: [Date]                                          Date: [Date]",
+      "para_identifier": "0000002D"
+    },
+    {
+      "clause": "General Clause",
+      "reason": "The paragraph contains unfilled blanks \u2014 both 'Print Name:' fields are empty with no names inserted, indicating incomplete signature block placeholders.",
+      "risk_level": "Low",
+      "original_text": "Print Name:\t\t\t\t\t\tPrint Name:",
+      "suggested_fix": "Print Name: [Party A Representative Name]          Print Name: [Party B Representative Name]",
+      "para_identifier": "0000002F"
+    },
+    {
+      "clause": "General Clause",
+      "reason": "The 'Title:' field appears twice with no value filled in, indicating an unfilled placeholder where a title or heading should be inserted.",
+      "risk_level": "Low",
+      "original_text": "Title:\t\tTitle:",
+      "suggested_fix": "Title: [Insert appropriate title, e.g., 'Service Agreement' or 'Non-Disclosure Agreement']",
+      "para_identifier": "00000031"
+    },
+    {
+      "clause": "General Clause",
+      "reason": "The paragraph contains two unfilled date placeholders ('Date:' fields with no values entered), indicating the agreement was never completed with actual execution dates.",
+      "risk_level": "Low",
+      "original_text": "Date:\t\t\t\t\t\t\tDate:",
+      "suggested_fix": "Date: [Month Day, Year]                    Date: [Month Day, Year]",
+      "para_identifier": "00000033"
+    }
+  ]
+}

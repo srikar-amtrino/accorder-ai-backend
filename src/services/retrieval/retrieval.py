@@ -35,6 +35,12 @@ class RetrievalService:
         self.embedding_service = get_embedding_service()
         self.llm = get_bedrock_model()
         self.session_manager = get_session_manager()
+        if self.embedding_service is None:
+            raise RuntimeError(
+                "RetrievalService requires a local embedding service (HuggingFace/SentenceTransformers) "
+                "which is unavailable on this machine (torch.dll blocked by OS Application Control). "
+                "RetrievalService will not be initialized."
+            )
         self.vector_store = get_faiss_vector_store(self.embedding_service.get_embedding_dimensions())
 
     async def rewrite_query(self, query: str, session_id: str) -> List[str]:

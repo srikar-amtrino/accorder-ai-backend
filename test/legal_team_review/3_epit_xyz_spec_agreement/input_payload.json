@@ -1,0 +1,128 @@
+{
+  "textinformation": [
+    {
+      "text": "AGREEMENT REGARDING USE OF EPIT SPECIFICATION",
+      "paraindetifier": "00000001"
+    },
+    {
+      "text": "This agreement (the \u201cAgreement\u201d) is between Epit Systems Corporation, with a principal place of business at 405 State Hwy 121, Lewisville, TX 75067, USA (\u201cEpit\u201d), and XYZ Inc  with a principal place of business at \u00a01 N Central Rd 6th floor, suite 675, Fort Lee, NJ 07024, United States  (\u201cYou\u201d).",
+      "paraindetifier": "00000003"
+    },
+    {
+      "text": "Background",
+      "paraindetifier": "00000004"
+    },
+    {
+      "text": "One or more Epit customers (each a \u201cCustomer\u201d and collectively \u201cCustomers\u201d)  would like to engage You to provide certain value with  (\u201c[PayPal API\u201d).  You have requested that Epit provide You with access to Epit\u2019s currently available standard specifications for the following:",
+      "paraindetifier": "00000005"
+    },
+    {
+      "text": "Stripe API",
+      "paraindetifier": "00000007"
+    },
+    {
+      "text": "PayPal API",
+      "paraindetifier": "00000008"
+    },
+    {
+      "text": "eBay API",
+      "paraindetifier": "00000009"
+    },
+    {
+      "text": "(the \u201cEpit Specifications\u201d) and a limited right to use such Epit Specifications in connection with Your efforts to create and support interfaces or other integration of Your Development/the Vendor Software with Epit\u2019s software for use only for the purpose behalf of and for the benefit of the applicable Customer (the \u201cPurpose\u201d).  Epit is willing to provide You with the Epit Specifications and such limited right on the terms and conditions set forth below.",
+      "paraindetifier": "0000000B"
+    },
+    {
+      "text": "Terms and Conditions",
+      "paraindetifier": "0000000C"
+    },
+    {
+      "text": "The parties agree as follows:",
+      "paraindetifier": "0000000D"
+    },
+    {
+      "text": "Epit Specifications.  Upon execution of this Agreement and subject to its terms and conditions, Epit grants You the right to use the Epit Specifications solely for the Purpose.  You understand that the Epit Specifications may change from time to time during the term of this Agreement as Epit releases new versions of its software.  In such event, You may request an updated version of the Epit Specifications.",
+      "paraindetifier": "0000000E"
+    },
+    {
+      "text": "Restriction on Use and Disclosure.  You agree to use the Epit Specifications only for the Purpose set forth above.  You acknowledge Epit\u2019s desire to avoid widespread distribution of the Epit Specifications.  Accordingly, You agree that You will not distribute, disclose or make available the Epit Specifications (or any part of them) to any person or entity outside of You and Customer(s).  Without limiting the generality of the foregoing, You specifically agree not to (i) post the Epit Specifications, or any part of them, on the Internet, or (ii) use or incorporate the Epit Specifications, or any part of them, in any marketing materials, white papers or other documentation to be provided to third parties.  You will inform all of Your employees and agents having access to the Epit Specifications of the obligations set forth in this Agreement.",
+      "paraindetifier": "00000010"
+    },
+    {
+      "text": "No Access to Epit Software or Other Information.  Unless otherwise specifically agreed in writing by Epit and You, You acknowledge that You may not access: (a) any Epit software licensed by an Epit customer, or (b) any instructions, manuals, eLearning or other materials, in any format, relating to the Epit software (other than the Epit Specifications to the extent permitted under Section 1 of this Agreement), or (c) the Epit UserWeb (all of (a), (b) and (c) collectively, the \u201cOther Epit Information\u201d).  You agree to take all reasonable precautions to prevent any inadvertent or other access by You to Other Epit Information.  Notwithstanding the foregoing, and without limiting Epit\u2019s remedies, if You or any of Your personnel does have, has had, or in the future receives, any access to Other Epit Information in connection with Your work with any Epit customer, You will maintain the confidentiality of all information concerning the design, functionality, operation, use, workflows, source code, data structures, implementation or maintenance of the Epit software and shall not disclose to unauthorized persons, publish directly or indirectly or use for any purpose any such information.  Without limiting the foregoing and for the avoidance of doubt, You specifically agree not to use, present or distribute any video or other recording (in any format) that shows or demonstrates the coordinated use of Your Development/the Vendor Software with any Epit software if such video or recording shows any Epit software screens whatsoever.",
+      "paraindetifier": "00000012"
+    },
+    {
+      "text": "Ownership of Epit Specifications and Submissions.  The Epit Specifications remain the property of Epit and, except as expressly set forth herein, no license or other rights to the Epit Specifications is granted to You or implied hereby.  Epit does not claim ownership of any feedback, suggestions for potential changes, ideas, materials or other information (if any) that You provide or submit to Epit with respect to the Epit Specifications (each a \u201cSubmission\u201d and collectively \u201cSubmissions\u201d).  You have no obligation to provide any Submission to Epit and Epit has no obligation to incorporate any Submission You do provide into the Epit Specifications.  However, by providing or submitting a Submission You hereby grant Epit, its affiliated companies and  sublicensees (including third parties whose products, technologies and services use or interface with any parts of Epit\u2019s software that include the Submission), without charge, the right to copy, distribute, create derivative works of, perform, display, make, have made, use, sell, modify, share or otherwise commercially exploit the Submission in any way and for any purpose under any intellectual property or other rights of You or Customer.  You will not provide any Submission that (i) is subject to a license (e.g. GNU Public License or other \u201copen source\u201d license) that requires Epit to license the Epit software or documentation to third parties or take any other action because we include such Submission in them or (ii) requires Epit to license any rights related to such Submission from a third party.  You also give to third parties, without charge, any patent rights needed for their products, technologies and services to use or interface with any specific parts of Epit\u2019s software that include the Submission. You also give Epit without charge the right to sublicense any of the rights granted to Epit in this Section 4.  For all work product, including documentation, code, and other tangible materials, created by You (or on Your behalf) using the Epit Specifications (each a \u201cWork or collectively \u201cWorks\u201d), You hereby agree that (i) the Works constitute a \u201cwork made for hire\u201d (which, as used herein, has the meaning outlined in Section 101 of the United States Copyright Act of 1976) which will be assigned to Customer via a written agreement between You and Customer, and (ii) to the extent that any Work is not a \u201cwork made for hire,\u201d You hereby assign all rights in such Work to the Customer. You will not accept any license or permission from Customer to any Works other than a limited, non-exclusive license to use the Works solely to perform support or maintenance obligations for the Customer with respect to the Work for the Purpose. The rights and licenses in this Section 4 survive the termination or expiration of this Agreement.",
+      "paraindetifier": "00000014"
+    },
+    {
+      "text": "Remedies.  You acknowledge that in the event of a breach of any terms of this Agreement by You, the damages at law may be inadequate and Epit may, if it so desires, enforce this Agreement by obtaining injunctive relief (without notice or bond, each of which is hereby waived) as well as such other remedies as may be available at law or in equity. You agree to hold harmless, indemnify, and defend Epit, and (as applicable) its subsidiaries, affiliates, officers, agents, employees, and customers, from and against any third party claim arising from or in any way related to Your use, licensing, marketing, sale, offer for sale, or implementation of Your Development/the Vendor Software in connection with Epit\u2019s software.",
+      "paraindetifier": "00000015"
+    },
+    {
+      "text": "Return of Epit Specifications.  Upon Epit\u2019s request, or upon termination of this agreement, You shall return to Epit all materials, documents, information or other data concerning the Epit Specifications and will return to Epit or destroy all copies thereof.",
+      "paraindetifier": "00000017"
+    },
+    {
+      "text": "No Warranty.  Epit warrants that it has the right to disclose the Epit Specifications to You.  Otherwise, the Epit Specifications are provided \u201cAS-IS.\u201d  EPIT DISCLAIMS ALL OTHER WARRANTIES RELATED TO THE EPIT SPECIFICATIONS (AND THE RELATED TECHNOLOGIES DESCRIBED THEREIN) OR THE EPIT SOFTWARE, EXPRESS OR IMPLIED, INCLUDING WARRANTIES OF MERCHANTABILITY, ACCURACY AND FITNESS FOR A PARTICULAR PURPOSE AS WELL AS ANY IMPLIED WARRANTY AGAINST INFRINGEMENT, AND ANY WARRANTY THAT USE OF THE EPIT SPECIFICATIONS (AND THE ACCESS TO OR USE OF THE CORRESPONDING TECHNOLOGIES DESCRIBED THEREIN) WILL BE ERROR-FREE OR UNINTERRUPTED. EPIT FURTHER DISCLAIMS ANY WARRANTY THAT THE EPIT SPECIFICATIONS WILL MEET YOUR REQUIREMENTS, WILL WORK WITH YOUR DEVELOPMENT/THE VENDOR SOFTWARE, OR WILL FUNCTION WITH ANY CURRENT, FUTURE OR PREVIOUS VERSION OF THE EPIT SOFTWARE.  EXCEPT TO THE EXTENT PROHIBITED BY LAW, EPIT WILL NOT BE LIABLE FOR DAMAGES OF ANY KIND ARISING OUT OF OR RELATING TO THIS AGREEMENT, YOUR USE OF OR RELIANCE UPON THE EPIT SPECIFICATIONS, OR YOUR USE, LICENSING, MARKETING, SALE, OFFER FOR SALE OR IMPLEMENTATION OF YOUR DEVELOPMENT/THE VENDOR SOFTWARE, WHETHER DIRECT, INDIRECT, INCIDENTAL, CONSEQUENTIAL, SPECIAL, PUNITIVE, OR EXEMPLARY, AND REGARDLESS OF WHETHER EPIT HAS BEEN ADVISED OF THE POSSIBILITY OF SUCH DAMAGES.",
+      "paraindetifier": "00000019"
+    },
+    {
+      "text": "Term.  The initial term of this Agreement begins on the effective date of the Agreement and continues for twelve (12) months.  Thereafter, the term will automatically renew for successive additional twelve (12) month renewal terms unless a party notifies the other party of its intention to terminate the Agreement prior to the expiration of the then-current term.  Either party may also terminate this Agreement at any time by providing thirty (30) days\u2019 prior written notice to the other party. Upon any termination, You will promptly destroy or return to Epit all written or other tangible manifestations of the Epit Specifications held by You; provided, however, that You may retain a reasonable number of copies of the Epit Specifications to support interfaces or integration at the applicable Customer for the Purpose for one (1) year after the termination or expiration date, at which time You will destroy or return any remaining copies.  Sections 2-1211 of this Agreement will survive any expiration or termination of this Agreement.  For clarity, the parties acknowledge that this Agreement may be terminated with respect to any Customer or all Customers in accordance with these terms.",
+      "paraindetifier": "0000001B"
+    },
+    {
+      "text": "Integration Testing. Upon Epit\u2019s request, You will work in good faith with Epit (and Customer if required) to test the integration of Your Development/the Vendor Software with the Epit Software. If this testing is not completed to Epit\u2019s reasonable satisfaction, Epit will inform You of the reasons why the testing was not successful, and may provide You with an opportunity to remedy such deficiencies. If the testing was unsuccessful, You agree that You will not use Your Development/the Vendor Software in live production use at Customer or at any other Epit customer until You have completed testing to Epit\u2019s reasonable satisfaction.",
+      "paraindetifier": "0000001D"
+    },
+    {
+      "text": "Licenses to Customers. Upon successful completion of testing by Epit (if requested), You may license the Vendor Software to Customer, provided that You do not charge Customer any fee for the use of the Vendor Software that exceeds the amount of fees You charge to other customers and/or licensees for similar types of use of the Vendor Software. If You provide a license agreement or subscription services agreement (or other similar agreement) for the Vendor Software to another customer of Yours (or to any other third party) on financial terms that are more favorable to such party than the financial terms provided to Customer for similar levels and/or types of use, You agree to inform Epit of such discrepancy and the Customer shall be entitled to receive and obtain those more favorable terms.",
+      "paraindetifier": "0000001F"
+    },
+    {
+      "text": "Maintenance and Support of Your Development/the Vendor Software. You are responsible for providing all consultation, assistance and support for Your Development/the Vendor Software in accordance with Your agreements with Customer. Epit is not required to provide any such support. However, You acknowledge that Customer may contact Epit concerning support of the Customer\u2019s use of Your Development/the Vendor Software in connection with their use of the Epit Software. In such event, Epit may provide such support as it considers appropriate or may direct the person requesting support to contact You directly. You and Epit agree to work together in good faith to develop procedures to help ensure that requests for support are responded to successfully. As such, You will provide Epit with technical and administrative contacts to assist in resolving Customer issues related to Your Development/the Vendor Software. Epit will provide You with technical and administrative contacts to assist You in resolving technical issues on behalf of Customer, which may be chargeable at Epit\u2019s sole discretion.",
+      "paraindetifier": "00000021"
+    },
+    {
+      "text": "Advertising & Press Releases.\u00a0 You may include basic statements about compatibility or coordinated use Your Development/the Vendor Software with Epit\u2019s software in Your marketing materials and in Your communications with individual customers or prospective customers provided such statements accurately reflect existing compatibility or coordinated use of such products using the Epit Specifications or public interface specifications (e.g, HL7).\u00a0 If You wish to make any other representations regarding technical compatibility of Your Software with Epit\u2019s software or to include any other use of Epit\u2019s name or marks in Your marketing materials or other written or electronic communications (e.g., in any web page), You agree that You will only do so with Epit\u2019s prior written consent for such use (which may be via email).\u00a0 You may submit any requests regarding use of Epit\u2019s name or marks to Epit at Vendorinquiries@epit.com.\u00a0 You specifically agree not to use Epit\u2019s name in the headline of any press release or similar announcement except with Epit\u2019s prior written approval.",
+      "paraindetifier": "00000023"
+    },
+    {
+      "text": "Assignment.  This Agreement may not be assigned by You without the express prior written consent of Epit.  Any purported assignment without such consent is null and void.",
+      "paraindetifier": "00000025"
+    },
+    {
+      "text": "Entire Agreement and Governing Law.  This Agreement constitutes the entire agreement with respect to the Purpose and the Epit Specifications disclosed hereunder.  This Agreement may not be amended except by written agreement signed by authorized representatives of both parties.  The validity, construction and performance of this Agreement shall be governed by the laws of the State of Wisconsin and any action brought under this Agreement shall be brought exclusively in Wisconsin. The parties consent to the personal jurisdiction of the state and federal courts located in Wisconsin.  If any provision is invalid under any applicable statute or rule of law, the remaining provisions of this Agreement shall remain in full force and effect.",
+      "paraindetifier": "00000027"
+    },
+    {
+      "text": "The parties have caused this Agreement to be executed by their duly authorized representatives effective as of the date of Epit\u2019s signature below.",
+      "paraindetifier": "00000029"
+    },
+    {
+      "text": "XYZ INC\t\t\t\t\t\tEPIT SYSTEMS CORPORATION",
+      "paraindetifier": "0000002B"
+    },
+    {
+      "text": "By:\t\t\t\t\t\t\tBy:",
+      "paraindetifier": "0000002D"
+    },
+    {
+      "text": "Print Name:\t\t\t\t\t\tPrint Name:",
+      "paraindetifier": "0000002F"
+    },
+    {
+      "text": "Title:\t\tTitle:",
+      "paraindetifier": "00000031"
+    },
+    {
+      "text": "Date:\t\t\t\t\t\t\tDate:",
+      "paraindetifier": "00000033"
+    }
+  ],
+  "party_represented": "XYZ Inc (\"You\", the recipient of the Epit Specifications)",
+  "review_objective": "Review the agreement from the recipient's perspective to identify restrictive, one-sided or unclear terms and recommend revisions.",
+  "specific_concerns": "Scope of the limited right to use the Epit Specifications and the defined Purpose; restrictions on use and disclosure; remedies including injunctive relief; return of materials; \"AS-IS\" no-warranty and liability terms; termination.",
+  "agreement_type": "Specification Access / Use Agreement (limited license and confidentiality)"
+}

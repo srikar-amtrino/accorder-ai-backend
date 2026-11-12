@@ -58,16 +58,20 @@ Interactive API documentation is available at `http://<host>:8000/docs` once the
 ```bash
 git clone <repo-url> && cd accorder-ai-backend
 
-poetry env use python3.10
-poetry lock && poetry install
+# Install dependencies (use python -m pip if pip is not directly on PATH)
+python -m pip install -r requirements.txt
 
 cp .env.example .env
 # fill in BEDROCK_MODEL_ID and AWS credentials (see Configuration)
 
-poetry run python -m src.api.main
+# Start the server
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload
 ```
 
 Server binds to `http://localhost:8000` by default. Swagger UI at `/docs`.
+
+> **Windows note:** If `python` is not on your PATH, use the full interpreter path, e.g.:
+> `C:\Users\<you>\AppData\Local\Programs\Python\Python314\python.exe -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 --reload`
 
 ### EC2 Deployment
 
@@ -76,8 +80,8 @@ The recommended target is an EC2 instance with an IAM role that grants `bedrock:
 ```bash
 git clone <repo-url> && cd accorder-ai-backend
 
-poetry env use python3.10
-poetry lock && poetry install
+# Install dependencies
+pip install -r requirements.txt
 
 cat > .env <<EOF
 API_HOST=0.0.0.0
@@ -85,7 +89,7 @@ AWS_REGION=us-west-1
 BEDROCK_MODEL_ID=<your inference profile ARN>
 EOF
 
-poetry run python -m src.api.main
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000
 ```
 
 For browser access from outside the instance, add an inbound rule for TCP 8000 to the EC2 security group, scoped to authorized IPs.
@@ -116,12 +120,12 @@ Two smoke-test scripts ship with the repository.
 
 ```bash
 # 1. Bedrock connectivity — verifies credentials, region, model id, and IAM permissions
-poetry run python scripts/test_bedrock.py
+python scripts/test_bedrock.py
 
 # 2. End-to-end endpoint sweep — boots through every LLM-using endpoint with sample DOCX input
-poetry run python scripts/create_test_docs.py
-poetry run python -m src.api.main &
-poetry run python scripts/test_endpoints.py
+python scripts/create_test_docs.py
+python -m uvicorn src.api.main:app --host 0.0.0.0 --port 8000 &
+python scripts/test_endpoints.py
 ```
 
 The endpoint sweep reports pass/fail per endpoint and dumps the server response on failure for fast debugging.

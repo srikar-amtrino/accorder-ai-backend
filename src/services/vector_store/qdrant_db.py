@@ -1,5 +1,6 @@
 import logging
 import os
+import time
 from typing import Any
 
 import requests
@@ -17,7 +18,7 @@ QDRANT_COLLECTION = os.getenv(
 )
 
 QDRANT_TIMEOUT_SECONDS = float(
-    os.getenv("QDRANT_TIMEOUT_SECONDS", "30")
+    os.getenv("QDRANT_TIMEOUT_SECONDS", "120")
 )
 
 QDRANT_API_KEY = os.getenv("QDRANT_API_KEY")
@@ -43,48 +44,85 @@ def _request(
     path: str,
     **kwargs: Any,
 ) -> requests.Response:
-    try:
-        response = requests.request(
-            method=method,
-            url=f"{QDRANT_URL}{path}",
-            headers=_get_headers(),
-            timeout=QDRANT_TIMEOUT_SECONDS,
-            **kwargs,
-        )
-        response.raise_for_status()
-        return response
+    """Send a request to Qdrant with 3 retry attempts (exponential backoff).
 
-    except requests.RequestException as exc:
-        response = exc.response
-        if response is not None:
-            try:
-                body = response.json()
-            except ValueError:
-                body = response.text
+    Retries on ReadTimeout and ConnectionError — the two transient failure
+    modes seen on large batch searches when the Qdrant host is under load.
+    Other HTTP errors (4xx/5xx) are not retried.
+    """
+    _MAX_ATTEMPTS = 3
+    _BACKOFF_SECONDS = [0, 2, 6]   # wait before attempt 1, 2, 3
 
-            if isinstance(body, dict):
-                detail = body.get("status", body)
-                if isinstance(detail, dict):
-                    detail = detail.get("error", detail)
-            else:
-                detail = body
-
-            detail_text = str(detail).strip()[:1000]
-            logger.error(
-                "Qdrant request failed: %s %s (HTTP %s): %s",
-                method,
-                path,
-                response.status_code,
-                detail_text,
-                exc_info=True,
+    last_exc: Exception | None = None
+    for attempt in range(_MAX_ATTEMPTS):
+        wait = _BACKOFF_SECONDS[attempt]
+        if wait:
+            logger.warning(
+                "Qdrant request retry %d/%d for %s %s (waiting %ds).",
+                attempt, _MAX_ATTEMPTS - 1, method, path, wait,
             )
-            raise QdrantError(
-                f"Qdrant request failed: {method} {path} "
-                f"(HTTP {response.status_code}): {detail_text}"
-            ) from exc
+            time.sleep(wait)
+        try:
+            response = requests.request(
+                method=method,
+                url=f"{QDRANT_URL}{path}",
+                headers=_get_headers(),
+                timeout=QDRANT_TIMEOUT_SECONDS,
+                **kwargs,
+            )
+            response.raise_for_status()
+            return response
 
-        logger.exception("Qdrant request failed: %s %s", method, path)
-        raise QdrantError(f"Qdrant request failed: {method} {path}") from exc
+        except (requests.ReadTimeout, requests.ConnectionError) as exc:
+            # Transient — retry
+            last_exc = exc
+            logger.warning(
+                "Qdrant transient error on attempt %d/%d: %s %s — %s",
+                attempt + 1, _MAX_ATTEMPTS, method, path, exc,
+            )
+            continue
+
+        except requests.RequestException as exc:
+            # Non-transient: surface immediately
+            response = exc.response
+            if response is not None:
+                try:
+                    body = response.json()
+                except ValueError:
+                    body = response.text
+
+                if isinstance(body, dict):
+                    detail = body.get("status", body)
+                    if isinstance(detail, dict):
+                        detail = detail.get("error", detail)
+                else:
+                    detail = body
+
+                detail_text = str(detail).strip()[:1000]
+                logger.error(
+                    "Qdrant request failed: %s %s (HTTP %s): %s",
+                    method,
+                    path,
+                    response.status_code,
+                    detail_text,
+                    exc_info=True,
+                )
+                raise QdrantError(
+                    f"Qdrant request failed: {method} {path} "
+                    f"(HTTP {response.status_code}): {detail_text}"
+                ) from exc
+
+            logger.exception("Qdrant request failed: %s %s", method, path)
+            raise QdrantError(f"Qdrant request failed: {method} {path}") from exc
+
+    # All retries exhausted — raise the last transient error
+    logger.error(
+        "Qdrant request failed after %d attempts: %s %s — %s",
+        _MAX_ATTEMPTS, method, path, last_exc,
+    )
+    raise QdrantError(
+        f"Qdrant request failed after {_MAX_ATTEMPTS} attempts: {method} {path}"
+    ) from last_exc
 
 
 def ensure_collection(vector_size: int) -> None:
