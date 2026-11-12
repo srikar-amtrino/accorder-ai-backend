@@ -55,6 +55,9 @@ class Settings(BaseSettings):
     aws_cognito_issuer: str = Field(default=..., description="Issuer URL for Cognito authentication.")
     aws_cognito_jwks_url: str = Field(default=..., description="JWKS URL for Cognito authentication.")
 
+
+    # PostgreSQL RDS - dynamic taxonomy / criteria loading
+    database_url: Union[str, None] = Field(default=None, description="Full DATABASE_URL for PostgreSQL RDS (postgresql+psycopg2://...). Loaded by criteria_store for dynamic agreement-type taxonomy.")
     aws_access_key_id: Union[str, None] = Field(default=None, description="AWS Access Key ID for Bedrock authentication. Optional if using IAM roles or other credential providers.")
     aws_secret_access_key: Union[str, None] = Field(default=None, description="AWS Secret Access Key for Bedrock authentication. Optional if using IAM roles or other credential providers.")
 

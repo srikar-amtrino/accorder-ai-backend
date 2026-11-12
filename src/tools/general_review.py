@@ -21,7 +21,7 @@ from src.schemas.general_review import (
     Suggestion,
     TextInformation,
 )
-from src.services.criteria_store import display_to_slug, get_criteria, get_criteria_by_slug, slug_to_display
+from src.services.criteria_store import display_to_slug, get_criteria, get_criteria_by_slug, get_all_display_names, resolve_agreement_type_id, slug_to_display
 from src.services.clause_mapping.bm25_classifier import BM25TaxonomyClassifier
 from src.services.general_criteria import FRAGMENT_DEFECT_CRITERIA, GENERAL_CRITERIA
 from src.services.scorer import AnswerRecord, ScoringResult, is_risky, score_group
@@ -551,9 +551,7 @@ def _normalize_heading(text: str) -> str:
 def _match_heading_to_taxonomy(heading_text: str) -> Optional[str]:
     """Match section heading text directly against taxonomy canonical types."""
 
-    from src.services.criteria_store import _load
-    taxonomy = _load()
-    all_types = list(taxonomy.get("types", {}).keys())
+    all_types = get_all_display_names()
 
     norm = _normalize_heading(heading_text)
 
@@ -757,7 +755,8 @@ def _smooth_classifications(
 
 def _build_clause_groups(
     smoothed: Dict[int, Optional[ClauseMatch]],
-    paragraphs: Sequence[TextInformation]
+    paragraphs: Sequence[TextInformation],
+    agreement_type_id: int = 84,
 ) -> List[ClauseGroup]:
     """Group paragraphs into unified section containers based on 4-zone contract architecture."""
 
@@ -952,8 +951,8 @@ def _build_clause_groups(
             dominant_conf = body_scores[dominant_slug]
 
         # Heading match has priority if valid taxonomy type; else use dominant body vector
-        canonical_display = heading_match or (slug_to_display(dominant_slug) if dominant_slug else None)
-        canonical_slug = (display_to_slug(canonical_display) if canonical_display else None) or dominant_slug
+        canonical_display = heading_match or (slug_to_display(dominant_slug, agreement_type_id) if dominant_slug else None)
+        canonical_slug = (display_to_slug(canonical_display, agreement_type_id) if canonical_display else None) or dominant_slug
         is_classified = bool(canonical_display and (heading_match or dominant_conf >= CONFIDENCE_THRESHOLD))
 
         is_frag = False
@@ -1254,11 +1253,12 @@ async def _evaluate_group(
 
     # Determine criteria: PATH A (type-specific) or PATH B (general criteria)
     criteria: List[dict] = []
+    _atid = resolve_agreement_type_id(request.agreement_type or "")
     if group.is_classified:
         if group.canonical_type:
-            criteria = get_criteria(group.canonical_type)
+            criteria = get_criteria(group.canonical_type, _atid)
         if not criteria and group.canonical_slug:
-            criteria = get_criteria_by_slug(group.canonical_slug)
+            criteria = get_criteria_by_slug(group.canonical_slug, _atid)
 
     if not criteria:
         criteria = list(GENERAL_CRITERIA)
@@ -1376,7 +1376,8 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
     smoothed = _smooth_classifications(raw_matches, paragraphs)
 
     # Step 3: Build cohesive section containers
-    groups = _build_clause_groups(smoothed, paragraphs)
+    _atid_main = resolve_agreement_type_id(request.agreement_type or "")
+    groups = _build_clause_groups(smoothed, paragraphs, _atid_main)
 
     # Step 4: Build batches respecting clause group integrity
     batches = _build_batches_v2(groups, paragraphs)
@@ -1430,7 +1431,8 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         paragraphs = request.textinformation
         raw_matches = await _classify_all_paragraphs(request, session_id)
         smoothed = _smooth_classifications(raw_matches, paragraphs)
-        groups = _build_clause_groups(smoothed, paragraphs)
+        _atid_stream = resolve_agreement_type_id(request.agreement_type or "")
+        groups = _build_clause_groups(smoothed, paragraphs, _atid_stream)
         batches = _build_batches_v2(groups, paragraphs)
 
         logger.info("General review stream: %d paragraphs in %d clause groups split into %d batches.", len(paragraphs), len(groups), len(batches))
