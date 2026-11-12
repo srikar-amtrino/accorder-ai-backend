@@ -300,6 +300,35 @@ _WORDS_OF_AGREEMENT = re.compile(
 # Used to split oversized article groups into deterministic evaluation units.
 _SUB_CLAUSE_PATTERN = re.compile(r'^\s*\d{1,3}\.\d{1,3}(?:\.\d{1,3})?[.:\s\t]')
 
+# ---------------------------------------------------------------------------
+# Fix 2: Data artefact pre-filter
+# Matches paragraphs that are purely numeric/unit table data, e.g. "34.2 Mb"
+# or "4.18 Mb". These should never reach the LLM.
+# ---------------------------------------------------------------------------
+_DATA_ARTEFACT_PATTERN = re.compile(
+    r"""^\s*                      # optional leading whitespace
+        (?:                        # one or more of:
+            (?:\d{1,6}(?:[.,]\d+)?)  # integer or decimal number
+            |(?:[A-Z]{1,3}\d{1,2})   # codes like "A5", "B2" (table row labels)
+        )
+        (?:\s+(?:\d{1,6}(?:[.,]\d+)?|[A-Z]{1,3}\d{1,2}))*  # more numbers/codes
+        (?:\s+(?:Mb|MB|KB|GB|TB|PB|ms|Mbps|Gbps|%|bps|hrs?|days?|months?))?  # optional unit
+        \s*$
+    """,
+    re.IGNORECASE | re.VERBOSE,
+)
+
+
+def _is_data_artefact(text: str) -> bool:
+    """Return True for pure numeric/unit table data that should never be evaluated."""
+    stripped = text.strip()
+    if not stripped:
+        return False
+    # Must be very short (table cell length) and match the pattern
+    if len(stripped) > 20:
+        return False
+    return bool(_DATA_ARTEFACT_PATTERN.match(stripped))
+
 # Maximum paragraphs in one ClauseGroup before we split at sub-clause boundaries.
 _MAX_GROUP_PARAGRAPHS = 8
 
@@ -417,6 +446,8 @@ def _build_clause_titles(paragraphs: Sequence[TextInformation]) -> Dict[str, str
         text = p.text.strip()
         pid = p.paraindetifier
         if not text:
+            continue
+        if _is_data_artefact(text):
             continue
         first_line = text.split("\n")[0].strip()
 
@@ -780,6 +811,9 @@ def _build_clause_groups(
         if not item.text.strip():
             continue
         text = item.text.strip()
+        # Skip pure data artefacts (table numbers/units like "34.2 Mb", "96", "92")
+        if _is_data_artefact(text):
+            continue
         first_line = text.split("\n")[0].strip()
 
         # Front-matter zone
@@ -808,16 +842,17 @@ def _build_clause_groups(
             current_title = "Signature / Execution Block"
             continue
 
-        # Back-matter boundary (Annex / Schedule / Exhibit)
-        if _BACK_MATTER_START.search(first_line):
+        # Annex / Schedule / Exhibit — treat as a new OPERATIVE section boundary.
+        # These contain active contract clauses (SOWs, SLAs, Schedules) and must
+        # be evaluated normally, NOT routed to PATH C as back-matter.
+        if _BACK_MATTER_START.search(first_line) and not in_execution_block:
             if current_paras:
                 containers.append({
-                    "zone": "EXECUTION" if in_execution_block else "OPERATIVE",
+                    "zone": "OPERATIVE",
                     "title": current_title,
                     "para_indices": current_paras,
                 })
                 current_paras = []
-            in_execution_block = False
             current_paras.append(idx)
             current_title = first_line
             continue
@@ -843,7 +878,7 @@ def _build_clause_groups(
 
     if current_paras:
         containers.append({
-            "zone": "EXECUTION" if in_execution_block else ("BACK_MATTER" if _BACK_MATTER_START.search(current_title) else "OPERATIVE"),
+            "zone": "EXECUTION" if in_execution_block else "OPERATIVE",
             "title": current_title,
             "para_indices": current_paras,
         })
@@ -914,20 +949,8 @@ def _build_clause_groups(
             )
             continue
 
-        # Case C: Back-Matter Container (Annex / Schedule / Exhibit) -> Routed to PATH C (Defect & Placeholder check)
-        if zone == "BACK_MATTER" or _BACK_MATTER_START.search(title):
-            groups.append(
-                ClauseGroup(
-                    para_indices=indices,
-                    canonical_type="Schedule / Annex",
-                    canonical_slug=None,
-                    confidence=1.0,
-                    is_classified=False,
-                    is_fragment=True,
-                    paragraphs=paras_dict,
-                )
-            )
-            continue
+        # Case C: Back-Matter is now treated as OPERATIVE (Annexes/SOWs contain active clauses).
+        # This path is no longer used — all non-execution containers fall through to Case D.
 
         # Case D: Operative Section Container -> Determine Dominant Type
         # Check 1: Match heading directly to taxonomy
@@ -1180,12 +1203,25 @@ async def _fragment_defect_call(
     llm_model = get_bedrock_model()
     suggestions: List[Tuple[int, Suggestion]] = []
 
+    _PLACEHOLDER_MARKERS = ("[", "]", "___", "TBD", "INSERT", "TODO", "[●]", "[*]")
+
     for idx in group.para_indices:
         para = paragraphs[idx]
-        # Only inspect paragraphs with potential defect markers
         t = para.text.strip()
-        has_placeholder = any(marker in t for marker in ("[", "]", "___", "●", "TBD", "INSERT"))
-        if not has_placeholder and len(t.split()) >= 20:
+        if not t:
+            continue
+
+        # Skip pure data artefacts (e.g. "34.2 Mb", "4.18 Mb")
+        if _is_data_artefact(t):
+            continue
+
+        # Skip standalone titles/headings (e.g. "Network Latency Guarantee")
+        if _looks_like_title(t) or _is_heading_text(t):
+            continue
+
+        # Fragment defect check ONLY inspects real drafting placeholders
+        has_placeholder = any(marker in t for marker in _PLACEHOLDER_MARKERS)
+        if not has_placeholder:
             continue
 
         res = FragmentDefectResponse(findings=[])
@@ -1247,6 +1283,33 @@ async def _evaluate_group(
 
     paragraphs = request.textinformation
 
+    # Fix 2 (applied here): Skip pure data artefact paragraphs entirely.
+    # E.g. "34.2 Mb", "4.18 Mb" — table cell values from billing tables.
+    if group.is_fragment and not group.is_classified:
+        assembled_check = " ".join(group.paragraphs[i].strip() for i in group.para_indices)
+        if _is_data_artefact(assembled_check):
+            logger.debug("Skipping data artefact paragraph: %r", assembled_check[:40])
+            return []
+
+    # Fix 3: Skip standalone section headings — they have no evaluable body.
+    # The LLM only sees the heading text with no surrounding context, which
+    # causes hallucinated "placeholder" findings. The body paragraphs under
+    # the heading are evaluated separately in their own group.
+    if group.is_fragment and not group.is_classified:
+        assembled = " ".join(group.paragraphs[i].strip() for i in group.para_indices)
+        words = assembled.split()
+        # Standalone heading: short + no obligation verbs → skip entirely
+        _obligation_verbs = {
+            "shall", "will", "must", "agrees", "agree", "warrants", "represents",
+            "indemnifies", "covenants", "undertakes", "provide", "ensure", "guarantee"
+        }
+        if len(words) <= 7 and not any(w.lower() in _obligation_verbs for w in words):
+            logger.debug(
+                "Skipping standalone heading group (no body): %r",
+                assembled[:60],
+            )
+            return []
+
     # PATH C: Fragment / Front-Matter Defect
     if group.is_fragment:
         return await _fragment_defect_call(group, paragraphs, semaphore, session_id, titles=titles)
@@ -1273,7 +1336,6 @@ async def _evaluate_group(
             group.canonical_type,
         )
         from src.services.general_criteria import GENERAL_CRITERIA
-        from src.schemas.clause_mapping import ClauseGroup
         criteria = list(GENERAL_CRITERIA)
         misclassified_group = ClauseGroup(
             para_indices=group.para_indices,
@@ -1399,7 +1461,14 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
             positioned.append((pos, sugg))
 
     positioned.sort(key=lambda pair: pair[0])
-    response = GeneralReviewResponse(suggestions=[sugg for _, sugg in positioned])
+
+    # Fix 4: Exclude Signature Block / execution-zone Low-risk fragment noise.
+    # Keep High/Medium risk findings from execution-zone (e.g. unsigned agreement).
+    final_suggestions = [
+        sugg for _, sugg in positioned
+        if not (sugg.clause == "Signature Block" and sugg.risk_level == "Low")
+    ]
+    response = GeneralReviewResponse(suggestions=final_suggestions)
     _cache_put(fingerprint, response)
     return response
 
@@ -1454,12 +1523,16 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
                 if pos in seen_positions:
                     continue
                 seen_positions.add(pos)
+                if suggestion.clause == "Signature Block" and suggestion.risk_level == "Low":
+                    continue
                 separator = "" if not emitted else ","
                 yield frame(separator + suggestion.model_dump_json())
                 emitted.append(suggestion)
 
         yield frame("]}")
-        _cache_put(fingerprint, GeneralReviewResponse(suggestions=emitted))
+        # Fix 4: Exclude Signature Block Low-risk noise from cache too
+        clean_emitted = [s for s in emitted if not (s.clause == "Signature Block" and s.risk_level == "Low")]
+        _cache_put(fingerprint, GeneralReviewResponse(suggestions=clean_emitted))
 
     except Exception as exc:
         logger.exception("General review stream failed: %s", exc)
