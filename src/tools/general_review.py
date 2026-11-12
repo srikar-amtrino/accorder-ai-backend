@@ -65,6 +65,7 @@ class ClauseGroup:
     is_classified: bool                # True if confidence >= 0.70 and canonical_type is known
     is_fragment: bool                  # True if unclassified short orphan or front-matter
     paragraphs: Dict[int, str]         # {para_index: text}
+    unit_id: int = 0                   # 1-based sequential clause unit identifier
 
 
 def _request_fingerprint(request: GeneralReviewRequest) -> str:
@@ -333,13 +334,22 @@ def _is_data_artefact(text: str) -> bool:
 _MAX_GROUP_PARAGRAPHS = 8
 
 
-def _is_major_section_boundary(text: str) -> bool:
+def _is_major_section_boundary(text: str, prev_text: str = "") -> bool:
     """Detect whether a paragraph begins a new major top-level section across any numbering scheme."""
 
     stripped = text.strip()
+    if not stripped:
+        return False
     first_line = stripped.split("\n")[0].strip()
     words = first_line.split()
+    if not words:
+        return False
 
+    # Guard 1: If preceding paragraph ended with a colon ':', this is an enumerated list item, NOT a section
+    if prev_text and prev_text.strip().endswith(":"):
+        return False
+
+    # Tier 1: Explicit pattern matches (numbered 1., Section 1, Article IV, etc.)
     for pat in _SECTION_BOUNDARY_PATTERNS:
         if pat.match(first_line):
             return True
@@ -348,6 +358,28 @@ def _is_major_section_boundary(text: str) -> bool:
     if first_line.isupper() and 1 <= len(words) <= 8 and 3 <= len(first_line) <= 80:
         if any(c.isalpha() for c in first_line):
             return True
+
+    # Guard 2: If preceding paragraph ended mid-sentence without terminal punctuation, unnumbered lines cannot break
+    if prev_text:
+        prev_stripped = prev_text.strip()
+        if prev_stripped and prev_stripped[-1] not in ".!?;\"'”’":
+            return False
+
+    clean = first_line.rstrip(".:;").strip()
+    clean_words = clean.split()
+    if not clean_words or not clean_words[0][0].isupper():
+        return False
+
+    # Tier 2: Taxonomy match (e.g. "Fees and Billing", "Term and Termination", "Limitations of Liability")
+    if 1 <= len(clean_words) <= 7 and len(clean) <= 60:
+        if _looks_like_title(clean) and _match_heading_to_taxonomy(clean) is not None:
+            return True
+
+    # Tier 3: Standalone title-like paragraph
+    if len(stripped.split("\n")) <= 2 and 1 <= len(clean_words) <= 7 and len(first_line) <= 60:
+        if not any(w.lower().strip(".:;,'\"“”‘’") in _TITLE_VERBS for w in clean_words):
+            if _looks_like_title(clean):
+                return True
 
     return False
 
@@ -794,9 +826,9 @@ def _build_clause_groups(
     if not paragraphs:
         return []
 
-    # 1. Detect Front-Matter Boundary (Title, Parties, Background, Words of Agreement)
+    # 1. Detect Front-Matter Boundary (Title, Parties, Background, Words of Agreement in opening paragraphs)
     front_matter_end = -1
-    for i, item in enumerate(paragraphs):
+    for i, item in enumerate(paragraphs[:10]):
         if _WORDS_OF_AGREEMENT.search(item.text):
             front_matter_end = i
             break
@@ -806,6 +838,7 @@ def _build_clause_groups(
     current_paras: List[int] = []
     current_title = "FRONT MATTER"
     in_execution_block = False
+    prev_text = ""
 
     for idx, item in enumerate(paragraphs):
         if not item.text.strip():
@@ -815,6 +848,18 @@ def _build_clause_groups(
         if _is_data_artefact(text):
             continue
         first_line = text.split("\n")[0].strip()
+
+        # If front-matter marker was not found via regex, but we hit the first major section boundary
+        if front_matter_end == -1 and idx > 0 and _is_major_section_boundary(text, prev_text=prev_text) and not containers:
+            containers.append({
+                "zone": "FRONT_MATTER",
+                "title": "Front Matter (Title, Parties, Recitals)",
+                "para_indices": current_paras,
+            })
+            current_paras = [idx]
+            current_title = first_line
+            prev_text = text
+            continue
 
         # Front-matter zone
         if front_matter_end != -1 and idx <= front_matter_end:
@@ -826,6 +871,7 @@ def _build_clause_groups(
                     "para_indices": current_paras,
                 })
                 current_paras = []
+            prev_text = text
             continue
 
         # Execution block start (IN WITNESS WHEREOF / SIGNATURE PAGE)
@@ -840,30 +886,34 @@ def _build_clause_groups(
             in_execution_block = True
             current_paras.append(idx)
             current_title = "Signature / Execution Block"
+            prev_text = text
             continue
 
         # Annex / Schedule / Exhibit — treat as a new OPERATIVE section boundary.
         # These contain active contract clauses (SOWs, SLAs, Schedules) and must
         # be evaluated normally, NOT routed to PATH C as back-matter.
-        if _BACK_MATTER_START.search(first_line) and not in_execution_block:
+        if _BACK_MATTER_START.search(first_line):
             if current_paras:
                 containers.append({
-                    "zone": "OPERATIVE",
+                    "zone": "EXECUTION" if in_execution_block else "OPERATIVE",
                     "title": current_title,
                     "para_indices": current_paras,
                 })
                 current_paras = []
+            in_execution_block = False
             current_paras.append(idx)
             current_title = first_line
+            prev_text = text
             continue
 
         if in_execution_block:
             # Continue accumulating signature blocks until an Annex or end of document
             current_paras.append(idx)
+            prev_text = text
             continue
 
         # Operative section boundary
-        if _is_major_section_boundary(text) and current_paras:
+        if _is_major_section_boundary(text, prev_text=prev_text) and current_paras:
             containers.append({
                 "zone": "OPERATIVE",
                 "title": current_title,
@@ -875,6 +925,7 @@ def _build_clause_groups(
             current_paras.append(idx)
             if len(current_paras) == 1:
                 current_title = first_line
+        prev_text = text
 
     if current_paras:
         containers.append({
@@ -994,6 +1045,10 @@ def _build_clause_groups(
                 paragraphs=paras_dict,
             )
         )
+
+    # Assign 1-based sequential clause unit ID across document
+    for g_idx, g in enumerate(groups, 1):
+        g.unit_id = g_idx
 
     return groups
 
@@ -1278,6 +1333,7 @@ async def _evaluate_group(
     semaphore: asyncio.Semaphore,
     session_id: str,
     titles: Optional[Dict[str, str]] = None,
+    audit_trace: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Tuple[int, Suggestion]]:
     """Route group through PATH A, B, or C and return resulting suggestions."""
 
@@ -1289,6 +1345,21 @@ async def _evaluate_group(
         assembled_check = " ".join(group.paragraphs[i].strip() for i in group.para_indices)
         if _is_data_artefact(assembled_check):
             logger.debug("Skipping data artefact paragraph: %r", assembled_check[:40])
+            if audit_trace is not None:
+                audit_trace.append({
+                    "clause_unit_id": group.unit_id,
+                    "clause_title": "Data Artefact / Table Cell",
+                    "canonical_type": None,
+                    "canonical_slug": None,
+                    "pipeline_path": "SKIPPED_PRE_FILTER",
+                    "paragraph_identifiers": [paragraphs[i].paraindetifier for i in group.para_indices],
+                    "clause_unit_entire_text": assembled_check,
+                    "attached_output": {
+                        "status": "SKIPPED_DATA_ARTEFACT",
+                        "summary": "Pure numeric/unit table cell skipped before evaluation.",
+                        "suggestions": [],
+                    },
+                })
             return []
 
     # Fix 3: Skip standalone section headings — they have no evaluable body.
@@ -1308,11 +1379,57 @@ async def _evaluate_group(
                 "Skipping standalone heading group (no body): %r",
                 assembled[:60],
             )
+            if audit_trace is not None:
+                audit_trace.append({
+                    "clause_unit_id": group.unit_id,
+                    "clause_title": assembled,
+                    "canonical_type": None,
+                    "canonical_slug": None,
+                    "pipeline_path": "SKIPPED_PRE_FILTER",
+                    "paragraph_identifiers": [paragraphs[i].paraindetifier for i in group.para_indices],
+                    "clause_unit_entire_text": assembled,
+                    "attached_output": {
+                        "status": "SKIPPED_STANDALONE_HEADING",
+                        "summary": "Standalone section heading lacking body text skipped; body evaluated in subsequent unit.",
+                        "suggestions": [],
+                    },
+                })
             return []
 
     # PATH C: Fragment / Front-Matter Defect
     if group.is_fragment:
-        return await _fragment_defect_call(group, paragraphs, semaphore, session_id, titles=titles)
+        frag_res = await _fragment_defect_call(group, paragraphs, semaphore, session_id, titles=titles)
+        if audit_trace is not None:
+            audit_trace.append({
+                "clause_unit_id": group.unit_id,
+                "clause_title": group.canonical_type or "Fragment / Front-Matter",
+                "canonical_type": group.canonical_type,
+                "canonical_slug": group.canonical_slug,
+                "pipeline_path": "PATH C (Fragment / Front-Matter Defect)",
+                "paragraph_identifiers": [paragraphs[i].paraindetifier for i in group.para_indices],
+                "clause_unit_entire_text": "\n\n".join(paragraphs[i].text.strip() for i in group.para_indices),
+                "prompt_and_criteria_context": {
+                    "system_prompt_used": "fragment_system.mustache",
+                    "reviewer_perspective_mode": (
+                        "NEUTRAL GENERAL REVIEW"
+                        if _is_general_review_party(request.party_represented)
+                        else f"CLIENT ADVOCACY REVIEW ({request.party_represented})"
+                    ),
+                    "criteria_evaluated": [
+                        {"criterion_id": "FRG-01", "question": "Unfilled drafting placeholder"},
+                        {"criterion_id": "FRG-02", "question": "Direct contractual contradiction"}
+                    ],
+                },
+                "llm_reasoning_and_evaluation": {
+                    "extraction_call": {"findings_count": len(frag_res)},
+                    "scorer_decision": {"conclusive_risk_level": "Low" if frag_res else "Clean"},
+                },
+                "attached_output": {
+                    "status": "FLAGGED_FOR_REDLINE" if frag_res else "COMPLIANT / PASSED",
+                    "suggestions": [sugg.model_dump() for _, sugg in frag_res],
+                },
+            })
+        return frag_res
 
     # Determine criteria: PATH A (type-specific) or PATH B (general criteria)
     criteria: List[dict] = []
@@ -1335,7 +1452,6 @@ async def _evaluate_group(
             "Type mismatch flagged by LLM for group '%s' - falling back to general criteria (PATH B)",
             group.canonical_type,
         )
-        from src.services.general_criteria import GENERAL_CRITERIA
         criteria = list(GENERAL_CRITERIA)
         misclassified_group = ClauseGroup(
             para_indices=group.para_indices,
@@ -1345,6 +1461,7 @@ async def _evaluate_group(
             is_classified=False,
             is_fragment=group.is_fragment,
             paragraphs=group.paragraphs,
+            unit_id=group.unit_id,
         )
         extraction = await _extraction_call(misclassified_group, criteria, paragraphs, request, semaphore, session_id)
         group = misclassified_group
@@ -1354,6 +1471,61 @@ async def _evaluate_group(
 
     # Clean / non-risky clauses produce zero suggestions
     if not is_risky(scoring_result.final_level, has_failed_answers=bool(scoring_result.failed_answers)):
+        if audit_trace is not None:
+            first_p = paragraphs[group.para_indices[0]]
+            heading_title = (titles.get(first_p.paraindetifier) if titles else None) or group.canonical_type or "General Clause"
+            audit_trace.append({
+                "clause_unit_id": group.unit_id,
+                "clause_title": heading_title,
+                "canonical_type": group.canonical_type,
+                "canonical_slug": group.canonical_slug,
+                "pipeline_path": "PATH A (Type-Specific Rubric)" if group.is_classified else "PATH B (General Criteria)",
+                "paragraph_identifiers": [paragraphs[i].paraindetifier for i in group.para_indices],
+                "clause_unit_entire_text": "\n\n".join(paragraphs[i].text.strip() for i in group.para_indices),
+                "prompt_and_criteria_context": {
+                    "system_prompt_used": "extraction_system.mustache (v2 calibrated - 7 interpretation rules)",
+                    "reviewer_perspective_mode": (
+                        "NEUTRAL GENERAL REVIEW"
+                        if _is_general_review_party(request.party_represented)
+                        else f"CLIENT ADVOCACY REVIEW ({request.party_represented})"
+                    ),
+                    "criteria_evaluated": [
+                        {
+                            "criterion_id": c.get("id") or c.get("criterion_id"),
+                            "question": c.get("question") or c.get("question_for_llm") or c.get("criterion", ""),
+                            "weight": c.get("weight"),
+                            "gate_if_not_met": c.get("gate_if_not_met"),
+                        }
+                        for c in criteria
+                    ],
+                },
+                "llm_reasoning_and_evaluation": {
+                    "extraction_call": {
+                        "is_type_match": extraction.is_type_match,
+                        "criterion_answers": [
+                            {
+                                "criterion_id": a.criterion_id,
+                                "answer": a.answer,
+                                "quote": a.quote,
+                                "source_para_id": a.source_para_id,
+                            }
+                            for a in extraction.answers
+                        ],
+                    },
+                    "scorer_decision": {
+                        "gap_score": scoring_result.gap_score,
+                        "conclusive_risk_level": scoring_result.final_level,
+                        "gate_triggered": getattr(scoring_result, "gate_name", None),
+                        "failed_criteria_count": len(scoring_result.failed_answers),
+                        "is_risky": False,
+                    },
+                },
+                "attached_output": {
+                    "status": "COMPLIANT / PASSED",
+                    "summary": f"All {len(criteria)} criteria met or within acceptable threshold. No adverse risk identified.",
+                    "suggestions": [],
+                },
+            })
         return []
 
     # Identify risky paragraphs that need an explanation call
@@ -1388,6 +1560,71 @@ async def _evaluate_group(
 
     # Concurrently generate explanations for all risky paragraphs in this group
     explained_results = await asyncio.gather(*[_explain_para(pid) for pid in risky_para_indices])
+
+    if audit_trace is not None:
+        first_p = paragraphs[group.para_indices[0]]
+        heading_title = (titles.get(first_p.paraindetifier) if titles else None) or group.canonical_type or "General Clause"
+        audit_trace.append({
+            "clause_unit_id": group.unit_id,
+            "clause_title": heading_title,
+            "canonical_type": group.canonical_type,
+            "canonical_slug": group.canonical_slug,
+            "pipeline_path": "PATH A (Type-Specific Rubric)" if group.is_classified else "PATH B (General Criteria)",
+            "paragraph_identifiers": [paragraphs[i].paraindetifier for i in group.para_indices],
+            "clause_unit_entire_text": "\n\n".join(paragraphs[i].text.strip() for i in group.para_indices),
+            "prompt_and_criteria_context": {
+                "system_prompt_used": "extraction_system.mustache (v2 calibrated - 7 interpretation rules)",
+                "explanation_system_prompt": "explanation_system.mustache (Parts A-I surgical brevity rules)",
+                "reviewer_perspective_mode": (
+                    "NEUTRAL GENERAL REVIEW"
+                    if _is_general_review_party(request.party_represented)
+                    else f"CLIENT ADVOCACY REVIEW ({request.party_represented})"
+                ),
+                "criteria_evaluated": [
+                    {
+                        "criterion_id": c.get("id") or c.get("criterion_id"),
+                        "question": c.get("question") or c.get("question_for_llm") or c.get("criterion", ""),
+                        "weight": c.get("weight"),
+                        "gate_if_not_met": c.get("gate_if_not_met"),
+                        "met_when": c.get("met_when", ""),
+                        "not_met_when": c.get("not_met_when", ""),
+                    }
+                    for c in criteria
+                ],
+            },
+            "llm_reasoning_and_evaluation": {
+                "extraction_call": {
+                    "is_type_match": extraction.is_type_match,
+                    "criterion_answers": [
+                        {
+                            "criterion_id": a.criterion_id,
+                            "answer": a.answer,
+                            "quote": a.quote,
+                            "source_para_id": a.source_para_id,
+                        }
+                        for a in extraction.answers
+                    ],
+                },
+                "scorer_decision": {
+                    "gap_score": scoring_result.gap_score,
+                    "conclusive_risk_level": scoring_result.final_level,
+                    "gate_triggered": getattr(scoring_result, "gate_name", None),
+                    "failed_criteria_count": len(scoring_result.failed_answers),
+                    "is_risky": True,
+                },
+                "explanation_prompt_input": {
+                    "failed_criteria_fed_to_llm": [
+                        f"{a.criterion_id}: {a.quote or 'Not stated in text'}"
+                        for a in scoring_result.failed_answers
+                    ],
+                },
+            },
+            "attached_output": {
+                "status": "FLAGGED_FOR_REDLINE",
+                "suggestions": [sugg.model_dump() for _, sugg in explained_results],
+            },
+        })
+
     return list(explained_results)
 
 
@@ -1397,6 +1634,7 @@ async def _evaluate_batch(
     semaphore: asyncio.Semaphore,
     session_id: str,
     titles: Optional[Dict[str, str]] = None,
+    audit_trace: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Tuple[int, Suggestion]]:
     """Evaluate all groups in a batch concurrently."""
 
@@ -1404,7 +1642,7 @@ async def _evaluate_batch(
         titles = _build_clause_titles(request.textinformation)
 
     group_results = await asyncio.gather(
-        *[_evaluate_group(group, request, semaphore, session_id, titles=titles) for group in batch],
+        *[_evaluate_group(group, request, semaphore, session_id, titles=titles, audit_trace=audit_trace) for group in batch],
         return_exceptions=True
     )
     batch_suggestions: List[Tuple[int, Suggestion]] = []
@@ -1417,14 +1655,19 @@ async def _evaluate_batch(
     return batch_suggestions
 
 
-async def general_review_service(request: GeneralReviewRequest, session_id: str) -> GeneralReviewResponse:
+async def general_review_service(
+    request: GeneralReviewRequest,
+    session_id: str,
+    audit_trace_collector: Optional[List[Dict[str, Any]]] = None,
+) -> GeneralReviewResponse:
     """Deterministic, rubric-driven general review pipeline."""
 
     fingerprint = _request_fingerprint(request)
-    cached = _cache_get(fingerprint)
-    if cached is not None:
-        logger.info("General review: cache hit — returning the stored review for this document.")
-        return cached
+    if audit_trace_collector is None:
+        cached = _cache_get(fingerprint)
+        if cached is not None:
+            logger.info("General review: cache hit — returning the stored review for this document.")
+            return cached
 
     if not request.textinformation:
         return GeneralReviewResponse(suggestions=[])
@@ -1448,8 +1691,11 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
     titles = _build_clause_titles(paragraphs)
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
     batch_results = await asyncio.gather(
-        *[_evaluate_batch(batch, request, semaphore, session_id, titles=titles) for batch in batches]
+        *[_evaluate_batch(batch, request, semaphore, session_id, titles=titles, audit_trace=audit_trace_collector) for batch in batches]
     )
+
+    if audit_trace_collector is not None:
+        audit_trace_collector.sort(key=lambda item: item.get("clause_unit_id", 0))
 
     seen_positions: Set[int] = set()
     positioned: List[Tuple[int, Suggestion]] = []
@@ -1461,6 +1707,9 @@ async def general_review_service(request: GeneralReviewRequest, session_id: str)
             positioned.append((pos, sugg))
 
     positioned.sort(key=lambda pair: pair[0])
+
+    if audit_trace_collector is not None:
+        audit_trace_collector.sort(key=lambda item: item.get("clause_unit_id", 0))
 
     # Fix 4: Exclude Signature Block / execution-zone Low-risk fragment noise.
     # Keep High/Medium risk findings from execution-zone (e.g. unsigned agreement).
