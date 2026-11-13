@@ -550,6 +550,14 @@ def _build_clause_titles(paragraphs: Sequence[TextInformation]) -> Dict[str, str
             titles[pid] = "Signature Block"
             continue
 
+        # Check Annex / Schedule / Exhibit: exit execution block
+        if _BACK_MATTER_START.search(first_line):
+            in_execution_block = False
+            own_back = _extract_clause_title(text) or first_line
+            current_section = own_back
+            titles[pid] = own_back
+            continue
+
         if in_execution_block:
             titles[pid] = "Signature Block"
             continue
