@@ -41,7 +41,7 @@ class AgreementTypeOut(BaseModel):
 
 
 class CanonicalTypeOut(BaseModel):
-    id: int
+    id: Any
     key: str
     name: str
     criterion_group: Optional[str] = None
@@ -50,7 +50,7 @@ class CanonicalTypeOut(BaseModel):
 
 class CriterionOut(BaseModel):
     criterion_id: str
-    canonical_type_id: int
+    canonical_type_id: Any
     canonical_type_name: str
     type_key: str
     criterion_group: Optional[str]
@@ -180,7 +180,7 @@ async def list_canonical_types(atid: int) -> List[CanonicalTypeOut]:
         with conn.cursor() as cur:
             cur.execute(
                 """
-                SELECT id, key, name, criterion_group, sort_order
+                SELECT id, key, name, applies_to AS criterion_group, sort_order
                 FROM public.canonical_types
                 WHERE agreement_type_id = %s AND is_active = true
                 ORDER BY sort_order
@@ -207,7 +207,7 @@ async def list_canonical_types(atid: int) -> List[CanonicalTypeOut]:
     "/canonical-types/{canonical_type_id}/criteria",
     response_model=List[CriterionOut],
 )
-async def list_criteria(canonical_type_id: int) -> List[CriterionOut]:
+async def list_criteria(canonical_type_id: str) -> List[CriterionOut]:
     """Return all criteria for a specific clause type."""
     with _get_conn() as conn:
         with conn.cursor() as cur:
@@ -218,7 +218,7 @@ async def list_criteria(canonical_type_id: int) -> List[CriterionOut]:
                     rc.canonical_type_id,
                     ct.name            AS canonical_type_name,
                     ct.key             AS type_key,
-                    ct.criterion_group,
+                    ct.applies_to      AS criterion_group,
                     rc.criterion,
                     rc.question_for_llm,
                     rc.met_when,
@@ -282,7 +282,7 @@ async def list_criteria(canonical_type_id: int) -> List[CriterionOut]:
     status_code=201,
 )
 async def create_criterion(
-    canonical_type_id: int,
+    canonical_type_id: str,
     body: CriterionCreate,
 ) -> CriterionOut:
     """Create a new review criterion for a clause type."""
@@ -295,7 +295,7 @@ async def create_criterion(
         with conn.cursor() as cur:
             # Fetch agreement_type_id and type details from canonical_types
             cur.execute(
-                "SELECT agreement_type_id, key, name, criterion_group FROM public.canonical_types WHERE id = %s",
+                "SELECT agreement_type_id, key, name, applies_to AS criterion_group FROM public.canonical_types WHERE id = %s",
                 (canonical_type_id,),
             )
             ct_row = cur.fetchone()
@@ -445,3 +445,4 @@ async def invalidate_criteria_cache(atid: int) -> Dict[str, Any]:
     Call this after bulk DB edits so the pipeline picks up the changes immediately."""
     invalidate_cache(atid)
     return {"status": "invalidated", "agreement_type_id": atid}
+

@@ -268,7 +268,7 @@ def _load_from_db(atid: int) -> Optional[_TaxonomyCache]:
                         rc.not_met_when,
                         rc.applies_when,
                         rc.seq,
-                        ct.criterion_group AS criterion_group,
+                        ct.applies_to      AS criterion_group,
                         rc.issue_category,
                         rc.why_it_matters,
                         ct.name            AS canonical_type_name

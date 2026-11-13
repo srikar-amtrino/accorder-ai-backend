@@ -458,6 +458,47 @@ def _looks_like_title(segment: str) -> bool:
     return any(word[0].isupper() for word in words)
 
 
+def _is_exhibit_clause_boundary(text: str, prev_text: str = "") -> bool:
+    """Detect whether a paragraph begins a new clause within an Exhibit / Annex / Schedule.
+
+    In exhibits (such as SOWs or Scope of Services), clauses often use:
+    1. Standalone title lines ending in period: e.g. 'Investment Management Services.'
+    2. Run-on / inline headings ending in period: e.g. 'Duties of the City. In order to fully effect...'
+    """
+    stripped = text.strip()
+    if not stripped:
+        return False
+    # Guard 1: previous ended with colon -> continuation list item, NOT a section
+    if prev_text and prev_text.strip().endswith(":"):
+        return False
+    # Guard 2: previous ended mid-sentence without terminal punctuation,
+    # UNLESS previous paragraph was an Exhibit/Annex header line
+    if prev_text:
+        prev_stripped = prev_text.strip()
+        first_prev_line = prev_stripped.split("\n")[0].strip()
+        if not _BACK_MATTER_START.search(first_prev_line):
+            if prev_stripped and prev_stripped[-1] not in ".!?;\"'”’":
+                return False
+
+    first_line = stripped.split("\n")[0].strip()
+    match = _INLINE_TITLE_RE.match(first_line)
+    if match:
+        matched_str = match.group(0)
+        # Must terminate with period
+        if not matched_str.strip().endswith("."):
+            return False
+        cand = match.group(1).strip()
+        words = cand.split()
+        if 1 <= len(words) <= 8 and 2 <= len(cand) <= 75:
+            if not any(w.lower().strip(".:;,'\"“”‘’") in _TITLE_VERBS for w in words):
+                if _looks_like_title(cand):
+                    rest = first_line[len(matched_str):].strip()
+                    # Either standalone or followed by capitalized word or quote
+                    if not rest or rest[0].isupper() or rest[0] in '“"\'‘':
+                        return True
+    return False
+
+
 def _extract_clause_title(text: str) -> str:
     first_line = text.strip().split("\n")[0].strip()
     stripped = _TITLE_NUMBER_PREFIX_RE.sub("", first_line).strip()
@@ -857,6 +898,7 @@ def _build_clause_groups(
     current_paras: List[int] = []
     current_title = "FRONT MATTER"
     in_execution_block = False
+    in_back_matter = False
     prev_text = ""
 
     for idx, item in enumerate(paragraphs):
@@ -920,6 +962,7 @@ def _build_clause_groups(
                 })
                 current_paras = []
             in_execution_block = False
+            in_back_matter = True
             current_paras.append(idx)
             current_title = first_line
             prev_text = text
@@ -932,14 +975,28 @@ def _build_clause_groups(
             continue
 
         # Operative section boundary
-        if _is_major_section_boundary(text, prev_text=prev_text) and current_paras:
-            containers.append({
-                "zone": "OPERATIVE",
-                "title": current_title,
-                "para_indices": current_paras,
-            })
-            current_paras = [idx]
-            current_title = first_line
+        is_boundary = _is_major_section_boundary(text, prev_text=prev_text)
+        if not is_boundary and in_back_matter:
+            is_boundary = _is_exhibit_clause_boundary(text, prev_text=prev_text)
+
+        if is_boundary and current_paras:
+            # If current container only holds the Exhibit header paragraph (e.g. "EXHIBIT A: Scope of Services"),
+            # merge it with the first clause rather than creating an empty title-only container.
+            if (
+                len(current_paras) == 1
+                and in_back_matter
+                and _BACK_MATTER_START.search(paragraphs[current_paras[0]].text.strip().split("\n")[0].strip())
+            ):
+                current_paras.append(idx)
+                current_title = first_line
+            else:
+                containers.append({
+                    "zone": "OPERATIVE",
+                    "title": current_title,
+                    "para_indices": current_paras,
+                })
+                current_paras = [idx]
+                current_title = first_line
         else:
             current_paras.append(idx)
             if len(current_paras) == 1:
