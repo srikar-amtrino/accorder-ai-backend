@@ -251,11 +251,13 @@ def _load_from_db(atid: int) -> Optional[_TaxonomyCache]:
                         slug_to_display_map[v_slug] = v_disp
 
                 # --- 2. review_criteria -----------------------------------------------
+                # NOTE: type_key and criterion_group are dropped from review_criteria;
+                # they are now derived from canonical_types (ct.key, ct.criterion_group).
                 cur.execute(
                     """
                     SELECT
                         rc.criterion_id,
-                        rc.type_key,
+                        ct.key            AS type_key,
                         rc.weight,
                         rc.weight_value,
                         rc.gate_if_not_met,
@@ -266,10 +268,10 @@ def _load_from_db(atid: int) -> Optional[_TaxonomyCache]:
                         rc.not_met_when,
                         rc.applies_when,
                         rc.seq,
-                        rc.criterion_group,
+                        ct.criterion_group AS criterion_group,
                         rc.issue_category,
                         rc.why_it_matters,
-                        ct.name  AS canonical_type_name
+                        ct.name            AS canonical_type_name
                     FROM public.review_criteria rc
                     JOIN public.canonical_types ct
                          ON rc.canonical_type_id = ct.id

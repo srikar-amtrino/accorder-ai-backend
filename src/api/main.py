@@ -10,6 +10,7 @@ from fastapi.middleware.cors import CORSMiddleware
 # from src.api.endpoints.admin.router import router as admin_router
 from src.api.endpoints.agents.main import router as agents_router
 from src.api.endpoints.clause_extractor.router import router as clause_extraction_router
+from src.api.endpoints.criteria.router import router as criteria_router
 
 # from src.api.endpoints.clause_extraction.router import (
 #     router as clause_extraction_router,
@@ -67,6 +68,7 @@ app.include_router(ingestion_router, prefix="/ingestion")
 app.include_router(agents_router, prefix="/Accorder/agents")
 app.include_router(clause_extraction_router, prefix="/extract")
 app.include_router(vector_db_router, prefix="/vector-db")
+app.include_router(criteria_router, prefix="/criteria")
 
 
 def main_entry() -> None:
