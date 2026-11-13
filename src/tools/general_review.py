@@ -49,6 +49,25 @@ _EXPLANATION_USER = (_PROMPTS_DIR / "explanation_user.mustache").read_text(encod
 _FRAGMENT_SYSTEM = (_PROMPTS_DIR / "fragment_system.mustache").read_text(encoding="utf-8")
 _FRAGMENT_USER = (_PROMPTS_DIR / "fragment_user.mustache").read_text(encoding="utf-8")
 
+# ---------------------------------------------------------------------------
+# Streaming Simulation: captures the LLM's extended thinking trace into the
+# audit JSON so you can read the model's raw "scrap paper" reasoning for each
+# clause unit.
+#
+#   True  → audit trace includes per-clause thinking_trace blocks
+#            (extraction_thinking + explanation_thinking).
+#            Uses Claude extended thinking API (temperature=1, budget_tokens).
+#
+#   False → standard structured audit trace only (current behaviour).
+#           No extra latency or cost from thinking tokens.
+# ---------------------------------------------------------------------------
+STREAMING_SIMULATION: bool = True
+
+# Thinking token budget for extraction calls (richer reasoning, more tokens)
+_THINKING_BUDGET_EXTRACTION: int = 8000
+# Thinking token budget for explanation calls (shorter reasoning needed)
+_THINKING_BUDGET_EXPLANATION: int = 4000
+
 # Identical documents always return the identical review (LRU, per process).
 _CACHE_MAX_ENTRIES = 32
 _response_cache: "OrderedDict[str, GeneralReviewResponse]" = OrderedDict()
@@ -1087,9 +1106,15 @@ async def _extraction_call(
     paragraphs: Sequence[TextInformation],
     request: GeneralReviewRequest,
     semaphore: asyncio.Semaphore,
-    session_id: str
-) -> ExtractionResponse:
-    """Run criteria extraction against the clause text with structured output."""
+    session_id: str,
+) -> Tuple[ExtractionResponse, str]:
+    """Run criteria extraction against the clause text with structured output.
+
+    Returns:
+        (ExtractionResponse, thinking_text)
+        ``thinking_text`` is the raw extended-thinking trace when
+        ``STREAMING_SIMULATION=True``, otherwise an empty string.
+    """
 
     llm_model = get_bedrock_model()
     reviewer_context = _build_reviewer_context(request)
@@ -1114,27 +1139,49 @@ async def _extraction_call(
     ]
     criteria_json = json.dumps(criteria_summary, indent=2, ensure_ascii=False)
 
+    prompt_context = {
+        "canonical_type": group.canonical_type or "General Clause",
+        "reviewer_context": reviewer_context,
+        "criteria_json": criteria_json,
+        "clause_text_with_ids": clause_text_with_ids,
+    }
+
     async with semaphore:
-        for attempt, temperature in ((1, 0.0), (2, 0.3)):
-            try:
-                return await llm_model.generate(
-                    prompt=_EXTRACTION_USER,
-                    context={
-                        "canonical_type": group.canonical_type or "General Clause",
-                        "reviewer_context": reviewer_context,
-                        "criteria_json": criteria_json,
-                        "clause_text_with_ids": clause_text_with_ids,
-                    },
-                    response_model=ExtractionResponse,
-                    system_message=_EXTRACTION_SYSTEM,
-                    session_id=session_id,
-                    temperature=temperature,
-                )
-            except Exception:
-                if attempt == 2:
-                    raise
-                logger.warning("Extraction call failed on attempt %d; retrying once.", attempt)
-                await asyncio.sleep(1)
+        if STREAMING_SIMULATION:
+            # Extended thinking: single attempt (temperature fixed at 1 by API)
+            for attempt in range(1, 3):
+                try:
+                    result, thinking_text = await llm_model.generate_with_thinking(
+                        prompt=_EXTRACTION_USER,
+                        context=prompt_context,
+                        response_model=ExtractionResponse,
+                        system_message=_EXTRACTION_SYSTEM,
+                        session_id=session_id,
+                        thinking_budget_tokens=_THINKING_BUDGET_EXTRACTION,
+                    )
+                    return result, thinking_text
+                except Exception:
+                    if attempt == 2:
+                        raise
+                    logger.warning("Extraction (thinking) call failed on attempt %d; retrying once.", attempt)
+                    await asyncio.sleep(1)
+        else:
+            for attempt, temperature in ((1, 0.0), (2, 0.3)):
+                try:
+                    result = await llm_model.generate(
+                        prompt=_EXTRACTION_USER,
+                        context=prompt_context,
+                        response_model=ExtractionResponse,
+                        system_message=_EXTRACTION_SYSTEM,
+                        session_id=session_id,
+                        temperature=temperature,
+                    )
+                    return result, ""
+                except Exception:
+                    if attempt == 2:
+                        raise
+                    logger.warning("Extraction call failed on attempt %d; retrying once.", attempt)
+                    await asyncio.sleep(1)
 
     raise RuntimeError("unreachable")
 
@@ -1198,8 +1245,14 @@ async def _explanation_call(
     semaphore: asyncio.Semaphore,
     session_id: str,
     clause_name: Optional[str] = None,
-) -> ExplanationResponse:
-    """Draft professional review finding with pre-computed, locked risk level."""
+) -> Tuple[ExplanationResponse, str]:
+    """Draft professional review finding with pre-computed, locked risk level.
+
+    Returns:
+        (ExplanationResponse, thinking_text)
+        ``thinking_text`` is the raw extended-thinking trace when
+        ``STREAMING_SIMULATION=True``, otherwise an empty string.
+    """
 
     llm_model = get_bedrock_model()
     para = request.textinformation[para_index]
@@ -1220,28 +1273,49 @@ async def _explanation_call(
     reviewer_context = _build_reviewer_context(request)
     resolved_clause_name = clause_name or group.canonical_type or "General Clause"
 
+    prompt_context = {
+        "reviewer_context": reviewer_context,
+        "clause_name": resolved_clause_name,
+        "risk_level": scoring_result.final_level,
+        "failed_criteria_block": failed_criteria_block,
+        "original_text": para.text,
+    }
+
     async with semaphore:
-        for attempt, temperature in ((1, 0.0), (2, 0.3)):
-            try:
-                return await llm_model.generate(
-                    prompt=_EXPLANATION_USER,
-                    context={
-                        "reviewer_context": reviewer_context,
-                        "clause_name": resolved_clause_name,
-                        "risk_level": scoring_result.final_level,
-                        "failed_criteria_block": failed_criteria_block,
-                        "original_text": para.text,
-                    },
-                    response_model=ExplanationResponse,
-                    system_message=_EXPLANATION_SYSTEM,
-                    session_id=session_id,
-                    temperature=temperature,
-                )
-            except Exception:
-                if attempt == 2:
-                    raise
-                logger.warning("Explanation call failed on attempt %d; retrying once.", attempt)
-                await asyncio.sleep(1)
+        if STREAMING_SIMULATION:
+            for attempt in range(1, 3):
+                try:
+                    result, thinking_text = await llm_model.generate_with_thinking(
+                        prompt=_EXPLANATION_USER,
+                        context=prompt_context,
+                        response_model=ExplanationResponse,
+                        system_message=_EXPLANATION_SYSTEM,
+                        session_id=session_id,
+                        thinking_budget_tokens=_THINKING_BUDGET_EXPLANATION,
+                    )
+                    return result, thinking_text
+                except Exception:
+                    if attempt == 2:
+                        raise
+                    logger.warning("Explanation (thinking) call failed on attempt %d; retrying once.", attempt)
+                    await asyncio.sleep(1)
+        else:
+            for attempt, temperature in ((1, 0.0), (2, 0.3)):
+                try:
+                    result = await llm_model.generate(
+                        prompt=_EXPLANATION_USER,
+                        context=prompt_context,
+                        response_model=ExplanationResponse,
+                        system_message=_EXPLANATION_SYSTEM,
+                        session_id=session_id,
+                        temperature=temperature,
+                    )
+                    return result, ""
+                except Exception:
+                    if attempt == 2:
+                        raise
+                    logger.warning("Explanation call failed on attempt %d; retrying once.", attempt)
+                    await asyncio.sleep(1)
 
     raise RuntimeError("unreachable")
 
@@ -1443,8 +1517,8 @@ async def _evaluate_group(
     if not criteria:
         criteria = list(GENERAL_CRITERIA)
 
-    # Call A: Criteria extraction
-    extraction = await _extraction_call(group, criteria, paragraphs, request, semaphore, session_id)
+    # Call A: Criteria extraction (returns (ExtractionResponse, thinking_text))
+    extraction, extraction_thinking = await _extraction_call(group, criteria, paragraphs, request, semaphore, session_id)
 
     # Safety Net: LLM flagged type mismatch -> fall back to general criteria (PATH B)
     if not extraction.is_type_match:
@@ -1463,17 +1537,54 @@ async def _evaluate_group(
             paragraphs=group.paragraphs,
             unit_id=group.unit_id,
         )
-        extraction = await _extraction_call(misclassified_group, criteria, paragraphs, request, semaphore, session_id)
+        extraction, extraction_thinking = await _extraction_call(misclassified_group, criteria, paragraphs, request, semaphore, session_id)
         group = misclassified_group
 
     # Deterministic scoring in Python
     scoring_result = _resolve_and_score(extraction, group, criteria, paragraphs)
+
+    # Build the thinking_trace block for audit (populated only when STREAMING_SIMULATION=True)
+    def _make_thinking_trace(ext_thinking: str, explanation_thinking_map: Optional[Dict[str, str]] = None) -> Optional[Dict]:
+        if not STREAMING_SIMULATION:
+            return None
+        return {
+            "streaming_simulation_enabled": True,
+            "extraction_thinking": ext_thinking or "(no thinking output returned)",
+            "explanation_thinking_by_para": explanation_thinking_map or {},
+        }
 
     # Clean / non-risky clauses produce zero suggestions
     if not is_risky(scoring_result.final_level, has_failed_answers=bool(scoring_result.failed_answers)):
         if audit_trace is not None:
             first_p = paragraphs[group.para_indices[0]]
             heading_title = (titles.get(first_p.paraindetifier) if titles else None) or group.canonical_type or "General Clause"
+            llm_block: Dict[str, Any] = {
+                "streaming_simulation_enabled": STREAMING_SIMULATION,
+                "extraction_call": {
+                    "is_type_match": extraction.is_type_match,
+                    "criterion_answers": [
+                        {
+                            "criterion_id": a.criterion_id,
+                            "answer": a.answer,
+                            "quote": a.quote,
+                            "source_para_id": a.source_para_id,
+                        }
+                        for a in extraction.answers
+                    ],
+                },
+                "scorer_decision": {
+                    "gap_score": scoring_result.gap_score,
+                    "conclusive_risk_level": scoring_result.final_level,
+                    "gate_triggered": getattr(scoring_result, "gate_name", None),
+                    "failed_criteria_count": len(scoring_result.failed_answers),
+                    "is_risky": False,
+                },
+            }
+            if STREAMING_SIMULATION:
+                llm_block["thinking_trace"] = {
+                    "extraction_thinking": extraction_thinking or "(no thinking output returned)",
+                    "explanation_thinking_by_para": {},
+                }
             audit_trace.append({
                 "clause_unit_id": group.unit_id,
                 "clause_title": heading_title,
@@ -1499,27 +1610,7 @@ async def _evaluate_group(
                         for c in criteria
                     ],
                 },
-                "llm_reasoning_and_evaluation": {
-                    "extraction_call": {
-                        "is_type_match": extraction.is_type_match,
-                        "criterion_answers": [
-                            {
-                                "criterion_id": a.criterion_id,
-                                "answer": a.answer,
-                                "quote": a.quote,
-                                "source_para_id": a.source_para_id,
-                            }
-                            for a in extraction.answers
-                        ],
-                    },
-                    "scorer_decision": {
-                        "gap_score": scoring_result.gap_score,
-                        "conclusive_risk_level": scoring_result.final_level,
-                        "gate_triggered": getattr(scoring_result, "gate_name", None),
-                        "failed_criteria_count": len(scoring_result.failed_answers),
-                        "is_risky": False,
-                    },
-                },
+                "llm_reasoning_and_evaluation": llm_block,
                 "attached_output": {
                     "status": "COMPLIANT / PASSED",
                     "summary": f"All {len(criteria)} criteria met or within acceptable threshold. No adverse risk identified.",
@@ -1540,10 +1631,10 @@ async def _evaluate_group(
 
     canonical_name = group.canonical_type or "General Clause"
 
-    async def _explain_para(p_idx: int) -> Tuple[int, Suggestion]:
+    async def _explain_para(p_idx: int) -> Tuple[int, Suggestion, str]:
         p = paragraphs[p_idx]
         actual_heading = (titles.get(p.paraindetifier) if titles else None) or canonical_name
-        explanation = await _explanation_call(
+        explanation, exp_thinking = await _explanation_call(
             p_idx, group, scoring_result, criteria, request, semaphore, session_id,
             clause_name=actual_heading,
         )
@@ -1556,14 +1647,55 @@ async def _evaluate_group(
             suggested_fix=full_fix,
             para_identifier=p.paraindetifier,
         )
-        return (p_idx, sugg)
+        return (p_idx, sugg, exp_thinking)
 
     # Concurrently generate explanations for all risky paragraphs in this group
-    explained_results = await asyncio.gather(*[_explain_para(pid) for pid in risky_para_indices])
+    explained_results_raw = await asyncio.gather(*[_explain_para(pid) for pid in risky_para_indices])
+    # Unpack the 3-tuple into the (idx, sugg) pairs the caller expects
+    explained_results: List[Tuple[int, Suggestion]] = [(r[0], r[1]) for r in explained_results_raw]
+    # Collect per-para thinking text keyed by para_identifier
+    explanation_thinking_map: Dict[str, str] = {
+        paragraphs[r[0]].paraindetifier: r[2]
+        for r in explained_results_raw
+        if r[2]
+    }
 
     if audit_trace is not None:
         first_p = paragraphs[group.para_indices[0]]
         heading_title = (titles.get(first_p.paraindetifier) if titles else None) or group.canonical_type or "General Clause"
+        llm_block_risky: Dict[str, Any] = {
+            "streaming_simulation_enabled": STREAMING_SIMULATION,
+            "extraction_call": {
+                "is_type_match": extraction.is_type_match,
+                "criterion_answers": [
+                    {
+                        "criterion_id": a.criterion_id,
+                        "answer": a.answer,
+                        "quote": a.quote,
+                        "source_para_id": a.source_para_id,
+                    }
+                    for a in extraction.answers
+                ],
+            },
+            "scorer_decision": {
+                "gap_score": scoring_result.gap_score,
+                "conclusive_risk_level": scoring_result.final_level,
+                "gate_triggered": getattr(scoring_result, "gate_name", None),
+                "failed_criteria_count": len(scoring_result.failed_answers),
+                "is_risky": True,
+            },
+            "explanation_prompt_input": {
+                "failed_criteria_fed_to_llm": [
+                    f"{a.criterion_id}: {a.quote or 'Not stated in text'}"
+                    for a in scoring_result.failed_answers
+                ],
+            },
+        }
+        if STREAMING_SIMULATION:
+            llm_block_risky["thinking_trace"] = {
+                "extraction_thinking": extraction_thinking or "(no thinking output returned)",
+                "explanation_thinking_by_para": explanation_thinking_map,
+            }
         audit_trace.append({
             "clause_unit_id": group.unit_id,
             "clause_title": heading_title,
@@ -1592,33 +1724,7 @@ async def _evaluate_group(
                     for c in criteria
                 ],
             },
-            "llm_reasoning_and_evaluation": {
-                "extraction_call": {
-                    "is_type_match": extraction.is_type_match,
-                    "criterion_answers": [
-                        {
-                            "criterion_id": a.criterion_id,
-                            "answer": a.answer,
-                            "quote": a.quote,
-                            "source_para_id": a.source_para_id,
-                        }
-                        for a in extraction.answers
-                    ],
-                },
-                "scorer_decision": {
-                    "gap_score": scoring_result.gap_score,
-                    "conclusive_risk_level": scoring_result.final_level,
-                    "gate_triggered": getattr(scoring_result, "gate_name", None),
-                    "failed_criteria_count": len(scoring_result.failed_answers),
-                    "is_risky": True,
-                },
-                "explanation_prompt_input": {
-                    "failed_criteria_fed_to_llm": [
-                        f"{a.criterion_id}: {a.quote or 'Not stated in text'}"
-                        for a in scoring_result.failed_answers
-                    ],
-                },
-            },
+            "llm_reasoning_and_evaluation": llm_block_risky,
             "attached_output": {
                 "status": "FLAGGED_FOR_REDLINE",
                 "suggestions": [sugg.model_dump() for _, sugg in explained_results],

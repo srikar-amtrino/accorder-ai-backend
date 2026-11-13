@@ -287,3 +287,134 @@ class BedrockModel(BaseLLMModel):
         normalized_input = self._normalize_tool_response(tool_use_block["input"])
 
         return response_model.model_validate(normalized_input)
+
+    async def generate_with_thinking(
+        self,
+        prompt: str,
+        context: Dict[str, Any],
+        response_model: Type[ResponseModelT],
+        session_id: str,
+        system_message: Optional[str] = None,
+        thinking_budget_tokens: int = 8000,
+    ) -> tuple:
+        """Generate a structured response AND capture the model's extended thinking trace.
+
+        Extended thinking is enabled via the ``anthropic_beta`` header
+        ``interleaved-thinking-2025-05-14``.  The request uses temperature=1
+        (required by the API when thinking is enabled) and a larger
+        ``max_tokens`` budget to accommodate both thinking blocks and the
+        structured tool-use output.
+
+        Returns:
+            (response_model_instance, thinking_text: str)
+            ``thinking_text`` is the concatenation of all ``thinking`` content
+            blocks returned by the model (the raw "scrap paper").  It is an
+            empty string when the model returns no thinking blocks.
+        """
+
+        prompt = self.render_prompt_template(
+            prompt=prompt,
+            context=context,
+        )
+
+        tool = {
+            "name": response_model.__name__,
+            "description": f"Submit a structured {response_model.__name__} response.",
+            "input_schema": response_model.model_json_schema(),
+        }
+
+        # Extended thinking requires temperature=1 and a max_tokens value that
+        # is strictly greater than budget_tokens (we add 4096 for the output).
+        max_tokens = thinking_budget_tokens + 4096
+
+        enhanced_system = (
+            (system_message or "You are a helpful assistant.")
+            + f"\n\nIMPORTANT: You must return your structured output by calling the '{response_model.__name__}' tool."
+        )
+
+        native_request = {
+            "anthropic_version": "bedrock-2023-05-31",
+            "max_tokens": max_tokens,
+            "temperature": 1,
+            "thinking": {
+                "type": "enabled",
+                "budget_tokens": thinking_budget_tokens,
+            },
+            "messages": [
+                {
+                    "role": "user",
+                    "content": [
+                        {
+                            "type": "text",
+                            "text": prompt,
+                        }
+                    ],
+                }
+            ],
+            "system": enhanced_system,
+            "tools": [tool],
+            "tool_choice": {
+                "type": "auto",
+            },
+        }
+
+        start_time = time.time()
+
+        response = await asyncio.to_thread(
+            self.client.invoke_model,
+            modelId=self.model_id,
+            body=json.dumps(native_request),
+        )
+
+        response_body = await asyncio.to_thread(response["body"].read)
+
+        model_response = json.loads(response_body)
+
+        usage = model_response.get("usage", {})
+
+        logger.info(
+            "bedrock model generation with thinking complete",
+            model_id=self.model_id,
+            session_id=session_id,
+            time_taken=time.time() - start_time,
+            tokens_input=usage.get("input_tokens"),
+            output_tokens=usage.get("output_tokens"),
+            thinking_budget=thinking_budget_tokens,
+        )
+
+        content_blocks = model_response.get("content", [])
+
+        # Collect all thinking blocks (may be interleaved with text/tool_use)
+        thinking_parts = [
+            block.get("thinking", "")
+            for block in content_blocks
+            if block.get("type") == "thinking"
+        ]
+        thinking_text = "\n\n---\n\n".join(part for part in thinking_parts if part)
+
+        tool_use_block = next(
+            (block for block in content_blocks if block["type"] == "tool_use"),
+            None,
+        )
+        if tool_use_block is None:
+            # Fallback: check if tool call or JSON was emitted inside a text block
+            text_blocks = [b.get("text", "") for b in content_blocks if b.get("type") == "text"]
+            combined_text = "\n".join(text_blocks).strip()
+            if "{" in combined_text:
+                start = combined_text.find("{")
+                end = combined_text.rfind("}") + 1
+                try:
+                    parsed = json.loads(combined_text[start:end])
+                    normalized = self._normalize_tool_response(parsed)
+                    return response_model.model_validate(normalized), thinking_text
+                except Exception as ex:
+                    logger.warning("Could not parse JSON from text block: %s", ex)
+
+            raise LLMModelError(
+                f"No tool_use block found in thinking-enabled response for {response_model.__name__}. "
+                f"Content types returned: {[b.get('type') for b in content_blocks]}"
+            )
+
+        normalized_input = self._normalize_tool_response(tool_use_block["input"])
+
+        return response_model.model_validate(normalized_input), thinking_text
