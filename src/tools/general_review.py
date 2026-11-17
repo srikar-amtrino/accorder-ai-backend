@@ -24,6 +24,12 @@ from src.schemas.general_review import (
 from src.services.criteria_store import display_to_slug, get_criteria, get_criteria_by_slug, get_all_display_names, resolve_agreement_type_id, slug_to_display
 from src.services.clause_mapping.bm25_classifier import BM25TaxonomyClassifier
 from src.services.general_criteria import FRAGMENT_DEFECT_CRITERIA, GENERAL_CRITERIA
+from src.services.reference_graph import (
+    ContextBundler,
+    ContractStructuralTree,
+    ReferenceExtractor,
+    ReferenceGraph,
+)
 from src.services.scorer import AnswerRecord, ScoringResult, is_risky, score_group
 
 logger = get_logger(__name__)
@@ -1172,6 +1178,7 @@ async def _extraction_call(
     request: GeneralReviewRequest,
     semaphore: asyncio.Semaphore,
     session_id: str,
+    context_bundle: Optional[str] = None,
 ) -> Tuple[ExtractionResponse, str]:
     """Run criteria extraction against the clause text with structured output.
 
@@ -1189,6 +1196,8 @@ async def _extraction_call(
         para = paragraphs[idx]
         lines.append(f"[{para.paraindetifier}]: {para.text.strip()}")
     clause_text_with_ids = "\n\n".join(lines)
+    if context_bundle:
+        clause_text_with_ids = f"{clause_text_with_ids}\n\n{context_bundle}"
 
     criteria_summary = [
         {
@@ -1473,6 +1482,7 @@ async def _evaluate_group(
     session_id: str,
     titles: Optional[Dict[str, str]] = None,
     audit_trace: Optional[List[Dict[str, Any]]] = None,
+    context_bundler: Optional[ContextBundler] = None,
 ) -> List[Tuple[int, Suggestion]]:
     """Route group through PATH A, B, or C and return resulting suggestions."""
 
@@ -1582,8 +1592,27 @@ async def _evaluate_group(
     if not criteria:
         criteria = list(GENERAL_CRITERIA)
 
+    # Cross-clause reference context assembly
+    context_bundle: Optional[str] = None
+    group_refs: List[Dict[str, Any]] = []
+    if context_bundler is not None:
+        context_bundle = context_bundler.build_bundle_for_indices(
+            group.para_indices,
+            party_represented=request.party_represented,
+        )
+        for idx in group.para_indices:
+            for r in context_bundler.para_to_refs.get(idx, []):
+                group_refs.append({
+                    "raw_reference": r.raw_reference,
+                    "ref_type": r.ref_type,
+                    "target_addresses": r.target_addresses,
+                    "is_external": r.is_external,
+                })
+
     # Call A: Criteria extraction (returns (ExtractionResponse, thinking_text))
-    extraction, extraction_thinking = await _extraction_call(group, criteria, paragraphs, request, semaphore, session_id)
+    extraction, extraction_thinking = await _extraction_call(
+        group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle
+    )
 
     # Safety Net: LLM flagged type mismatch -> fall back to general criteria (PATH B)
     if not extraction.is_type_match:
@@ -1602,7 +1631,9 @@ async def _evaluate_group(
             paragraphs=group.paragraphs,
             unit_id=group.unit_id,
         )
-        extraction, extraction_thinking = await _extraction_call(misclassified_group, criteria, paragraphs, request, semaphore, session_id)
+        extraction, extraction_thinking = await _extraction_call(
+            misclassified_group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle
+        )
         group = misclassified_group
 
     # Deterministic scoring in Python
@@ -1680,6 +1711,11 @@ async def _evaluate_group(
                     "status": "COMPLIANT / PASSED",
                     "summary": f"All {len(criteria)} criteria met or within acceptable threshold. No adverse risk identified.",
                     "suggestions": [],
+                },
+                "cross_clause_context": {
+                    "detected_references": group_refs,
+                    "context_bundle_injected": bool(context_bundle),
+                    "context_bundle_text": context_bundle,
                 },
             })
         return []
@@ -1794,6 +1830,11 @@ async def _evaluate_group(
                 "status": "FLAGGED_FOR_REDLINE",
                 "suggestions": [sugg.model_dump() for _, sugg in explained_results],
             },
+            "cross_clause_context": {
+                "detected_references": group_refs,
+                "context_bundle_injected": bool(context_bundle),
+                "context_bundle_text": context_bundle,
+            },
         })
 
     return list(explained_results)
@@ -1806,6 +1847,7 @@ async def _evaluate_batch(
     session_id: str,
     titles: Optional[Dict[str, str]] = None,
     audit_trace: Optional[List[Dict[str, Any]]] = None,
+    context_bundler: Optional[ContextBundler] = None,
 ) -> List[Tuple[int, Suggestion]]:
     """Evaluate all groups in a batch concurrently."""
 
@@ -1813,8 +1855,19 @@ async def _evaluate_batch(
         titles = _build_clause_titles(request.textinformation)
 
     group_results = await asyncio.gather(
-        *[_evaluate_group(group, request, semaphore, session_id, titles=titles, audit_trace=audit_trace) for group in batch],
-        return_exceptions=True
+        *[
+            _evaluate_group(
+                group,
+                request,
+                semaphore,
+                session_id,
+                titles=titles,
+                audit_trace=audit_trace,
+                context_bundler=context_bundler,
+            )
+            for group in batch
+        ],
+        return_exceptions=True,
     )
     batch_suggestions: List[Tuple[int, Suggestion]] = []
     for res in group_results:
@@ -1859,10 +1912,31 @@ async def general_review_service(
     batches = _build_batches_v2(groups, paragraphs)
     logger.info("General review: %d paragraphs in %d clause groups split into %d batches.", len(paragraphs), len(groups), len(batches))
 
+    # Step 5: Construct Contract Reference Graph (CRG) & context bundler
+    structural_tree = ContractStructuralTree(paragraphs)
+    ref_extractor = ReferenceExtractor(structural_tree)
+    doc_references = ref_extractor.extract_all()
+    context_bundler = ContextBundler(structural_tree, doc_references)
+    ref_graph = ReferenceGraph(structural_tree, doc_references)
+    cycle_results = ref_graph.detect_cycles()
+    if cycle_results.has_cycles:
+        logger.warning("Circular cross-clause reference loop detected: %s", cycle_results.cycles)
+
     titles = _build_clause_titles(paragraphs)
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
     batch_results = await asyncio.gather(
-        *[_evaluate_batch(batch, request, semaphore, session_id, titles=titles, audit_trace=audit_trace_collector) for batch in batches]
+        *[
+            _evaluate_batch(
+                batch,
+                request,
+                semaphore,
+                session_id,
+                titles=titles,
+                audit_trace=audit_trace_collector,
+                context_bundler=context_bundler,
+            )
+            for batch in batches
+        ]
     )
 
     if audit_trace_collector is not None:
@@ -1928,8 +2002,24 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
 
         titles = _build_clause_titles(paragraphs)
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
+
+        # Build Contract Reference Graph (CRG) & context bundler
+        structural_tree = ContractStructuralTree(paragraphs)
+        ref_extractor = ReferenceExtractor(structural_tree)
+        doc_references = ref_extractor.extract_all()
+        context_bundler = ContextBundler(structural_tree, doc_references)
+
         tasks = [
-            asyncio.create_task(_evaluate_batch(batch, request, semaphore, session_id, titles=titles))
+            asyncio.create_task(
+                _evaluate_batch(
+                    batch,
+                    request,
+                    semaphore,
+                    session_id,
+                    titles=titles,
+                    context_bundler=context_bundler,
+                )
+            )
             for batch in batches
         ]
 

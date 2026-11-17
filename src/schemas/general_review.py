@@ -46,6 +46,13 @@ class TextInformation(BaseModel):
     text: str = Field(..., description="Text content of the paragraph")
     paraindetifier: str = Field(..., description="Identifier for the paragraph")
 
+    # Optional enrichment metadata (sent by updated docx parsers / clients)
+    list_level: Optional[int] = Field(default=None, description="DOCX list nesting depth (ilvl)")
+    list_number_value: Optional[str] = Field(default=None, description="Rendered list marker e.g. 'a.', '(i)', '2.1'")
+    is_list_item: Optional[bool] = Field(default=None, description="True if paragraph is a list item")
+    left_indent: Optional[float] = Field(default=None, description="Left indent in points (pt)")
+    outline_level: Optional[int] = Field(default=None, description="DOCX outline level")
+
 
 class GeneralReviewRequest(BaseModel):
     """Request body for the general review endpoint.
