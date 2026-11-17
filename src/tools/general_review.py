@@ -570,10 +570,32 @@ def _build_clause_titles(paragraphs: Sequence[TextInformation]) -> Dict[str, str
 
         own = _extract_clause_title(text)
         if _is_heading_text(first_line) and own and not _DEFINITION_TITLE_RE.match(first_line):
-            current_section = own
-            titles[pid] = own
+            # Guard 1: list sub-items end with ; or , — real headings end with . or nothing
+            _is_list_item = first_line.rstrip().endswith((";", ","))
+            # Guard 2: extracted title starts lowercase → it's an enumerated bullet, not a heading
+            # e.g. "A material adverse change to Consultant's..." → own = "material adverse change..."
+            _starts_lowercase = own[0].islower()
+            if _is_list_item or _starts_lowercase:
+                # Label this paragraph with its inline text, but do NOT
+                # update current_section — that would poison all subsequent paras
+                titles[pid] = own
+            else:
+                current_section = own
+                titles[pid] = own
         elif own:
             titles[pid] = own
+            # Run-on inline heading: first_line too long for _is_heading_text(), but
+            # own was extracted (e.g. "Consultant Certifications, Representations and
+            # Acknowledgements" from a paragraph starting "Consultant Certifications...
+            # Consultant hereby certifies...").
+            # Promote to current_section if own looks like a true section title:
+            #   • starts uppercase
+            #   • not a list sub-item (first_line doesn't end with ; or ,)
+            #   • not a definition marker
+            _own_is_list = first_line.rstrip().endswith((";", ","))
+            _own_starts_upper = own[0].isupper()
+            if _own_starts_upper and not _own_is_list and not _DEFINITION_TITLE_RE.match(first_line):
+                current_section = own
         elif current_section:
             titles[pid] = current_section
     return titles
