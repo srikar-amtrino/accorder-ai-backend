@@ -1,7 +1,7 @@
 import json
 from typing import Any, List, Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 
 def _escape_inner_quotes(malformed: str) -> str:
@@ -54,6 +54,16 @@ class TextInformation(BaseModel):
     outline_level: Optional[int] = Field(default=None, description="DOCX outline level")
 
 
+class ClauseItem(BaseModel):
+    """A pre-bounded clause containing its paragraphs and metadata."""
+
+    clause_id: str = Field(..., description="Unique clause identifier e.g. 'clause_1'")
+    clause_number: Optional[str] = Field(default=None, description="Clause numbering e.g. 'Section 1' or 'Exhibit A'")
+    clause_title: Optional[str] = Field(default=None, description="Clause heading e.g. 'Engagement'")
+    text: Optional[str] = Field(default=None, description="Complete clause text")
+    paragraphs: List[TextInformation] = Field(default_factory=list, description="Ordered paragraphs in this clause")
+
+
 class GeneralReviewRequest(BaseModel):
     """Request body for the general review endpoint.
 
@@ -70,11 +80,32 @@ class GeneralReviewRequest(BaseModel):
     to that kind of agreement.
     """
 
-    textinformation: List[TextInformation] = Field(..., description="Paragraphs to review, in document order")
+    textinformation: List[TextInformation] = Field(default_factory=list, description="Paragraphs to review, in document order")
+    clauses: Optional[List[ClauseItem]] = Field(default=None, description="Pre-bounded clauses when Simulation_Clause_Payload is active")
+    simulation_clause_payload: Optional[bool] = Field(default=False, description="Flag indicating clause-wise payload simulation mode")
     party_represented: Optional[str] = Field(default=None, description="Which party to the contract the user represents (e.g. Buyer, Seller, Customer)")
     review_objective: Optional[str] = Field(default=None, description="The user's primary objective for this review")
     specific_concerns: Optional[str] = Field(default=None, description="Specific concerns the user wants covered in addition to the full review")
     agreement_type: Optional[str] = Field(default=None, description="Kind of agreement under review (e.g. MSA, NDA), when known")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _adapt_clauses_to_textinformation(cls, data: Any) -> Any:
+        """When clauses are supplied, synthesize textinformation from clause paragraphs if absent."""
+        if isinstance(data, dict):
+            clauses = data.get("clauses")
+            textinfo = data.get("textinformation")
+            if clauses and not textinfo:
+                flat: list = []
+                for c in clauses:
+                    if isinstance(c, dict):
+                        flat.extend(c.get("paragraphs", []))
+                    elif hasattr(c, "paragraphs"):
+                        flat.extend(c.paragraphs)
+                data["textinformation"] = flat
+            if clauses and data.get("simulation_clause_payload") is None:
+                data["simulation_clause_payload"] = True
+        return data
 
     @field_validator("party_represented", "review_objective", "specific_concerns", "agreement_type", mode="before")
     @classmethod

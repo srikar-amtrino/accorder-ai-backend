@@ -1165,6 +1165,94 @@ def _build_clause_groups(
     return groups
 
 
+def _build_clause_groups_from_clauses(
+    clauses: Sequence[Any],
+    paragraphs: Sequence[TextInformation],
+    agreement_type_id: int = 84,
+) -> List[ClauseGroup]:
+    """Assemble ClauseGroup objects directly from pre-bounded clauses in Simulation_Clause_Payload mode."""
+    if not clauses or not paragraphs:
+        return []
+
+    pid_to_index = {p.paraindetifier: idx for idx, p in enumerate(paragraphs)}
+    groups: List[ClauseGroup] = []
+
+    for c_idx, c in enumerate(clauses, 1):
+        c_title = (getattr(c, "clause_title", None) or (c.get("clause_title") if isinstance(c, dict) else "") or "").strip()
+        c_number = (getattr(c, "clause_number", None) or (c.get("clause_number") if isinstance(c, dict) else "") or "").strip()
+        c_paras = getattr(c, "paragraphs", None) or (c.get("paragraphs") if isinstance(c, dict) else []) or []
+
+        p_indices: List[int] = []
+        for p in c_paras:
+            pid = getattr(p, "paraindetifier", None) or (p.get("paraindetifier") if isinstance(p, dict) else None)
+            if pid in pid_to_index:
+                p_indices.append(pid_to_index[pid])
+
+        if not p_indices:
+            continue
+
+        p_indices.sort()
+        paras_dict = {i: paragraphs[i].text for i in p_indices}
+
+        # Check front-matter / execution block fragment
+        title_lower = c_title.lower()
+        is_front_matter = any(term in title_lower for term in ["preamble", "recitals", "front matter"])
+        is_signature = any(term in title_lower for term in ["signature", "execution", "witness"])
+
+        if is_front_matter:
+            groups.append(
+                ClauseGroup(
+                    para_indices=p_indices,
+                    canonical_type="Front Matter",
+                    canonical_slug="front-matter",
+                    confidence=1.0,
+                    is_classified=False,
+                    is_fragment=True,
+                    paragraphs=paras_dict,
+                    unit_id=c_idx,
+                )
+            )
+            continue
+
+        if is_signature:
+            groups.append(
+                ClauseGroup(
+                    para_indices=p_indices,
+                    canonical_type="Signature Block",
+                    canonical_slug="signature-block",
+                    confidence=1.0,
+                    is_classified=False,
+                    is_fragment=True,
+                    paragraphs=paras_dict,
+                    unit_id=c_idx,
+                )
+            )
+            continue
+
+        # Match taxonomy: prefer clause_title match
+        canonical_display = _match_heading_to_taxonomy(c_title)
+        canonical_slug = display_to_slug(canonical_display, agreement_type_id) if canonical_display else None
+        is_classified = bool(canonical_display)
+
+        groups.append(
+            ClauseGroup(
+                para_indices=p_indices,
+                canonical_type=canonical_display,
+                canonical_slug=canonical_slug,
+                confidence=0.95 if is_classified else 0.50,
+                is_classified=is_classified,
+                is_fragment=False,
+                paragraphs=paras_dict,
+                unit_id=c_idx,
+            )
+        )
+
+    for g_idx, g in enumerate(groups, 1):
+        g.unit_id = g_idx
+
+    return groups
+
+
 def _build_batches_v2(
     groups: List[ClauseGroup],
     paragraphs: Sequence[TextInformation]
@@ -1919,16 +2007,26 @@ async def general_review_service(
         return GeneralReviewResponse(suggestions=[])
 
     paragraphs = request.textinformation
-
-    # Step 1: Classify all paragraphs with vector DB
-    raw_matches = await _classify_all_paragraphs(request, session_id)
-
-    # Step 2: Smooth classifications to remove classification noise
-    smoothed = _smooth_classifications(raw_matches, paragraphs)
-
-    # Step 3: Build cohesive section containers
     _atid_main = resolve_agreement_type_id(request.agreement_type or "")
-    groups = _build_clause_groups(smoothed, paragraphs, _atid_main)
+
+    if request.simulation_clause_payload and request.clauses:
+        logger.info("General review: Simulation_Clause_Payload active — processing %d pre-bounded clauses directly.", len(request.clauses))
+        groups = _build_clause_groups_from_clauses(request.clauses, paragraphs, _atid_main)
+        titles = {}
+        for c in request.clauses:
+            t = c.clause_title or ""
+            for p in c.paragraphs:
+                titles[p.paraindetifier] = t
+    else:
+        # Step 1: Classify all paragraphs with vector DB
+        raw_matches = await _classify_all_paragraphs(request, session_id)
+
+        # Step 2: Smooth classifications to remove classification noise
+        smoothed = _smooth_classifications(raw_matches, paragraphs)
+
+        # Step 3: Build cohesive section containers
+        groups = _build_clause_groups(smoothed, paragraphs, _atid_main)
+        titles = _build_clause_titles(paragraphs)
 
     # Step 4: Build batches respecting clause group integrity
     batches = _build_batches_v2(groups, paragraphs)
@@ -1944,7 +2042,6 @@ async def general_review_service(
     if cycle_results.has_cycles:
         logger.warning("Circular cross-clause reference loop detected: %s", cycle_results.cycles)
 
-    titles = _build_clause_titles(paragraphs)
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
     batch_results = await asyncio.gather(
         *[
@@ -2014,15 +2111,26 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
             return
 
         paragraphs = request.textinformation
-        raw_matches = await _classify_all_paragraphs(request, session_id)
-        smoothed = _smooth_classifications(raw_matches, paragraphs)
         _atid_stream = resolve_agreement_type_id(request.agreement_type or "")
-        groups = _build_clause_groups(smoothed, paragraphs, _atid_stream)
+
+        if request.simulation_clause_payload and request.clauses:
+            logger.info("General review stream: Simulation_Clause_Payload active — processing %d pre-bounded clauses directly.", len(request.clauses))
+            groups = _build_clause_groups_from_clauses(request.clauses, paragraphs, _atid_stream)
+            titles = {}
+            for c in request.clauses:
+                t = c.clause_title or ""
+                for p in c.paragraphs:
+                    titles[p.paraindetifier] = t
+        else:
+            raw_matches = await _classify_all_paragraphs(request, session_id)
+            smoothed = _smooth_classifications(raw_matches, paragraphs)
+            groups = _build_clause_groups(smoothed, paragraphs, _atid_stream)
+            titles = _build_clause_titles(paragraphs)
+
         batches = _build_batches_v2(groups, paragraphs)
 
         logger.info("General review stream: %d paragraphs in %d clause groups split into %d batches.", len(paragraphs), len(groups), len(batches))
 
-        titles = _build_clause_titles(paragraphs)
         semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
 
         # Build Contract Reference Graph (CRG) & context bundler

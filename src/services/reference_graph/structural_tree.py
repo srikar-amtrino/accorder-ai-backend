@@ -131,6 +131,7 @@ class ContractStructuralTree:
                 current_subsection = ""
                 current_sub_idx = 0
                 current_item_idx = 0
+                exhibit_sec_idx = 0
 
                 node = ParaNode(
                     para_index=idx,
@@ -203,6 +204,40 @@ class ContractStructuralTree:
                 )
                 self._register_node(node)
                 continue
+
+            # 3b. Check for unnumbered section headings inside Exhibit / Back Matter
+            if current_scope and not sec_match and not num_match:
+                inline_match = _INLINE_HEADING_RE.match(first_line)
+                is_standalone = (
+                    len(first_line.split()) <= 8
+                    and first_line.endswith(".")
+                    and not first_line.rstrip().endswith((";", ","))
+                    and first_line[0].isupper()
+                )
+                if inline_match or is_standalone:
+                    heading = inline_match.group(1).rstrip(".") if inline_match else first_line.rstrip(".")
+                    if heading and heading[0].isupper() and not first_line.rstrip().endswith((";", ",")):
+                        exhibit_sec_idx += 1
+                        current_section = f"{current_scope}.S{exhibit_sec_idx}"
+                        current_section_title = heading
+                        current_subsection = ""
+                        current_sub_idx = 0
+                        current_item_idx = 0
+                        node = ParaNode(
+                            para_index=idx,
+                            paraindetifier=para.paraindetifier,
+                            text=raw_text,
+                            canonical_address=current_section,
+                            display_title=f"{current_scope} - {heading}",
+                            section_id=current_scope,
+                            sub_address=f"S{exhibit_sec_idx}",
+                            depth=1,
+                            is_heading=True,
+                            is_back_matter=True,
+                            heading_text=heading,
+                        )
+                        self._register_node(node)
+                        continue
 
             # 4. If we are inside a section, check sub-clause structure
             if current_section:
@@ -409,7 +444,15 @@ class ContractStructuralTree:
         """Resolves a raw reference string like 'Section 7(a)' or 'Exhibit A' to matching ParaNode(s)."""
         norm = self._normalize_alias(raw_ref)
         if norm in self.alias_to_nodes:
-            return self.alias_to_nodes[norm]
+            nodes = list(self.alias_to_nodes[norm])
+            # If resolving an exhibit (e.g. "exhibit a"), also include substantive section nodes of that exhibit
+            if norm.startswith("exhibit ") or norm.startswith("exh "):
+                exh_letter = norm.split()[-1].upper()
+                exh_scope = f"Exh{exh_letter}"
+                for n in self.nodes:
+                    if n.section_id == exh_scope and n not in nodes and n.is_heading:
+                        nodes.append(n)
+            return nodes
 
         # Try range resolution: e.g. "Section 7(a)-(c)" or "Section 7(a)-(d)"
         range_match = re.search(

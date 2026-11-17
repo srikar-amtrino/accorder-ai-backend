@@ -72,7 +72,12 @@ class ContextBundler:
         lines.append("Use them as supplementary context to assess caps, scope, conditions, or carve-outs:\n")
 
         for node in target_nodes:
-            snippet = _truncate_snippet(node.text.strip())
+            raw_node_text = node.text.strip()
+            # If the node is just a short heading line (< 10 words) and there is a subsequent body paragraph, include it
+            if len(raw_node_text.split()) < 10 and node.para_index + 1 < len(self.tree.paragraphs):
+                next_p = self.tree.paragraphs[node.para_index + 1].text.strip()
+                raw_node_text = f"{raw_node_text} {next_p}"
+            snippet = _truncate_snippet(raw_node_text)
             snippet_wc = len(snippet.split())
             if total_words + snippet_wc > MAX_TOTAL_BUNDLE_WORDS:
                 lines.append(f"- *[Additional references omitted to preserve token budget]*")
