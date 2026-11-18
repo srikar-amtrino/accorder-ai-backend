@@ -1675,6 +1675,7 @@ async def _evaluate_group(
                         "suggestions": [],
                     },
                 })
+            _tracer.end_span(clause_span, outputs={"status": "SKIPPED_DATA_ARTEFACT"})
             return []
 
     # Fix 3: Skip standalone section headings — they have no evaluable body.
@@ -1709,11 +1710,13 @@ async def _evaluate_group(
                         "suggestions": [],
                     },
                 })
+            _tracer.end_span(clause_span, outputs={"status": "SKIPPED_STANDALONE_HEADING"})
             return []
 
     # PATH C: Fragment / Front-Matter Defect
     if group.is_fragment:
         frag_res = await _fragment_defect_call(group, paragraphs, semaphore, session_id, titles=titles)
+        _tracer.end_span(clause_span, outputs={"status": "FRAGMENT_EVALUATED", "suggestions_count": len(frag_res)})
         if audit_trace is not None:
             audit_trace.append({
                 "clause_unit_id": group.unit_id,

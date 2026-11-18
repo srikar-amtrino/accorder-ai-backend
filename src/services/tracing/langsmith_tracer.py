@@ -48,6 +48,10 @@ class ContractReviewTracer:
         self.base_project = project_name or os.getenv("LANGCHAIN_PROJECT", "accorder-contract-review")
         self.enabled = is_langsmith_enabled()
 
+    @property
+    def is_active(self) -> bool:
+        return self.enabled or is_langsmith_enabled()
+
     def start_pipeline_trace(
         self,
         session_id: str,
@@ -62,12 +66,13 @@ class ContractReviewTracer:
         if not _LANGSMITH_AVAILABLE:
             return None
 
+        current_base = os.getenv("LANGCHAIN_PROJECT") or self.base_project
         # Dual dashboard routing: separate project for clause-level vs paragraph reviews
         if simulation_mode:
-            target_project = os.getenv("LANGSMITH_PROJECT_CLAUSE", f"{self.base_project}-clause")
+            target_project = os.getenv("LANGSMITH_PROJECT_CLAUSE", f"{current_base}-clause")
             mode_tag = "clause-level-review"
         else:
-            target_project = os.getenv("LANGSMITH_PROJECT_PARAGRAPH", f"{self.base_project}-paragraph")
+            target_project = os.getenv("LANGSMITH_PROJECT_PARAGRAPH", f"{current_base}-paragraph")
             mode_tag = "paragraph-payload-review"
 
         try:
@@ -240,7 +245,7 @@ class ContractReviewTracer:
             )
 
             # 1. Post to LangSmith Cloud if configured
-            if self.enabled:
+            if self.is_active:
                 try:
                     root_run.post()
                     logger.info("LangSmith: successfully posted pipeline trace (trace_id=%s)", getattr(root_run, "trace_id", root_run.id))
