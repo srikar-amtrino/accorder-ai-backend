@@ -31,8 +31,10 @@ from src.services.reference_graph import (
     ReferenceGraph,
 )
 from src.services.scorer import AnswerRecord, ScoringResult, is_risky, score_group
+from src.services.tracing.langsmith_tracer import ContractReviewTracer
 
 logger = get_logger(__name__)
+_tracer = ContractReviewTracer()
 
 # Caps parallel Bedrock calls so large documents don't exhaust the client pool.
 # Increased to 16 for high-throughput concurrency without rate limits.
@@ -1289,6 +1291,7 @@ async def _extraction_call(
     semaphore: asyncio.Semaphore,
     session_id: str,
     context_bundle: Optional[str] = None,
+    parent_span: Optional[Any] = None,
 ) -> Tuple[ExtractionResponse, str]:
     """Run criteria extraction against the clause text with structured output.
 
@@ -1330,6 +1333,14 @@ async def _extraction_call(
         "clause_text_with_ids": clause_text_with_ids,
     }
 
+    llm_span = _tracer.create_llm_span(
+        parent_span,
+        span_name=f"BedrockExtraction_{group.canonical_type or 'General'}",
+        prompt=clause_text_with_ids[:400],
+        thinking_budget=_THINKING_BUDGET_EXTRACTION if STREAMING_SIMULATION else None,
+        criteria_summary=criteria_summary,
+    )
+
     async with semaphore:
         if STREAMING_SIMULATION:
             # Extended thinking: single attempt (temperature fixed at 1 by API)
@@ -1343,9 +1354,15 @@ async def _extraction_call(
                         session_id=session_id,
                         thinking_budget_tokens=_THINKING_BUDGET_EXTRACTION,
                     )
+                    _tracer.end_span(
+                        llm_span,
+                        outputs={"is_type_match": result.is_type_match, "answers_count": len(result.answers)},
+                        extra={"thinking_words": len(thinking_text.split()) if thinking_text else 0},
+                    )
                     return result, thinking_text
-                except Exception:
+                except Exception as exc:
                     if attempt == 2:
+                        _tracer.end_span(llm_span, error=str(exc))
                         raise
                     logger.warning("Extraction (thinking) call failed on attempt %d; retrying once.", attempt)
                     await asyncio.sleep(1)
@@ -1360,9 +1377,14 @@ async def _extraction_call(
                         session_id=session_id,
                         temperature=temperature,
                     )
+                    _tracer.end_span(
+                        llm_span,
+                        outputs={"is_type_match": result.is_type_match, "answers_count": len(result.answers)},
+                    )
                     return result, ""
-                except Exception:
+                except Exception as exc:
                     if attempt == 2:
+                        _tracer.end_span(llm_span, error=str(exc))
                         raise
                     logger.warning("Extraction call failed on attempt %d; retrying once.", attempt)
                     await asyncio.sleep(1)
@@ -1429,6 +1451,7 @@ async def _explanation_call(
     semaphore: asyncio.Semaphore,
     session_id: str,
     clause_name: Optional[str] = None,
+    parent_span: Optional[Any] = None,
 ) -> Tuple[ExplanationResponse, str]:
     """Draft professional review finding with pre-computed, locked risk level.
 
@@ -1465,6 +1488,13 @@ async def _explanation_call(
         "original_text": para.text,
     }
 
+    llm_span = _tracer.create_llm_span(
+        parent_span,
+        span_name=f"BedrockExplanation_{resolved_clause_name[:30]}",
+        prompt=para.text[:400],
+        thinking_budget=_THINKING_BUDGET_EXPLANATION if STREAMING_SIMULATION else None,
+    )
+
     async with semaphore:
         if STREAMING_SIMULATION:
             for attempt in range(1, 3):
@@ -1477,9 +1507,15 @@ async def _explanation_call(
                         session_id=session_id,
                         thinking_budget_tokens=_THINKING_BUDGET_EXPLANATION,
                     )
+                    _tracer.end_span(
+                        llm_span,
+                        outputs={"reason": result.reason, "suggested_fix": result.suggested_fix[:200]},
+                        extra={"thinking_words": len(thinking_text.split()) if thinking_text else 0},
+                    )
                     return result, thinking_text
-                except Exception:
+                except Exception as exc:
                     if attempt == 2:
+                        _tracer.end_span(llm_span, error=str(exc))
                         raise
                     logger.warning("Explanation (thinking) call failed on attempt %d; retrying once.", attempt)
                     await asyncio.sleep(1)
@@ -1494,9 +1530,14 @@ async def _explanation_call(
                         session_id=session_id,
                         temperature=temperature,
                     )
+                    _tracer.end_span(
+                        llm_span,
+                        outputs={"reason": result.reason, "suggested_fix": result.suggested_fix[:200]},
+                    )
                     return result, ""
-                except Exception:
+                except Exception as exc:
                     if attempt == 2:
+                        _tracer.end_span(llm_span, error=str(exc))
                         raise
                     logger.warning("Explanation call failed on attempt %d; retrying once.", attempt)
                     await asyncio.sleep(1)
@@ -1593,10 +1634,25 @@ async def _evaluate_group(
     titles: Optional[Dict[str, str]] = None,
     audit_trace: Optional[List[Dict[str, Any]]] = None,
     context_bundler: Optional[ContextBundler] = None,
+    parent_trace: Optional[Any] = None,
 ) -> List[Tuple[int, Suggestion]]:
     """Route group through PATH A, B, or C and return resulting suggestions."""
 
     paragraphs = request.textinformation
+
+    first_p = paragraphs[group.para_indices[0]] if group.para_indices else None
+    title = (titles.get(first_p.paraindetifier, "") if titles and first_p else "") or group.canonical_type or "General Clause"
+    assembled_text = "\n\n".join(paragraphs[i].text.strip() for i in group.para_indices)
+
+    clause_span = _tracer.create_clause_span(
+        parent_trace,
+        unit_id=group.unit_id,
+        clause_title=title,
+        canonical_type=group.canonical_type,
+        pipeline_path="PATH C" if group.is_fragment else ("PATH A" if group.is_classified else "PATH B"),
+        para_identifiers=[paragraphs[i].paraindetifier for i in group.para_indices if i < len(paragraphs)],
+        clause_text=assembled_text,
+    )
 
     # Fix 2 (applied here): Skip pure data artefact paragraphs entirely.
     # E.g. "34.2 Mb", "4.18 Mb" — table cell values from billing tables.
@@ -1719,9 +1775,11 @@ async def _evaluate_group(
                     "is_external": r.is_external,
                 })
 
+    _tracer.create_reference_span(clause_span, group_refs, context_bundle=context_bundle)
+
     # Call A: Criteria extraction (returns (ExtractionResponse, thinking_text))
     extraction, extraction_thinking = await _extraction_call(
-        group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle
+        group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle, parent_span=clause_span
     )
 
     # Safety Net: LLM flagged type mismatch -> fall back to general criteria (PATH B)
@@ -1742,7 +1800,7 @@ async def _evaluate_group(
             unit_id=group.unit_id,
         )
         extraction, extraction_thinking = await _extraction_call(
-            misclassified_group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle
+            misclassified_group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle, parent_span=clause_span
         )
         group = misclassified_group
 
@@ -1761,6 +1819,7 @@ async def _evaluate_group(
 
     # Clean / non-risky clauses produce zero suggestions
     if not is_risky(scoring_result.final_level, has_failed_answers=bool(scoring_result.failed_answers)):
+        _tracer.end_span(clause_span, outputs={"status": "COMPLIANT / PASSED", "suggestions_count": 0})
         if audit_trace is not None:
             first_p = paragraphs[group.para_indices[0]]
             heading_title = (titles.get(first_p.paraindetifier) if titles else None) or group.canonical_type or "General Clause"
@@ -1848,6 +1907,7 @@ async def _evaluate_group(
         explanation, exp_thinking = await _explanation_call(
             p_idx, group, scoring_result, criteria, request, semaphore, session_id,
             clause_name=actual_heading,
+            parent_span=clause_span,
         )
         _, full_fix = _expand_to_paragraph(explanation.suggested_fix, p, p.text.strip())
         sugg = Suggestion(
@@ -1870,6 +1930,8 @@ async def _evaluate_group(
         for r in explained_results_raw
         if r[2]
     }
+
+    _tracer.end_span(clause_span, outputs={"status": "FLAGGED_FOR_REDLINE", "suggestions_count": len(explained_results)})
 
     if audit_trace is not None:
         first_p = paragraphs[group.para_indices[0]]
@@ -1958,6 +2020,7 @@ async def _evaluate_batch(
     titles: Optional[Dict[str, str]] = None,
     audit_trace: Optional[List[Dict[str, Any]]] = None,
     context_bundler: Optional[ContextBundler] = None,
+    parent_trace: Optional[Any] = None,
 ) -> List[Tuple[int, Suggestion]]:
     """Evaluate all groups in a batch concurrently."""
 
@@ -1974,6 +2037,7 @@ async def _evaluate_batch(
                 titles=titles,
                 audit_trace=audit_trace,
                 context_bundler=context_bundler,
+                parent_trace=parent_trace,
             )
             for group in batch
         ],
@@ -2042,6 +2106,17 @@ async def general_review_service(
     if cycle_results.has_cycles:
         logger.warning("Circular cross-clause reference loop detected: %s", cycle_results.cycles)
 
+    # Start LangSmith trace for this execution
+    root_trace = _tracer.start_pipeline_trace(
+        session_id=session_id,
+        agreement_type=request.agreement_type,
+        party_represented=request.party_represented,
+        review_objective=request.review_objective,
+        total_clauses=len(request.clauses or []),
+        total_paragraphs=len(paragraphs),
+        simulation_mode=bool(request.simulation_clause_payload and request.clauses),
+    )
+
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
     batch_results = await asyncio.gather(
         *[
@@ -2053,6 +2128,7 @@ async def general_review_service(
                 titles=titles,
                 audit_trace=audit_trace_collector,
                 context_bundler=context_bundler,
+                parent_trace=root_trace,
             )
             for batch in batches
         ]
@@ -2083,6 +2159,13 @@ async def general_review_service(
     ]
     response = GeneralReviewResponse(suggestions=final_suggestions)
     _cache_put(fingerprint, response)
+
+    # Finalize LangSmith trace
+    _tracer.finish_pipeline_trace(
+        root_trace,
+        total_suggestions=len(final_suggestions),
+    )
+
     return response
 
 
@@ -2139,6 +2222,16 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         doc_references = ref_extractor.extract_all()
         context_bundler = ContextBundler(structural_tree, doc_references)
 
+        root_trace = _tracer.start_pipeline_trace(
+            session_id=session_id,
+            agreement_type=request.agreement_type,
+            party_represented=request.party_represented,
+            review_objective=request.review_objective,
+            total_clauses=len(request.clauses or []),
+            total_paragraphs=len(paragraphs),
+            simulation_mode=bool(request.simulation_clause_payload and request.clauses),
+        )
+
         tasks = [
             asyncio.create_task(
                 _evaluate_batch(
@@ -2148,6 +2241,7 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
                     session_id,
                     titles=titles,
                     context_bundler=context_bundler,
+                    parent_trace=root_trace,
                 )
             )
             for batch in batches
@@ -2173,6 +2267,11 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
         # Fix 4: Exclude Signature Block Low-risk noise from cache too
         clean_emitted = [s for s in emitted if not (s.clause == "Signature Block" and s.risk_level == "Low")]
         _cache_put(fingerprint, GeneralReviewResponse(suggestions=clean_emitted))
+
+        _tracer.finish_pipeline_trace(
+            root_trace,
+            total_suggestions=len(clean_emitted),
+        )
 
     except Exception as exc:
         logger.exception("General review stream failed: %s", exc)
