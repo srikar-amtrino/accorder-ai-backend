@@ -45,7 +45,7 @@ class ContractReviewTracer:
     """Manages LangSmith RunTree spans for a complete contract review execution."""
 
     def __init__(self, project_name: Optional[str] = None) -> None:
-        self.project_name = project_name or os.getenv("LANGCHAIN_PROJECT", "accorder-contract-review")
+        self.base_project = project_name or os.getenv("LANGCHAIN_PROJECT", "accorder-contract-review")
         self.enabled = is_langsmith_enabled()
 
     def start_pipeline_trace(
@@ -62,12 +62,21 @@ class ContractReviewTracer:
         if not _LANGSMITH_AVAILABLE:
             return None
 
+        # Dual dashboard routing: separate project for clause-level vs paragraph reviews
+        if simulation_mode:
+            target_project = os.getenv("LANGSMITH_PROJECT_CLAUSE", f"{self.base_project}-clause")
+            mode_tag = "clause-level-review"
+        else:
+            target_project = os.getenv("LANGSMITH_PROJECT_PARAGRAPH", f"{self.base_project}-paragraph")
+            mode_tag = "paragraph-payload-review"
+
         try:
             root = RunTree(
                 name="ContractReviewPipeline",
                 run_type="chain",
                 inputs={
                     "session_id": session_id,
+                    "review_mode": mode_tag,
                     "agreement_type": agreement_type or "General Review",
                     "party_represented": party_represented or "Neutral General Review",
                     "review_objective": review_objective or "Comprehensive Review",
@@ -75,12 +84,17 @@ class ContractReviewTracer:
                     "total_paragraphs": total_paragraphs,
                     "simulation_clause_payload": simulation_mode,
                 },
+                tags=[
+                    mode_tag,
+                    f"type:{agreement_type or 'General'}",
+                    f"party:{party_represented or 'Neutral'}",
+                ],
                 extra={
                     "session_id": session_id,
                     "simulation_mode": simulation_mode,
                     "service": "accorder-ai-backend",
                 },
-                project_name=self.project_name,
+                project_name=target_project,
             )
             return root
         except Exception as exc:
