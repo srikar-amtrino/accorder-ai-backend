@@ -1296,6 +1296,7 @@ async def _extraction_call(
     session_id: str,
     context_bundle: Optional[str] = None,
     parent_span: Optional[Any] = None,
+    is_general_path: bool = False,
 ) -> Tuple[ExtractionResponse, str]:
     """Run criteria extraction against the clause text with structured output.
 
@@ -1331,10 +1332,11 @@ async def _extraction_call(
     criteria_json = json.dumps(criteria_summary, indent=2, ensure_ascii=False)
 
     prompt_context = {
-        "canonical_type": group.canonical_type or "General Clause",
+        "canonical_type": group.canonical_type or "General Commercial Provision",
         "reviewer_context": reviewer_context,
         "criteria_json": criteria_json,
         "clause_text_with_ids": clause_text_with_ids,
+        "is_general_path": is_general_path or (not group.is_classified),
     }
 
     llm_span = _tracer.create_llm_span(
@@ -1806,14 +1808,17 @@ async def _evaluate_group(
 
     # Safety Net: LLM flagged type mismatch -> fall back to general criteria (PATH B)
     if not extraction.is_type_match:
+        first_p = paragraphs[group.para_indices[0]]
+        actual_title = (titles.get(first_p.paraindetifier) if titles else None) or "General Commercial Provision"
         logger.info(
-            "Type mismatch flagged by LLM for group '%s' - falling back to general criteria (PATH B)",
+            "Type mismatch flagged by LLM for group '%s' - falling back to general criteria (PATH B) as '%s'",
             group.canonical_type,
+            actual_title,
         )
         criteria = list(GENERAL_CRITERIA)
         misclassified_group = ClauseGroup(
             para_indices=group.para_indices,
-            canonical_type=group.canonical_type,
+            canonical_type=actual_title,
             canonical_slug=None,
             confidence=0.0,
             is_classified=False,
@@ -1822,7 +1827,15 @@ async def _evaluate_group(
             unit_id=group.unit_id,
         )
         extraction, extraction_thinking = await _extraction_call(
-            misclassified_group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle, parent_span=clause_span
+            misclassified_group,
+            criteria,
+            paragraphs,
+            request,
+            semaphore,
+            session_id,
+            context_bundle=context_bundle,
+            parent_span=clause_span,
+            is_general_path=True,
         )
         group = misclassified_group
 

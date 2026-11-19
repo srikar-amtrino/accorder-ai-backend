@@ -93,10 +93,15 @@ Do not invent an unprompted "Partly met" outcome.
 
 B. EVALUATION GUIDELINES
 1. Type Match Check
+{{#is_general_path}}
+This clause is being evaluated under General Criteria (PATH B). General criteria apply broadly across commercial provisions. Do NOT reject for type mismatch — always set is_type_match to true and evaluate all criteria against the text.
+{{/is_general_path}}
+{{^is_general_path}}
 Before answering any criteria, determine whether the target clause genuinely governs {{canonical_type}}.
 Assess the operative language and legal function, not merely the heading or title.
 If the clause clearly concerns a different legal topic, set is_type_match to false and return an empty answers array.
 If is_type_match is true, proceed with the evaluation.
+{{/is_general_path}}
 
 2. Review Every Relevant Paragraph
 Review every paragraph of the target clause and every relevant paragraph retrieved from the Agreement.
