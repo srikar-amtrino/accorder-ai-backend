@@ -96,7 +96,10 @@ async def run_clause_mode():
     run_file.write_text(response.model_dump_json(indent=2), encoding="utf-8")
 
     logger.info(f"Clause Mode finished in {elapsed:.1f}s | {len(response.suggestions)} suggestions")
-    logger.info(f"  CCRL Registered: {recon_pass.get('total_ccrl_entries_registered', 0)} | Resolved: {recon_pass.get('total_criteria_resolved', 0)} | Fix Blobs Removed: {recon_pass.get('total_fix_blobs_removed', 0)}")
+    resolved_cnt = recon_pass.get('total_criteria_fully_resolved', recon_pass.get('total_criteria_resolved', 0))
+    partial_cnt = recon_pass.get('total_criteria_partially_resolved', 0)
+    blobs_cnt = recon_pass.get('total_fix_blobs_removed', 0)
+    logger.info(f"  CCRL Registered: {recon_pass.get('total_ccrl_entries_registered', 0)} | Fully Resolved: {resolved_cnt} | Partial: {partial_cnt} | Fix Blobs Removed: {blobs_cnt}")
     logger.info(f"  Saved to: {trace_file.name} & {run_file.name}")
     return response, trace_doc, elapsed
 
@@ -155,7 +158,10 @@ async def run_paragraph_mode():
     run_file.write_text(response.model_dump_json(indent=2), encoding="utf-8")
 
     logger.info(f"Paragraph Mode finished in {elapsed:.1f}s | {len(response.suggestions)} suggestions")
-    logger.info(f"  CCRL Registered: {recon_pass.get('total_ccrl_entries_registered', 0)} | Resolved: {recon_pass.get('total_criteria_resolved', 0)} | Fix Blobs Removed: {recon_pass.get('total_fix_blobs_removed', 0)}")
+    resolved_cnt = recon_pass.get('total_criteria_fully_resolved', recon_pass.get('total_criteria_resolved', 0))
+    partial_cnt = recon_pass.get('total_criteria_partially_resolved', 0)
+    blobs_cnt = recon_pass.get('total_fix_blobs_removed', 0)
+    logger.info(f"  CCRL Registered: {recon_pass.get('total_ccrl_entries_registered', 0)} | Fully Resolved: {resolved_cnt} | Partial: {partial_cnt} | Fix Blobs Removed: {blobs_cnt}")
     logger.info(f"  Saved to: {trace_file.name} & {run_file.name}")
     return response, trace_doc, elapsed
 

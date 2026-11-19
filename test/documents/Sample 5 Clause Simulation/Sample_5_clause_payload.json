@@ -1,0 +1,660 @@
+{
+  "clauses": [
+    {
+      "clause_id": "clause_1",
+      "clause_number": null,
+      "clause_title": "Preamble and Recitals",
+      "text": "[17208331] MASTER SERVICES AGREEMENT\n[FCE5E9D7] This Master Services Agreement (“Agreement”) is made between Sunesis Pharmaceuticals, Inc. which has a place of business at 341 Oyster Point Boulevard, South San Francisco, California 94080 (hereinafter “Sponsor”), and Quintiles, Inc. a North Carolina corporation having a place of business at 10245 Hickman Mills Drive, Kansas City, MO 64137 (hereinafter “Quintiles”). When signed by both parties, this Agreement will set forth the terms and conditions under which Quintiles agrees to provide certain services to Sponsor as set forth herein.\n[F35CB8A9] Recitals:\n[323D3AB0] Sponsor is in the business of drug discovery, research and development for various pharmaceutical products. Quintiles is in the business of providing drug development and manufacturing services, clinical trial services, and other services for the pharmaceutical, medical device and biotechnology industries.\n[266480AE] Sponsor and Quintiles desire to enter into this Agreement to provide the terms and conditions upon which Sponsor may engage Quintiles from time-to-time to provide services for individual studies or projects by executing individual Work Orders (as defined below) specifying the details of the services and the related terms and conditions.\n[FFB72CB3] Agreement:",
+      "paragraphs": [
+        {
+          "paraindetifier": "17208331",
+          "text": "MASTER SERVICES AGREEMENT"
+        },
+        {
+          "paraindetifier": "FCE5E9D7",
+          "text": "This Master Services Agreement (“Agreement”) is made between Sunesis Pharmaceuticals, Inc. which has a place of business at 341 Oyster Point Boulevard, South San Francisco, California 94080 (hereinafter “Sponsor”), and Quintiles, Inc. a North Carolina corporation having a place of business at 10245 Hickman Mills Drive, Kansas City, MO 64137 (hereinafter “Quintiles”). When signed by both parties, this Agreement will set forth the terms and conditions under which Quintiles agrees to provide certain services to Sponsor as set forth herein."
+        },
+        {
+          "paraindetifier": "F35CB8A9",
+          "text": "Recitals:"
+        },
+        {
+          "paraindetifier": "323D3AB0",
+          "text": "Sponsor is in the business of drug discovery, research and development for various pharmaceutical products. Quintiles is in the business of providing drug development and manufacturing services, clinical trial services, and other services for the pharmaceutical, medical device and biotechnology industries."
+        },
+        {
+          "paraindetifier": "266480AE",
+          "text": "Sponsor and Quintiles desire to enter into this Agreement to provide the terms and conditions upon which Sponsor may engage Quintiles from time-to-time to provide services for individual studies or projects by executing individual Work Orders (as defined below) specifying the details of the services and the related terms and conditions."
+        },
+        {
+          "paraindetifier": "FFB72CB3",
+          "text": "Agreement:"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_2",
+      "clause_number": "Section 1",
+      "clause_title": "Scope of the Agreement; Work Orders; Nature of Services; Transfer of Obligations",
+      "text": "[BD47607B] Scope of the Agreement; Work Orders; Nature of Services; Transfer of Obligations.\n[4D7CF73E] Scope of Agreement. As a “master” form of contract, this Agreement allows the parties to contract for multiple projects through the issuance of multiple Work Orders (as discussed in Section 1.2 below), without having to re-negotiate the basic terms and conditions contained herein. This Agreement covers the provision of services by Quintiles and Quintiles’ corporate affiliates (see Section 16.1) and, accordingly, this Agreement represents a vehicle by which Sponsor can efficiently contract with Quintiles and its corporate affiliates for a broad range of specific services.\n[D75BA979] Work Orders. The specific details of each project under this Agreement (each “Project”) shall be separately negotiated and specified in writing on terms and in a form acceptable to the parties (each such writing, a “Work Order”). A sample Work Order is attached hereto as Exhibit A. Each Work Order will include, without limitations, the scope of work, timeline(s), and budget and payment schedule. Each Work Order shall be subject to all of the terms and conditions of this Agreement, including (when applicable) the terms and conditions set forth in the quality requirement agreement to be completed by the parties which will be made part of and attached to this Agreement (the “Quality Agreement”), in addition to the specific details set forth in the Work Order.\n[1464D57D] Integration; Precedence. Any Work Order or Change Order (as defined in Section 4.0 below) and other exhibits issued and executed pursuant to this Agreement will be made part hereof and incorporated herein by reference. To the extent any terms or provisions of a Work Order or Change Order conflict with the terms and provisions of this Agreement, the terms and provisions of this Agreement shall control, except to the extent that the applicable Work Order or Change Order expressly and specifically states an intent to supersede the Agreement on a specific matter.\n[BF445E19] Nature of Services. The services covered by this Agreement may include expert consultation, clinical trial services, statistical programming and analysis, clerical, project management, central laboratory services, preclinical services, pharmaceutical sciences services, and related data processing, data management and regulatory services, and other research and development services requested by Sponsor and agreed to by Quintiles as set forth in the relevant Work Order (collectively, the “Services”).\n[2F0B8152] Transfer of Obligations. Quintiles and Sponsor, where appropriate, shall cooperate in the completion of a Transfer of Obligations Form in conjunction with the relevant Work Order. Any responsibilities not specifically transferred in the Transfer of Obligations Form shall remain the regulatory responsibility of Sponsor. The Transfer of Obligations Form will be filed with the Food and Drug Administration (“FDA”) by Sponsor where appropriate, or as required by law or regulation.",
+      "paragraphs": [
+        {
+          "paraindetifier": "BD47607B",
+          "text": "Scope of the Agreement; Work Orders; Nature of Services; Transfer of Obligations."
+        },
+        {
+          "paraindetifier": "4D7CF73E",
+          "text": "Scope of Agreement. As a “master” form of contract, this Agreement allows the parties to contract for multiple projects through the issuance of multiple Work Orders (as discussed in Section 1.2 below), without having to re-negotiate the basic terms and conditions contained herein. This Agreement covers the provision of services by Quintiles and Quintiles’ corporate affiliates (see Section 16.1) and, accordingly, this Agreement represents a vehicle by which Sponsor can efficiently contract with Quintiles and its corporate affiliates for a broad range of specific services."
+        },
+        {
+          "paraindetifier": "D75BA979",
+          "text": "Work Orders. The specific details of each project under this Agreement (each “Project”) shall be separately negotiated and specified in writing on terms and in a form acceptable to the parties (each such writing, a “Work Order”). A sample Work Order is attached hereto as Exhibit A. Each Work Order will include, without limitations, the scope of work, timeline(s), and budget and payment schedule. Each Work Order shall be subject to all of the terms and conditions of this Agreement, including (when applicable) the terms and conditions set forth in the quality requirement agreement to be completed by the parties which will be made part of and attached to this Agreement (the “Quality Agreement”), in addition to the specific details set forth in the Work Order."
+        },
+        {
+          "paraindetifier": "1464D57D",
+          "text": "Integration; Precedence. Any Work Order or Change Order (as defined in Section 4.0 below) and other exhibits issued and executed pursuant to this Agreement will be made part hereof and incorporated herein by reference. To the extent any terms or provisions of a Work Order or Change Order conflict with the terms and provisions of this Agreement, the terms and provisions of this Agreement shall control, except to the extent that the applicable Work Order or Change Order expressly and specifically states an intent to supersede the Agreement on a specific matter."
+        },
+        {
+          "paraindetifier": "BF445E19",
+          "text": "Nature of Services. The services covered by this Agreement may include expert consultation, clinical trial services, statistical programming and analysis, clerical, project management, central laboratory services, preclinical services, pharmaceutical sciences services, and related data processing, data management and regulatory services, and other research and development services requested by Sponsor and agreed to by Quintiles as set forth in the relevant Work Order (collectively, the “Services”)."
+        },
+        {
+          "paraindetifier": "2F0B8152",
+          "text": "Transfer of Obligations. Quintiles and Sponsor, where appropriate, shall cooperate in the completion of a Transfer of Obligations Form in conjunction with the relevant Work Order. Any responsibilities not specifically transferred in the Transfer of Obligations Form shall remain the regulatory responsibility of Sponsor. The Transfer of Obligations Form will be filed with the Food and Drug Administration (“FDA”) by Sponsor where appropriate, or as required by law or regulation."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_3",
+      "clause_number": "Section 2",
+      "clause_title": "Payment of Fees and Expenses",
+      "text": "[4D4BC856] Payment of Fees and Expenses. Sponsor will pay Quintiles for fees, expenses and pass-through costs in accordance with the budget and payment schedule contained in each Work Order. Sponsor agrees that the budget and payment schedule for each Work Order will be structured in an effort to maintain cash neutrality for Quintiles (with respect to the payment of professional fees, pass-through costs and otherwise). Unless otherwise agreed in a particular Work Order, the following shall apply: (a) Quintiles will invoice Sponsor monthly for the fees, expenses and pass-through costs incurred in performing the Services; and, (b) Sponsor shall pay each invoice within thirty (30) days of receipt of the invoice. If any portion of an invoice is disputed, then Sponsor shall pay the undisputed amounts as set forth in the preceding sentence and the parties shall use good faith efforts to reconcile the disputed amount as soon as practicable.",
+      "paragraphs": [
+        {
+          "paraindetifier": "4D4BC856",
+          "text": "Payment of Fees and Expenses. Sponsor will pay Quintiles for fees, expenses and pass-through costs in accordance with the budget and payment schedule contained in each Work Order. Sponsor agrees that the budget and payment schedule for each Work Order will be structured in an effort to maintain cash neutrality for Quintiles (with respect to the payment of professional fees, pass-through costs and otherwise). Unless otherwise agreed in a particular Work Order, the following shall apply: (a) Quintiles will invoice Sponsor monthly for the fees, expenses and pass-through costs incurred in performing the Services; and, (b) Sponsor shall pay each invoice within thirty (30) days of receipt of the invoice. If any portion of an invoice is disputed, then Sponsor shall pay the undisputed amounts as set forth in the preceding sentence and the parties shall use good faith efforts to reconcile the disputed amount as soon as practicable."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_4",
+      "clause_number": "Section 3",
+      "clause_title": "Term",
+      "text": "[16A88B77] Term. This Agreement shall commence on the date it has been signed by all parties and shall continue for a period of five (5) years from the date of execution, unless otherwise earlier terminated by either party in accordance with Section 15 below.",
+      "paragraphs": [
+        {
+          "paraindetifier": "16A88B77",
+          "text": "Term. This Agreement shall commence on the date it has been signed by all parties and shall continue for a period of five (5) years from the date of execution, unless otherwise earlier terminated by either party in accordance with Section 15 below."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_5",
+      "clause_number": "Section 4",
+      "clause_title": "Change Orders",
+      "text": "[5A0406B7] Change Orders. Any change in the details of a Work Order or the assumptions upon which the Work Order is based (including, but not limited to, changes in an agreed starting date for a Project or suspension of the Project by Sponsor) may require changes in the budget and/or timelines, and shall require a written amendment to the Work Order (a “Change Order”). Each Change Order shall detail the requested changes to the applicable task, responsibility, duty, budget, timeline or other matter. The Change Order will become effective upon the execution of the Change Order by both parties, and the parties will agree upon a reasonable period of time within which Quintiles shall implement the changes. Both parties agree to act in good faith and promptly when considering a Change Order requested by the other party. Without limiting the foregoing, Sponsor agrees that it will not unreasonably withhold approval of a Change Order, if the proposed changes in budgets or timelines result from, among other appropriate reasons, forces outside the reasonable control of Quintiles or Sponsor’s changes in the assumptions upon which the initial budget or timelines were based, including, but not limited to, the assumptions set forth in the budget or timelines. Quintiles reserves the right to postpone effecting material changes in the Project’s scope until such time as the parties agree to and execute the corresponding Change Order. For any Change Order that affects the scope of the regulatory obligations that have been transferred to Quintiles, Quintiles and Sponsor shall execute a corresponding amendment to the Transfer of Obligations Form. Sponsor shall file such amendment where appropriate, or as required by law or regulation.",
+      "paragraphs": [
+        {
+          "paraindetifier": "5A0406B7",
+          "text": "Change Orders. Any change in the details of a Work Order or the assumptions upon which the Work Order is based (including, but not limited to, changes in an agreed starting date for a Project or suspension of the Project by Sponsor) may require changes in the budget and/or timelines, and shall require a written amendment to the Work Order (a “Change Order”). Each Change Order shall detail the requested changes to the applicable task, responsibility, duty, budget, timeline or other matter. The Change Order will become effective upon the execution of the Change Order by both parties, and the parties will agree upon a reasonable period of time within which Quintiles shall implement the changes. Both parties agree to act in good faith and promptly when considering a Change Order requested by the other party. Without limiting the foregoing, Sponsor agrees that it will not unreasonably withhold approval of a Change Order, if the proposed changes in budgets or timelines result from, among other appropriate reasons, forces outside the reasonable control of Quintiles or Sponsor’s changes in the assumptions upon which the initial budget or timelines were based, including, but not limited to, the assumptions set forth in the budget or timelines. Quintiles reserves the right to postpone effecting material changes in the Project’s scope until such time as the parties agree to and execute the corresponding Change Order. For any Change Order that affects the scope of the regulatory obligations that have been transferred to Quintiles, Quintiles and Sponsor shall execute a corresponding amendment to the Transfer of Obligations Form. Sponsor shall file such amendment where appropriate, or as required by law or regulation."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_6",
+      "clause_number": "Section 5",
+      "clause_title": "Confidentiality",
+      "text": "[EA7DCCDD] Confidentiality.\n[B8CBFCE3] Sponsor Confidential Information. It is understood that during the course of this Agreement, Quintiles and its employees may be exposed to data and information that are confidential and proprietary to Sponsor. All such data and information (hereinafter “Sponsor Confidential Information”) written or verbal, tangible or intangible, made available, disclosed, or otherwise made known to Quintiles and its employees as a result of Services under this Agreement shall be considered confidential and shall be considered the sole property of Sponsor.\n[EC1E080F] Quintiles Confidential Information. All information regarding Quintiles’ operations, methods, and pricing and all Quintiles’ Property (as defined in Section 6.2 below), disclosed by Quintiles to Sponsor in connection with this Agreement is proprietary, confidential information belonging to Quintiles (the “Quintiles Confidential Information”).\n[F7349A5F] Confidentiality Obligations. For the purposes of Sections 5.3 and 5.4, Confidential Information shall mean both Sponsor Confidential Information and Quintiles Confidential Information. Each party hereunder agrees that Confidential Information disclosed by one party to the other shall be clearly marked ‘confidential’, or if disclosed orally, is confirmed in writing as having been disclosed as confidential or proprietary of the disclosing party within thirty (30) days after such disclosure. Quintiles and Sponsor each agree that it will only provide Confidential Information to the other party on a need-to-know basis and to the extent that Confidential Information is required for its undertaking of this Agreement. The Confidential Information shall be used by the receiving party and its employees only for purposes of performing the receiving party’s obligations hereunder. Except as otherwise expressly authorized in this Agreement, each party agrees that it will not make copies or duplicates of any Confidential Information, or reveal, publish or otherwise disclose the Confidential Information of the other party to any third party without the prior written consent of the disclosing party. Each party agrees that it will not disclose the terms of this Agreement or any Work Order to any third party without the written consent of the other party, which shall not unreasonably be withheld. These obligations of confidentiality and nondisclosure shall remain in effect for a period often (10) years after the completion or termination of the applicable Work Order.\n[DDD4C048] The foregoing obligations shall not apply to Confidential Information to the extent that it: (a) is or becomes generally available to the public other than as a result of a disclosure by the receiving party; (b) becomes available to the receiving party on a non-confidential basis from a source which is not prohibited from disclosing such information; (c) was developed independently of any disclosure by the disclosing party or was known to the receiving party prior to its receipt from the disclosing party, as shown by receiving party’s contemporaneous written evidence; or, (d) is required by law or regulation to be disclosed, provided that the receiving party shall provide prompt notice of such requirement to the disclosing party to enable the disclosing party to seek a protective order or otherwise prevent or restrict such disclosure.",
+      "paragraphs": [
+        {
+          "paraindetifier": "EA7DCCDD",
+          "text": "Confidentiality."
+        },
+        {
+          "paraindetifier": "B8CBFCE3",
+          "text": "Sponsor Confidential Information. It is understood that during the course of this Agreement, Quintiles and its employees may be exposed to data and information that are confidential and proprietary to Sponsor. All such data and information (hereinafter “Sponsor Confidential Information”) written or verbal, tangible or intangible, made available, disclosed, or otherwise made known to Quintiles and its employees as a result of Services under this Agreement shall be considered confidential and shall be considered the sole property of Sponsor."
+        },
+        {
+          "paraindetifier": "EC1E080F",
+          "text": "Quintiles Confidential Information. All information regarding Quintiles’ operations, methods, and pricing and all Quintiles’ Property (as defined in Section 6.2 below), disclosed by Quintiles to Sponsor in connection with this Agreement is proprietary, confidential information belonging to Quintiles (the “Quintiles Confidential Information”)."
+        },
+        {
+          "paraindetifier": "F7349A5F",
+          "text": "Confidentiality Obligations. For the purposes of Sections 5.3 and 5.4, Confidential Information shall mean both Sponsor Confidential Information and Quintiles Confidential Information. Each party hereunder agrees that Confidential Information disclosed by one party to the other shall be clearly marked ‘confidential’, or if disclosed orally, is confirmed in writing as having been disclosed as confidential or proprietary of the disclosing party within thirty (30) days after such disclosure. Quintiles and Sponsor each agree that it will only provide Confidential Information to the other party on a need-to-know basis and to the extent that Confidential Information is required for its undertaking of this Agreement. The Confidential Information shall be used by the receiving party and its employees only for purposes of performing the receiving party’s obligations hereunder. Except as otherwise expressly authorized in this Agreement, each party agrees that it will not make copies or duplicates of any Confidential Information, or reveal, publish or otherwise disclose the Confidential Information of the other party to any third party without the prior written consent of the disclosing party. Each party agrees that it will not disclose the terms of this Agreement or any Work Order to any third party without the written consent of the other party, which shall not unreasonably be withheld. These obligations of confidentiality and nondisclosure shall remain in effect for a period often (10) years after the completion or termination of the applicable Work Order."
+        },
+        {
+          "paraindetifier": "DDD4C048",
+          "text": "The foregoing obligations shall not apply to Confidential Information to the extent that it: (a) is or becomes generally available to the public other than as a result of a disclosure by the receiving party; (b) becomes available to the receiving party on a non-confidential basis from a source which is not prohibited from disclosing such information; (c) was developed independently of any disclosure by the disclosing party or was known to the receiving party prior to its receipt from the disclosing party, as shown by receiving party’s contemporaneous written evidence; or, (d) is required by law or regulation to be disclosed, provided that the receiving party shall provide prompt notice of such requirement to the disclosing party to enable the disclosing party to seek a protective order or otherwise prevent or restrict such disclosure."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_7",
+      "clause_number": "Section 6",
+      "clause_title": "Ownership and Inventions; No Implied Rights",
+      "text": "[A9A1F92B] Ownership and Inventions; No Implied Rights.\n[78D28658] Sponsor’s Property. Sponsor’s property shall mean any invention, trade secret or know-how related to or derived from any materials, documents, programs or information belonging to Sponsor and supplied to Quintiles pursuant to this Agreement, and such inventions, trade secret and know-how shall remain the exclusive property of Sponsor (collectively “Sponsor’s Property”).\n[8A6387BA] Quintiles’ Property. Any inventions, processes, know-how, trade secrets, improvements, other intellectual properties and other assets, including but not limited to analytical methods, procedures and techniques, procedure manuals, personnel data, financial information, computer technical expertise and software, which have been developed by Quintiles independent of this Agreement, which relates to Quintiles’ business or operations, and not falling within Section 6.3a below, shall remain the exclusive property of Quintiles (collectively “Quintiles’ Property”). For the avoidance of doubt, Quintiles’ Property shall not include any inventions, trade secrets or know-how that incorporates data, information or know-how derived from Sponsor’s Property of Sponsor Confidential Information.\n[62A59F95] Project Intellectual Property (IP).\n[634D7DC9] Any inventions and discoveries, including any data and information generated or derived by Quintiles as the result of Services performed by Quintiles under this Agreement and/or uses Sponsor Confidential Information (collectively “Project IP”) are the sole and exclusive property of Sponsor and Quintiles hereby assigns to Sponsor any Quintiles rights to Project IP (including any patent and all other intellectual property rights therein). Project IP shall be deemed Sponsor Confidential Information for purposes of Section 5.1 above.\n[80E5920E] Sponsor and Quintiles agree that any Quintiles’ Property or improvements thereto which are used, improved, modified or developed by Quintiles under the term of this Agreement, and which do not use or include any Sponsor Confidential Information or Sponsor’s Property, are the sole and exclusive property of Quintiles and shall be deemed Quintiles Confidential Information. To the extent the Quintiles Software (defined as programs for the purposes of data derivations, population identification, production of statistical analysis outputs, is determined to be necessary to access, retrieve or use the study data generated as a result of the Services performed by Quintiles under this Agreement, Quintiles grants to Sponsor a royalty-free, non-exclusive license with the right use by only Sponsor (and not its Affiliates or other third parties) without the right to sell, assign or sublicense such software programs and any improvements thereto in connection with such Sponsor project under the Agreement. For such software, Quintiles will provide to Sponsor the macros. When Quintiles’ Software is no longer necessary to access, retrieve or use the study data as described above, such Quintiles Software shall be returned to Quintiles.\n[67DE8F74] No Implied Rights. Except as expressly provided herein, neither party shall have any right, title or interest to or in any patents, patent applications, know-how (whether patentable or not) or other intellectual property rights of the other party.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A9A1F92B",
+          "text": "Ownership and Inventions; No Implied Rights."
+        },
+        {
+          "paraindetifier": "78D28658",
+          "text": "Sponsor’s Property. Sponsor’s property shall mean any invention, trade secret or know-how related to or derived from any materials, documents, programs or information belonging to Sponsor and supplied to Quintiles pursuant to this Agreement, and such inventions, trade secret and know-how shall remain the exclusive property of Sponsor (collectively “Sponsor’s Property”)."
+        },
+        {
+          "paraindetifier": "8A6387BA",
+          "text": "Quintiles’ Property. Any inventions, processes, know-how, trade secrets, improvements, other intellectual properties and other assets, including but not limited to analytical methods, procedures and techniques, procedure manuals, personnel data, financial information, computer technical expertise and software, which have been developed by Quintiles independent of this Agreement, which relates to Quintiles’ business or operations, and not falling within Section 6.3a below, shall remain the exclusive property of Quintiles (collectively “Quintiles’ Property”). For the avoidance of doubt, Quintiles’ Property shall not include any inventions, trade secrets or know-how that incorporates data, information or know-how derived from Sponsor’s Property of Sponsor Confidential Information."
+        },
+        {
+          "paraindetifier": "62A59F95",
+          "text": "Project Intellectual Property (IP)."
+        },
+        {
+          "paraindetifier": "634D7DC9",
+          "text": "Any inventions and discoveries, including any data and information generated or derived by Quintiles as the result of Services performed by Quintiles under this Agreement and/or uses Sponsor Confidential Information (collectively “Project IP”) are the sole and exclusive property of Sponsor and Quintiles hereby assigns to Sponsor any Quintiles rights to Project IP (including any patent and all other intellectual property rights therein). Project IP shall be deemed Sponsor Confidential Information for purposes of Section 5.1 above."
+        },
+        {
+          "paraindetifier": "80E5920E",
+          "text": "Sponsor and Quintiles agree that any Quintiles’ Property or improvements thereto which are used, improved, modified or developed by Quintiles under the term of this Agreement, and which do not use or include any Sponsor Confidential Information or Sponsor’s Property, are the sole and exclusive property of Quintiles and shall be deemed Quintiles Confidential Information. To the extent the Quintiles Software (defined as programs for the purposes of data derivations, population identification, production of statistical analysis outputs, is determined to be necessary to access, retrieve or use the study data generated as a result of the Services performed by Quintiles under this Agreement, Quintiles grants to Sponsor a royalty-free, non-exclusive license with the right use by only Sponsor (and not its Affiliates or other third parties) without the right to sell, assign or sublicense such software programs and any improvements thereto in connection with such Sponsor project under the Agreement. For such software, Quintiles will provide to Sponsor the macros. When Quintiles’ Software is no longer necessary to access, retrieve or use the study data as described above, such Quintiles Software shall be returned to Quintiles."
+        },
+        {
+          "paraindetifier": "67DE8F74",
+          "text": "No Implied Rights. Except as expressly provided herein, neither party shall have any right, title or interest to or in any patents, patent applications, know-how (whether patentable or not) or other intellectual property rights of the other party."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_8",
+      "clause_number": "Section 7",
+      "clause_title": "Records and Materials",
+      "text": "[5177E907] Records and Materials. Quintiles agrees to retain all records and data generated in the performance of any Project under this Agreement, and other Project-related materials including without limitation Sponsor’s proprietary compound (“Records and Materials”), and further agrees to maintain all Records and Materials in a secure area reasonably protected from fire, theft and destruction. At the completion of the Services by Quintiles, all materials, information and all other data owned by Sponsor, regardless of the method of storage or retrieval, shall be delivered to Sponsor in such form as is then currently in the possession of Quintiles, subject to the payment obligations set forth in Section 2 herein. Alternatively, at Sponsor’s option and written request, such materials and data may be (i) retained by Quintiles for Sponsor for an agreed-upon time period, or (ii) disposed of pursuant to the written directions of Sponsor. Sponsor shall pay the costs associated with any of the above options and shall pay a to-be-determined fee for storage by Quintiles of records and materials after completion or termination of the Services. Quintiles, however, reserves the right to retain, at its own cost and subject to the confidentiality provisions herein, copies of all materials that may be needed to satisfy regulatory requirements or to resolve disputes regarding the Services. Nothing in this Agreement shall be construed to transfer from Sponsor to Quintiles any FDA or regulatory record-keeping requirements unless such transfer is specifically provided for in the applicable Transfer of Obligations Form.",
+      "paragraphs": [
+        {
+          "paraindetifier": "5177E907",
+          "text": "Records and Materials. Quintiles agrees to retain all records and data generated in the performance of any Project under this Agreement, and other Project-related materials including without limitation Sponsor’s proprietary compound (“Records and Materials”), and further agrees to maintain all Records and Materials in a secure area reasonably protected from fire, theft and destruction. At the completion of the Services by Quintiles, all materials, information and all other data owned by Sponsor, regardless of the method of storage or retrieval, shall be delivered to Sponsor in such form as is then currently in the possession of Quintiles, subject to the payment obligations set forth in Section 2 herein. Alternatively, at Sponsor’s option and written request, such materials and data may be (i) retained by Quintiles for Sponsor for an agreed-upon time period, or (ii) disposed of pursuant to the written directions of Sponsor. Sponsor shall pay the costs associated with any of the above options and shall pay a to-be-determined fee for storage by Quintiles of records and materials after completion or termination of the Services. Quintiles, however, reserves the right to retain, at its own cost and subject to the confidentiality provisions herein, copies of all materials that may be needed to satisfy regulatory requirements or to resolve disputes regarding the Services. Nothing in this Agreement shall be construed to transfer from Sponsor to Quintiles any FDA or regulatory record-keeping requirements unless such transfer is specifically provided for in the applicable Transfer of Obligations Form."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_9",
+      "clause_number": "Section 8",
+      "clause_title": "Independent Contractor Relationship",
+      "text": "[B816AAF8] Independent Contractor Relationship. For the purposes of this Agreement, the parties hereto are independent contractors and nothing contained in this Agreement shall be construed to place them in the relationship of partners, principal and agent, employer/employee or joint venturers. Neither party shall have the power or right to bind or obligate the other party, and neither party shall hold itself out as having such authority.",
+      "paragraphs": [
+        {
+          "paraindetifier": "B816AAF8",
+          "text": "Independent Contractor Relationship. For the purposes of this Agreement, the parties hereto are independent contractors and nothing contained in this Agreement shall be construed to place them in the relationship of partners, principal and agent, employer/employee or joint venturers. Neither party shall have the power or right to bind or obligate the other party, and neither party shall hold itself out as having such authority."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_10",
+      "clause_number": "Section 9",
+      "clause_title": "Regulatory Compliance; Certification; Inspections",
+      "text": "[F3CD8CE1] Regulatory Compliance; Certification; Inspections.\n[6DCBD07F] Quintiles agrees that its Services will be conducted in compliance with all applicable laws, rules and regulations, including but not limited to the Federal Food, Drug and Cosmetic Act and the regulations promulgated pursuant thereto, and with the standard of care customary in the contract research organization industry. Regarding the FDA’s electronic records and signatures regulation, 21 CFR Part 11 (“Part 11”), Quintiles has a compliance plan in place as to its applicable database applications and electronic records systems and it is working diligently to implement its plan. Quintiles, however, is not responsible for the compliance or non-compliance of applications or systems used by third parties (including, but not limited to, investigative sites or third party laboratories), or any Part 11 audits or assessments thereof, unless such applications or systems are owned by Quintiles. Quintiles’ standard operating procedures will be used in performance of the Services, unless otherwise specifically stated in the Work Order. Sponsor represents that it will cooperate with Quintiles in taking any actions that Quintiles and Sponsor reasonably believes are necessary to comply with the regulatory obligations that have been transferred to Quintiles hereunder.\n[FD50B64C] Quintiles certifies that it has not been debarred under the Generic Drug Enforcement Act and that it will not knowingly employ any person or entity that has been so debarred to perform any Services under this Agreement. Sponsor represents and certifies that it will not require Quintiles to perform any assignments or tasks in a manner that would violate any applicable law or regulation.\n[88C11D41] During the term of this Agreement, Quintiles will permit Sponsor’s representatives (unless such representatives are competitors of Quintiles) to examine or audit the work performed hereunder and the facilities at which the work is conducted upon reasonable advance notice during regular business hours to determine that the Project assignment is being conducted in accordance with the relevant Work Order and that the facilities are adequate. Quintiles shall cooperate with Sponsor and allow Sponsor access to relevant records and data to the extent permitted by law. All information (other than Sponsor Confidential Information) disclosed, revealed to or ascertained by Sponsor in connection with any such audit or examination or in connection with any correspondence between Quintiles and any regulatory authorities (including any FDA Form 483 notices) shall be deemed to constitute Quintiles Confidential Information for purposes of this Agreement. Sponsor shall reimburse Quintiles for its time and reasonable expenses associated with any such audit by Sponsor, unless such audit finds that Quintiles breached this Agreement or any applicable law or regulation.\n[C5E126FE] If any governmental or regulatory agency conducts, or gives notice to Quintiles of its intent to conduct an inspection or to take any regulatory action with respect to any Project or Services pursuant to this Agreement, Quintiles will promptly notify Sponsor prior to complying with such request. Where reasonably practicable, Sponsor will be given the opportunity to have a representative present during any governmental or regulatory inspection. Sponsor shall reimburse Quintiles for its time and reasonable expenses (including reasonable attorney fees and the costs of responding to findings) associated with any such inspection, unless such inspection finds that Quintiles breached this Agreement or any applicable law or regulation.",
+      "paragraphs": [
+        {
+          "paraindetifier": "F3CD8CE1",
+          "text": "Regulatory Compliance; Certification; Inspections."
+        },
+        {
+          "paraindetifier": "6DCBD07F",
+          "text": "Quintiles agrees that its Services will be conducted in compliance with all applicable laws, rules and regulations, including but not limited to the Federal Food, Drug and Cosmetic Act and the regulations promulgated pursuant thereto, and with the standard of care customary in the contract research organization industry. Regarding the FDA’s electronic records and signatures regulation, 21 CFR Part 11 (“Part 11”), Quintiles has a compliance plan in place as to its applicable database applications and electronic records systems and it is working diligently to implement its plan. Quintiles, however, is not responsible for the compliance or non-compliance of applications or systems used by third parties (including, but not limited to, investigative sites or third party laboratories), or any Part 11 audits or assessments thereof, unless such applications or systems are owned by Quintiles. Quintiles’ standard operating procedures will be used in performance of the Services, unless otherwise specifically stated in the Work Order. Sponsor represents that it will cooperate with Quintiles in taking any actions that Quintiles and Sponsor reasonably believes are necessary to comply with the regulatory obligations that have been transferred to Quintiles hereunder."
+        },
+        {
+          "paraindetifier": "FD50B64C",
+          "text": "Quintiles certifies that it has not been debarred under the Generic Drug Enforcement Act and that it will not knowingly employ any person or entity that has been so debarred to perform any Services under this Agreement. Sponsor represents and certifies that it will not require Quintiles to perform any assignments or tasks in a manner that would violate any applicable law or regulation."
+        },
+        {
+          "paraindetifier": "88C11D41",
+          "text": "During the term of this Agreement, Quintiles will permit Sponsor’s representatives (unless such representatives are competitors of Quintiles) to examine or audit the work performed hereunder and the facilities at which the work is conducted upon reasonable advance notice during regular business hours to determine that the Project assignment is being conducted in accordance with the relevant Work Order and that the facilities are adequate. Quintiles shall cooperate with Sponsor and allow Sponsor access to relevant records and data to the extent permitted by law. All information (other than Sponsor Confidential Information) disclosed, revealed to or ascertained by Sponsor in connection with any such audit or examination or in connection with any correspondence between Quintiles and any regulatory authorities (including any FDA Form 483 notices) shall be deemed to constitute Quintiles Confidential Information for purposes of this Agreement. Sponsor shall reimburse Quintiles for its time and reasonable expenses associated with any such audit by Sponsor, unless such audit finds that Quintiles breached this Agreement or any applicable law or regulation."
+        },
+        {
+          "paraindetifier": "C5E126FE",
+          "text": "If any governmental or regulatory agency conducts, or gives notice to Quintiles of its intent to conduct an inspection or to take any regulatory action with respect to any Project or Services pursuant to this Agreement, Quintiles will promptly notify Sponsor prior to complying with such request. Where reasonably practicable, Sponsor will be given the opportunity to have a representative present during any governmental or regulatory inspection. Sponsor shall reimburse Quintiles for its time and reasonable expenses (including reasonable attorney fees and the costs of responding to findings) associated with any such inspection, unless such inspection finds that Quintiles breached this Agreement or any applicable law or regulation."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_11",
+      "clause_number": "Section 10",
+      "clause_title": "Conflict of Agreements",
+      "text": "[A185D98A] Conflict of Agreements. Quintiles represents to Sponsor that it is not a party to any agreement which would prevent it from fulfilling its obligations under this Agreement and that during the term of this Agreement, Quintiles agrees that it will not enter into any agreement to provide services which would in any way prevent it from providing the Services contemplated under this Agreement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A185D98A",
+          "text": "Conflict of Agreements. Quintiles represents to Sponsor that it is not a party to any agreement which would prevent it from fulfilling its obligations under this Agreement and that during the term of this Agreement, Quintiles agrees that it will not enter into any agreement to provide services which would in any way prevent it from providing the Services contemplated under this Agreement."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_12",
+      "clause_number": "Section 11",
+      "clause_title": "Publication; Use of Name",
+      "text": "[0A629DD8] Publication; Use of Name. Project data or results may not be published or referred to, in whole or in part, by Quintiles or its affiliates without the prior expressed written consent of Sponsor. Neither party will use the other party’s name in connection with any publication or promotion without the other party’s prior, written consent.",
+      "paragraphs": [
+        {
+          "paraindetifier": "0A629DD8",
+          "text": "Publication; Use of Name. Project data or results may not be published or referred to, in whole or in part, by Quintiles or its affiliates without the prior expressed written consent of Sponsor. Neither party will use the other party’s name in connection with any publication or promotion without the other party’s prior, written consent."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_13",
+      "clause_number": "Section 12",
+      "clause_title": "Limitation of Liability",
+      "text": "[A1ECBDEC] Limitation of Liability. Neither Quintiles, nor its affiliates, nor any of Quintiles’ or its affiliate’s directors, officers, employees, subcontractors or agents shall have any liability of any type (including, but not limited to, contract, negligence, and tort liability), for any loss of profits, opportunity or goodwill, or any type of special, incidental, indirect or consequential damage or loss in connection with or arising out of this Agreement, any Work Order, or the Services performed by Quintiles hereunder. In addition, in no event shall the collective, aggregate liability (including, but not limited to, contract, negligence and tort liability) of Quintiles or its affiliates, or Quintiles’ or its affiliates’ directors, officers, employees, subcontractors and agents, under this Agreement or any Work Order hereunder exceed the amount of fees actually received by Quintiles from Sponsor for the assignment or task from which such liability arose.\n[41DAE661] EXCEPT AS OTHERWISE SET FORTH IN THIS AGREEMENT, NEITHER PARTY MAKES ANY REPRESENTATION OR WARRANTY, EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT OF A PATENT, TRADEMARK OR OTHER INTELLECTUAL PROPERTY RIGHT.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A1ECBDEC",
+          "text": "Limitation of Liability. Neither Quintiles, nor its affiliates, nor any of Quintiles’ or its affiliate’s directors, officers, employees, subcontractors or agents shall have any liability of any type (including, but not limited to, contract, negligence, and tort liability), for any loss of profits, opportunity or goodwill, or any type of special, incidental, indirect or consequential damage or loss in connection with or arising out of this Agreement, any Work Order, or the Services performed by Quintiles hereunder. In addition, in no event shall the collective, aggregate liability (including, but not limited to, contract, negligence and tort liability) of Quintiles or its affiliates, or Quintiles’ or its affiliates’ directors, officers, employees, subcontractors and agents, under this Agreement or any Work Order hereunder exceed the amount of fees actually received by Quintiles from Sponsor for the assignment or task from which such liability arose."
+        },
+        {
+          "paraindetifier": "41DAE661",
+          "text": "EXCEPT AS OTHERWISE SET FORTH IN THIS AGREEMENT, NEITHER PARTY MAKES ANY REPRESENTATION OR WARRANTY, EXPRESS OR IMPLIED, INCLUDING, WITHOUT LIMITATION, ANY WARRANTY OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE OR NON-INFRINGEMENT OF A PATENT, TRADEMARK OR OTHER INTELLECTUAL PROPERTY RIGHT."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_14",
+      "clause_number": "Section 13",
+      "clause_title": "Indemnification",
+      "text": "[0A80AAE2] Indemnification. Sponsor shall indemnify, defend and hold harmless Quintiles and its affiliates, and its and their directors, officers, employees and agents (each, a “Quintiles Indemnified Party”), from and against any and all losses, damages, liabilities, reasonable attorney fees, court costs, and expenses (collectively “Losses”), joint or several, resulting or arising from any third-party claims, actions, proceedings, investigations or litigation relating to or arising from or in connection with this Agreement, any Work Order, or the Services contemplated herein (including, without limitation, any Losses arising from or in connection with any study, test, device, product or potential product to which this Agreement or any Work Order relates), except to the extent such Losses are determined to have resulted solely from the negligence or intentional misconduct of a Quintiles Indemnified Party seeking indemnity hereunder. Quintiles shall indemnify and hold harmless Sponsor, its affiliates and their respective directors, officers, employees and agents harmless from and against any Losses arising from the negligence or intentional misconduct of a Quintiles Indemnified Party.",
+      "paragraphs": [
+        {
+          "paraindetifier": "0A80AAE2",
+          "text": "Indemnification. Sponsor shall indemnify, defend and hold harmless Quintiles and its affiliates, and its and their directors, officers, employees and agents (each, a “Quintiles Indemnified Party”), from and against any and all losses, damages, liabilities, reasonable attorney fees, court costs, and expenses (collectively “Losses”), joint or several, resulting or arising from any third-party claims, actions, proceedings, investigations or litigation relating to or arising from or in connection with this Agreement, any Work Order, or the Services contemplated herein (including, without limitation, any Losses arising from or in connection with any study, test, device, product or potential product to which this Agreement or any Work Order relates), except to the extent such Losses are determined to have resulted solely from the negligence or intentional misconduct of a Quintiles Indemnified Party seeking indemnity hereunder. Quintiles shall indemnify and hold harmless Sponsor, its affiliates and their respective directors, officers, employees and agents harmless from and against any Losses arising from the negligence or intentional misconduct of a Quintiles Indemnified Party."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_15",
+      "clause_number": "Section 14",
+      "clause_title": "Indemnification Procedure",
+      "text": "[F4F95C2E] Indemnification Procedure. Any party seeking indemnity hereunder shall (a) give prompt notice to the other party (the “Indemnifying Party”) of any such claim or lawsuit (including a copy thereof) served upon it, (b) permit the Indemnifying Party to assume full responsibility to investigate, prepare for, and defend against such claim or lawsuit, (c) shall fully cooperate with the Indemnifying Party and its legal representatives in the investigation of any matter the subject of indemnification, and (d) shall not compromise or settle such claim or lawsuit in a manner that adversely affects the other party’s rights under this Agreement without the Indemnifying Party’s prior written consent. The party seeking indemnity shall not unreasonably withhold its approval of the settlement of any claim, liability, or action covered by this Indemnification provision.",
+      "paragraphs": [
+        {
+          "paraindetifier": "F4F95C2E",
+          "text": "Indemnification Procedure. Any party seeking indemnity hereunder shall (a) give prompt notice to the other party (the “Indemnifying Party”) of any such claim or lawsuit (including a copy thereof) served upon it, (b) permit the Indemnifying Party to assume full responsibility to investigate, prepare for, and defend against such claim or lawsuit, (c) shall fully cooperate with the Indemnifying Party and its legal representatives in the investigation of any matter the subject of indemnification, and (d) shall not compromise or settle such claim or lawsuit in a manner that adversely affects the other party’s rights under this Agreement without the Indemnifying Party’s prior written consent. The party seeking indemnity shall not unreasonably withhold its approval of the settlement of any claim, liability, or action covered by this Indemnification provision."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_16",
+      "clause_number": "Section 15",
+      "clause_title": "Termination",
+      "text": "[3B095CA6] Termination.\n[8351483B] Sponsor may terminate this Agreement or any Work Order without cause at any time during the term of the Agreement on thirty (30) day’s prior written notice to Quintiles.\n[B4ACA4B3] Either party may terminate this Agreement or any Work Order for material breach upon thirty (30) days’ written notice specifying the nature of the breach, if such breach has not been substantially cured within the thirty (30) day period. During the 30-day cure period for termination due to breach, each party will continue to perform its obligations under the Agreement. If the cure period has expired without a substantial cure of the breach, then the parties shall promptly meet to prepare a close-out schedule, and Quintiles shall cease performing all work not necessary for the orderly close-out of the Services or required by laws or regulations.\n[03B968F7] Either party may terminate this Agreement or any Work Orders immediately upon provision of written notice if the other party becomes insolvent or files for bankruptcy. Any written termination notice shall identify the specific Work Order or Work Orders that are being terminated.\n[920258BE] If this Agreement or any Work Order is terminated for reasons other than material breach by Quintiles, Sponsor shall pay Quintiles for all Services properly performed in accordance with any applicable Work Order and reimburse Quintiles for all reasonable costs and expenses incurred in performing such Services, including all non-cancelable costs incurred prior to the termination date. If payments are unit or milestone based, and the Agreement or a Work Order is terminated after costs have been incurred toward achieving portions of one or more incomplete units or milestones, Sponsor will pay Quintiles’ standard fees for actual work performed toward those incomplete units or milestones up to the date of termination (not to exceed the actual amount due for completion of such milestone or unit), in addition to paying for completed units or milestones.\n[76EACFB5] Upon receipt of a termination notice, Quintiles shall promptly cease performing any work not necessary for the orderly close out of the affected Project(s), or for the fulfillment of any regulatory requirements, and will submit an itemized accounting of the Services completed, expenses incurred pursuant to the performance of the Services, any non-cancelable expenses incurred relating to the unfinished Work Order, and payments received in order to determine a balance to be paid by either party to the other. Such balance will be paid within thirty (30) days of receipt of such itemized accounting.",
+      "paragraphs": [
+        {
+          "paraindetifier": "3B095CA6",
+          "text": "Termination."
+        },
+        {
+          "paraindetifier": "8351483B",
+          "text": "Sponsor may terminate this Agreement or any Work Order without cause at any time during the term of the Agreement on thirty (30) day’s prior written notice to Quintiles."
+        },
+        {
+          "paraindetifier": "B4ACA4B3",
+          "text": "Either party may terminate this Agreement or any Work Order for material breach upon thirty (30) days’ written notice specifying the nature of the breach, if such breach has not been substantially cured within the thirty (30) day period. During the 30-day cure period for termination due to breach, each party will continue to perform its obligations under the Agreement. If the cure period has expired without a substantial cure of the breach, then the parties shall promptly meet to prepare a close-out schedule, and Quintiles shall cease performing all work not necessary for the orderly close-out of the Services or required by laws or regulations."
+        },
+        {
+          "paraindetifier": "03B968F7",
+          "text": "Either party may terminate this Agreement or any Work Orders immediately upon provision of written notice if the other party becomes insolvent or files for bankruptcy. Any written termination notice shall identify the specific Work Order or Work Orders that are being terminated."
+        },
+        {
+          "paraindetifier": "920258BE",
+          "text": "If this Agreement or any Work Order is terminated for reasons other than material breach by Quintiles, Sponsor shall pay Quintiles for all Services properly performed in accordance with any applicable Work Order and reimburse Quintiles for all reasonable costs and expenses incurred in performing such Services, including all non-cancelable costs incurred prior to the termination date. If payments are unit or milestone based, and the Agreement or a Work Order is terminated after costs have been incurred toward achieving portions of one or more incomplete units or milestones, Sponsor will pay Quintiles’ standard fees for actual work performed toward those incomplete units or milestones up to the date of termination (not to exceed the actual amount due for completion of such milestone or unit), in addition to paying for completed units or milestones."
+        },
+        {
+          "paraindetifier": "76EACFB5",
+          "text": "Upon receipt of a termination notice, Quintiles shall promptly cease performing any work not necessary for the orderly close out of the affected Project(s), or for the fulfillment of any regulatory requirements, and will submit an itemized accounting of the Services completed, expenses incurred pursuant to the performance of the Services, any non-cancelable expenses incurred relating to the unfinished Work Order, and payments received in order to determine a balance to be paid by either party to the other. Such balance will be paid within thirty (30) days of receipt of such itemized accounting."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_17",
+      "clause_number": "Section 16",
+      "clause_title": "Relationship with Affiliates; Subcontracts",
+      "text": "[D6810B83] Relationship with Affiliates; Subcontracts.\n[3946C9A7] Sponsor agrees that Quintiles may use the Services of its corporate affiliates to fulfill Quintiles’ obligations under this Agreement and any Work Order. Any affiliate so used shall be subject to all of the terms and conditions applicable to Quintiles under this Agreement or any Work Order, and entitled to all rights and protections afforded Quintiles under this Agreement and any Work Order. Quintiles agrees that Sponsor’s affiliates may use the services of Quintiles (and its affiliates) under this Agreement. In such event, such Sponsor’s affiliates shall be bound by all the terms and conditions of this Agreement and any Work Order and entitled to all rights and protections afforded Sponsor under this Agreement and any Work Order. Any such affiliate of Sponsor or Quintiles may execute a Work Order directly. The term “affiliate” shall mean all entities controlling, controlled by or under common control with Sponsor or Quintiles, as the case may be. The term “control” shall mean the ability to vote fifty percent (50%) or more of the voting securities of any entity or otherwise having the ability to influence and direct the polices and direction of an entity.\n[0D6FBDD7] Quintiles shall have the right to subcontract a portion of its obligations in connection with its performance of any Project (other than to its corporate affiliates), provided that (i) Quintiles shall have obtained the prior written approval of Sponsor to the subcontract, including providing Sponsor with sufficient information to enable proper evaluation of such subcontractor; (ii) such subcontract shall not relieve Quintiles of any of its obligations under this Agreement; (iii) Quintiles shall enter into a written agreement with each subcontractor on terms and conditions consistent with this Agreement, including for the benefit of Sponsor, provisions substantially similar to those of Sections 5.0,6.0, and 11.0; (iv) each Work Order, when appropriate, shall specify the name of such subcontractors; and (v) if requested by Sponsor, Quintiles agrees to provide Sponsor with a copy of each such subcontract.",
+      "paragraphs": [
+        {
+          "paraindetifier": "D6810B83",
+          "text": "Relationship with Affiliates; Subcontracts."
+        },
+        {
+          "paraindetifier": "3946C9A7",
+          "text": "Sponsor agrees that Quintiles may use the Services of its corporate affiliates to fulfill Quintiles’ obligations under this Agreement and any Work Order. Any affiliate so used shall be subject to all of the terms and conditions applicable to Quintiles under this Agreement or any Work Order, and entitled to all rights and protections afforded Quintiles under this Agreement and any Work Order. Quintiles agrees that Sponsor’s affiliates may use the services of Quintiles (and its affiliates) under this Agreement. In such event, such Sponsor’s affiliates shall be bound by all the terms and conditions of this Agreement and any Work Order and entitled to all rights and protections afforded Sponsor under this Agreement and any Work Order. Any such affiliate of Sponsor or Quintiles may execute a Work Order directly. The term “affiliate” shall mean all entities controlling, controlled by or under common control with Sponsor or Quintiles, as the case may be. The term “control” shall mean the ability to vote fifty percent (50%) or more of the voting securities of any entity or otherwise having the ability to influence and direct the polices and direction of an entity."
+        },
+        {
+          "paraindetifier": "0D6FBDD7",
+          "text": "Quintiles shall have the right to subcontract a portion of its obligations in connection with its performance of any Project (other than to its corporate affiliates), provided that (i) Quintiles shall have obtained the prior written approval of Sponsor to the subcontract, including providing Sponsor with sufficient information to enable proper evaluation of such subcontractor; (ii) such subcontract shall not relieve Quintiles of any of its obligations under this Agreement; (iii) Quintiles shall enter into a written agreement with each subcontractor on terms and conditions consistent with this Agreement, including for the benefit of Sponsor, provisions substantially similar to those of Sections 5.0,6.0, and 11.0; (iv) each Work Order, when appropriate, shall specify the name of such subcontractors; and (v) if requested by Sponsor, Quintiles agrees to provide Sponsor with a copy of each such subcontract."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_18",
+      "clause_number": "Section 17",
+      "clause_title": "Cooperation; Delays; Disclosure of Hazards",
+      "text": "[60EF0B2E] Cooperation; Delays; Disclosure of Hazards.\n[3B52A5DD] Sponsor shall forward to Quintiles in a timely manner all documents, materials and information in Sponsor’s possession or control necessary for Quintiles to conduct the Services. Quintiles will use commercially reasonable efforts to complete the agreed upon Services within the timelines set forth in an executed Work Order or Change Order. Quintiles shall not be liable to Sponsor nor be deemed to have breached this Agreement for errors, delays or other consequences arising from Sponsor’s failure to timely provide documents, materials or information or to otherwise cooperate with Quintiles in order for Quintiles to timely and properly perform its obligations under the relevant Work Order or Change Order.\n[16AD52BD] Quintiles and Sponsor agree to notify the other in writing immediately if any delays or limits are encountered in their performance of any Work Order, and shall use good faith efforts to negotiate an acceptable resolution to such delays or limits.\n[80812509] Sponsor shall provide Quintiles with all information available to it regarding known or potential hazards associated with the use of any substances supplied to Quintiles by Sponsor, and Sponsor shall comply with all current legislation and regulations concerning the shipment of substances by the land, sea or air. Quintiles agrees to comply with all laws, rules and regulations, including written instructions provided by Sponsor, relating to the storage and handling of any such substances received from Sponsor.",
+      "paragraphs": [
+        {
+          "paraindetifier": "60EF0B2E",
+          "text": "Cooperation; Delays; Disclosure of Hazards."
+        },
+        {
+          "paraindetifier": "3B52A5DD",
+          "text": "Sponsor shall forward to Quintiles in a timely manner all documents, materials and information in Sponsor’s possession or control necessary for Quintiles to conduct the Services. Quintiles will use commercially reasonable efforts to complete the agreed upon Services within the timelines set forth in an executed Work Order or Change Order. Quintiles shall not be liable to Sponsor nor be deemed to have breached this Agreement for errors, delays or other consequences arising from Sponsor’s failure to timely provide documents, materials or information or to otherwise cooperate with Quintiles in order for Quintiles to timely and properly perform its obligations under the relevant Work Order or Change Order."
+        },
+        {
+          "paraindetifier": "16AD52BD",
+          "text": "Quintiles and Sponsor agree to notify the other in writing immediately if any delays or limits are encountered in their performance of any Work Order, and shall use good faith efforts to negotiate an acceptable resolution to such delays or limits."
+        },
+        {
+          "paraindetifier": "80812509",
+          "text": "Sponsor shall provide Quintiles with all information available to it regarding known or potential hazards associated with the use of any substances supplied to Quintiles by Sponsor, and Sponsor shall comply with all current legislation and regulations concerning the shipment of substances by the land, sea or air. Quintiles agrees to comply with all laws, rules and regulations, including written instructions provided by Sponsor, relating to the storage and handling of any such substances received from Sponsor."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_19",
+      "clause_number": "Section 18",
+      "clause_title": "Force Majeure",
+      "text": "[A4F05582] Force Majeure. In the event either party shall be delayed or hindered in or prevented from the performance of any act required hereunder by reasons of strike, lockouts, labor troubles, inability to procure materials or services, failure of power or restrictive government or judicial orders, or decrees, riots, insurrection, war, Acts of God, inclement weather or other reason or cause beyond that party’s control, then performance of such act (except for the payment of money owed) shall be excused for the period of such delay.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A4F05582",
+          "text": "Force Majeure. In the event either party shall be delayed or hindered in or prevented from the performance of any act required hereunder by reasons of strike, lockouts, labor troubles, inability to procure materials or services, failure of power or restrictive government or judicial orders, or decrees, riots, insurrection, war, Acts of God, inclement weather or other reason or cause beyond that party’s control, then performance of such act (except for the payment of money owed) shall be excused for the period of such delay."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_20",
+      "clause_number": "Section 19",
+      "clause_title": "Notices and Deliveries",
+      "text": "[BF3AF4A9] Notices and Deliveries. Any notice required or permitted to be given hereunder by either party hereunder shall be in writing and shall be deemed given on the date received if delivered personally or by a reputable overnight delivery service, or three (3) days after the date postmarked if sent by registered or certified mail, return receipt requested, postage prepaid to the following addresses:\n[6D9F9534] If to Quintiles: Quintiles, Inc., 10245 Hickman Mills Drive, Kansas City, MO 64137, Attn: Michael J. Baltezor, Ph.D., General Manager\n[31F15BDF] If to Sponsor: Sunesis Pharmaceuticals, Inc., 341 Oyster Point Boulevard, South San Francisco, CA 94080, Attn: Daryl B. Winter, Ph.D., SVP, General Counsel\n[3A05346B] If Sponsor delivers, ships, or mails materials or documents to Quintiles, or requests that Quintiles deliver, ship, or mail materials or documents to Sponsor or to third parties, then the expense and risk of loss for such deliveries, shipments, or mailings shall be borne by Sponsor. Quintiles disclaims any liability for the actions or omissions of third-party delivery services or carriers.",
+      "paragraphs": [
+        {
+          "paraindetifier": "BF3AF4A9",
+          "text": "Notices and Deliveries. Any notice required or permitted to be given hereunder by either party hereunder shall be in writing and shall be deemed given on the date received if delivered personally or by a reputable overnight delivery service, or three (3) days after the date postmarked if sent by registered or certified mail, return receipt requested, postage prepaid to the following addresses:"
+        },
+        {
+          "paraindetifier": "6D9F9534",
+          "text": "If to Quintiles: Quintiles, Inc., 10245 Hickman Mills Drive, Kansas City, MO 64137, Attn: Michael J. Baltezor, Ph.D., General Manager"
+        },
+        {
+          "paraindetifier": "31F15BDF",
+          "text": "If to Sponsor: Sunesis Pharmaceuticals, Inc., 341 Oyster Point Boulevard, South San Francisco, CA 94080, Attn: Daryl B. Winter, Ph.D., SVP, General Counsel"
+        },
+        {
+          "paraindetifier": "3A05346B",
+          "text": "If Sponsor delivers, ships, or mails materials or documents to Quintiles, or requests that Quintiles deliver, ship, or mail materials or documents to Sponsor or to third parties, then the expense and risk of loss for such deliveries, shipments, or mailings shall be borne by Sponsor. Quintiles disclaims any liability for the actions or omissions of third-party delivery services or carriers."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_21",
+      "clause_number": "Section 20",
+      "clause_title": "Insurance",
+      "text": "[C3BE45AC] Insurance. During the term of this Agreement to cover its obligations hereunder, each party shall maintain insurance coverage as follows: 1) (a) Professional Liability for Quintiles in an amount of at least US$10,000,000.00; (b) Product Liability for Sponsor in an amount of at least US$10,000,000.00; and 2) General Liability in amounts of at least US$3,000,000.00. All insurance amounts may be obtained by full, individual primary policy amount; a primary amount of less than minimum requirement enhanced by a blanket excess umbrella policy; or a combination of either. Each party shall provide the other party with a certificate of insurance upon request. The insured shall provide the other party with at least thirty (30) days prior written notice of any material change, cancellation or expiration of the above-required insurance.",
+      "paragraphs": [
+        {
+          "paraindetifier": "C3BE45AC",
+          "text": "Insurance. During the term of this Agreement to cover its obligations hereunder, each party shall maintain insurance coverage as follows: 1) (a) Professional Liability for Quintiles in an amount of at least US$10,000,000.00; (b) Product Liability for Sponsor in an amount of at least US$10,000,000.00; and 2) General Liability in amounts of at least US$3,000,000.00. All insurance amounts may be obtained by full, individual primary policy amount; a primary amount of less than minimum requirement enhanced by a blanket excess umbrella policy; or a combination of either. Each party shall provide the other party with a certificate of insurance upon request. The insured shall provide the other party with at least thirty (30) days prior written notice of any material change, cancellation or expiration of the above-required insurance."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_22",
+      "clause_number": "Section 21",
+      "clause_title": "Foreign Currency Exchange",
+      "text": "[348BC128] Foreign Currency Exchange. The currency to be used for invoice and payment shall be the currency stated in the Budget or Table attached to the Work Order (the “Contracted Currency”). If Quintiles incurs pass-through costs in a currency other than the Contracted Currency, then Sponsor shall reimburse Quintiles for Quintiles’ actual costs in the Contracted Currency based on the Oanda foreign currency exchange rate (Oanda.com) for the applicable currencies on the last business Friday of the month. For Work Orders that involve the performance of Services by Quintiles or its affiliates in any countries that use currencies other than the Contracted Currency, and the fees for such Services will exceed $500,000, then a currency exchange provision shall be included in the Work Order.",
+      "paragraphs": [
+        {
+          "paraindetifier": "348BC128",
+          "text": "Foreign Currency Exchange. The currency to be used for invoice and payment shall be the currency stated in the Budget or Table attached to the Work Order (the “Contracted Currency”). If Quintiles incurs pass-through costs in a currency other than the Contracted Currency, then Sponsor shall reimburse Quintiles for Quintiles’ actual costs in the Contracted Currency based on the Oanda foreign currency exchange rate (Oanda.com) for the applicable currencies on the last business Friday of the month. For Work Orders that involve the performance of Services by Quintiles or its affiliates in any countries that use currencies other than the Contracted Currency, and the fees for such Services will exceed $500,000, then a currency exchange provision shall be included in the Work Order."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_23",
+      "clause_number": "Section 22",
+      "clause_title": "Inflation Adjustments",
+      "text": "[690FFE25] Inflation Adjustments. Where services in a Work Order are provided by Quintiles over multiple calendar years, Quintiles may increase its fees at the beginning of each calendar year to reflect increases in Quintiles’ business costs on a prospective basis only. Quintiles’ overall costs may be increased for the next twelve (12) month period using four percent (4%) or the average percentage change in the wages/earnings survey as published in the Economist (or as reported at www.economist.com) or the equivalent inflation index of the country where services are performed, over the preceding twelve (12) month period.",
+      "paragraphs": [
+        {
+          "paraindetifier": "690FFE25",
+          "text": "Inflation Adjustments. Where services in a Work Order are provided by Quintiles over multiple calendar years, Quintiles may increase its fees at the beginning of each calendar year to reflect increases in Quintiles’ business costs on a prospective basis only. Quintiles’ overall costs may be increased for the next twelve (12) month period using four percent (4%) or the average percentage change in the wages/earnings survey as published in the Economist (or as reported at www.economist.com) or the equivalent inflation index of the country where services are performed, over the preceding twelve (12) month period."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_24",
+      "clause_number": "Section 23",
+      "clause_title": "Binding Agreement and Assignment",
+      "text": "[2B8B0F2A] Binding Agreement and Assignment. This Agreement shall be binding upon and inure to the benefit of Sponsor and Quintiles and their respective successors and permitted assigns. Except as stated above in Section 17.1, neither party may assign any of its rights or obligations under this Agreement to any party without the express, written consent of the other party.",
+      "paragraphs": [
+        {
+          "paraindetifier": "2B8B0F2A",
+          "text": "Binding Agreement and Assignment. This Agreement shall be binding upon and inure to the benefit of Sponsor and Quintiles and their respective successors and permitted assigns. Except as stated above in Section 17.1, neither party may assign any of its rights or obligations under this Agreement to any party without the express, written consent of the other party."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_25",
+      "clause_number": "Section 24",
+      "clause_title": "Choice of Law, Waiver and Enforceability",
+      "text": "[4E3FFA3B] Choice of Law, Waiver and Enforceability. This Agreement shall be construed, governed, interpreted, and applied in accordance with the laws of the State of New York exclusive of its conflicts of law provisions. The failure to enforce any right or provision herein shall not constitute a waiver of that right or provision. Any waiver of a breach of a provision shall not constitute a waiver of any subsequent breach of that provision. If any provisions herein are found to be unenforceable on the grounds that they are overly broad or in conflict with applicable laws, it is the intent of the parties that such provisions be replaced, reformed or narrowed so that their original business purpose can be accomplished to the extent permitted by law, and that the remaining provisions shall not in any way be affected or impaired thereby.",
+      "paragraphs": [
+        {
+          "paraindetifier": "4E3FFA3B",
+          "text": "Choice of Law, Waiver and Enforceability. This Agreement shall be construed, governed, interpreted, and applied in accordance with the laws of the State of New York exclusive of its conflicts of law provisions. The failure to enforce any right or provision herein shall not constitute a waiver of that right or provision. Any waiver of a breach of a provision shall not constitute a waiver of any subsequent breach of that provision. If any provisions herein are found to be unenforceable on the grounds that they are overly broad or in conflict with applicable laws, it is the intent of the parties that such provisions be replaced, reformed or narrowed so that their original business purpose can be accomplished to the extent permitted by law, and that the remaining provisions shall not in any way be affected or impaired thereby."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_26",
+      "clause_number": "Section 25",
+      "clause_title": "Survival",
+      "text": "[548E1B5B] Survival. The rights and obligations of Sponsor and Quintiles, which by intent or meaning have validity beyond such termination (including, but not limited to, rights with respect to inventions, confidentiality, publication, discoveries and improvements, indemnification and liability limitations) shall survive the termination of this Agreement or any Work Order.",
+      "paragraphs": [
+        {
+          "paraindetifier": "548E1B5B",
+          "text": "Survival. The rights and obligations of Sponsor and Quintiles, which by intent or meaning have validity beyond such termination (including, but not limited to, rights with respect to inventions, confidentiality, publication, discoveries and improvements, indemnification and liability limitations) shall survive the termination of this Agreement or any Work Order."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_27",
+      "clause_number": "Section 26",
+      "clause_title": "Arbitration",
+      "text": "[D4571B4C] Arbitration. Any controversy or claim arising out of or relating to this Agreement or the breach thereof shall be settled by arbitration administered by the American Arbitration Association (“AAA”) under its Commercial Arbitration Rules, and judgment on the award rendered by the arbitrator shall be binding and may be entered in any court having jurisdiction thereof. Such arbitration shall be filed and conducted at the office of the AAA closest to the Quintiles office having responsibility for the Project, and shall be conducted in English by one arbitrator mutually acceptable to the parties selected in accordance with AAA Rules. The arbitrator shall not have the power to award any punitive damages or any damages excluded by this Agreement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "D4571B4C",
+          "text": "Arbitration. Any controversy or claim arising out of or relating to this Agreement or the breach thereof shall be settled by arbitration administered by the American Arbitration Association (“AAA”) under its Commercial Arbitration Rules, and judgment on the award rendered by the arbitrator shall be binding and may be entered in any court having jurisdiction thereof. Such arbitration shall be filed and conducted at the office of the AAA closest to the Quintiles office having responsibility for the Project, and shall be conducted in English by one arbitrator mutually acceptable to the parties selected in accordance with AAA Rules. The arbitrator shall not have the power to award any punitive damages or any damages excluded by this Agreement."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_28",
+      "clause_number": "Section 27",
+      "clause_title": "Entire Agreement, Headings and Modification",
+      "text": "[0220F431] Entire Agreement, Headings and Modification. This Agreement, together with the applicable Work Orders, contains the entire understandings of the parties with respect to the subject matter herein, and supersedes all previous agreements (oral and written), negotiations and discussions. The descriptive headings of the sections of this Agreement are inserted for convenience only and shall not control or affect the meaning or construction of any provision hereof. Any modifications to the provisions herein must be in writing and signed by the parties.",
+      "paragraphs": [
+        {
+          "paraindetifier": "0220F431",
+          "text": "Entire Agreement, Headings and Modification. This Agreement, together with the applicable Work Orders, contains the entire understandings of the parties with respect to the subject matter herein, and supersedes all previous agreements (oral and written), negotiations and discussions. The descriptive headings of the sections of this Agreement are inserted for convenience only and shall not control or affect the meaning or construction of any provision hereof. Any modifications to the provisions herein must be in writing and signed by the parties."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_29",
+      "clause_number": null,
+      "clause_title": "Execution / Signature Block",
+      "text": "[1B6CC51C] IN WITNESS WHEREOF, this Agreement has been executed by the parties hereto through their duly authorized officers on the date(s) set forth below.\n[D36DF8C5] ACKNOWLEDGED, ACCEPTED AND AGREED TO:\n[EF0C9415] Quintiles, Inc. By: /s/ Michael J. Baltezor Ph.D. (signature) Print Name: Michael J. Baltezor, Ph.D. Title: General Manager Date: August 26, 2004\n[690078EB] Sunesis Pharmaceuticals, Inc. By: /s/ Daryl B. Winter, Ph.D. (signature) Print Name: Daryl B. Winter, Ph.D. Title: Senior Vice President & General Counsel Date: 8/23/04",
+      "paragraphs": [
+        {
+          "paraindetifier": "1B6CC51C",
+          "text": "IN WITNESS WHEREOF, this Agreement has been executed by the parties hereto through their duly authorized officers on the date(s) set forth below."
+        },
+        {
+          "paraindetifier": "D36DF8C5",
+          "text": "ACKNOWLEDGED, ACCEPTED AND AGREED TO:"
+        },
+        {
+          "paraindetifier": "EF0C9415",
+          "text": "Quintiles, Inc. By: /s/ Michael J. Baltezor Ph.D. (signature) Print Name: Michael J. Baltezor, Ph.D. Title: General Manager Date: August 26, 2004"
+        },
+        {
+          "paraindetifier": "690078EB",
+          "text": "Sunesis Pharmaceuticals, Inc. By: /s/ Daryl B. Winter, Ph.D. (signature) Print Name: Daryl B. Winter, Ph.D. Title: Senior Vice President & General Counsel Date: 8/23/04"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_30",
+      "clause_number": "Exhibit A",
+      "clause_title": "Sample Work Order",
+      "text": "[4F7E8949] EXHIBIT A SAMPLE WORK ORDER\n[5324B59E] WORK ORDER\n[5CBF40AA] This Work Order (“Work Order”) is between ________ (“Sponsor”) and ________ (“Quintiles”) and relates to the Master Services Agreement dated ________, (the “Master Agreement”), which is incorporated by reference herein. Pursuant to the Master Agreement, Quintiles has agreed to perform certain services in accordance with written work orders, such as this one, entered into from time-to-time.\n[9E7B8C19] The parties hereby agree as follows:",
+      "paragraphs": [
+        {
+          "paraindetifier": "4F7E8949",
+          "text": "EXHIBIT A SAMPLE WORK ORDER"
+        },
+        {
+          "paraindetifier": "5324B59E",
+          "text": "WORK ORDER"
+        },
+        {
+          "paraindetifier": "5CBF40AA",
+          "text": "This Work Order (“Work Order”) is between ________ (“Sponsor”) and ________ (“Quintiles”) and relates to the Master Services Agreement dated ________, (the “Master Agreement”), which is incorporated by reference herein. Pursuant to the Master Agreement, Quintiles has agreed to perform certain services in accordance with written work orders, such as this one, entered into from time-to-time."
+        },
+        {
+          "paraindetifier": "9E7B8C19",
+          "text": "The parties hereby agree as follows:"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_31",
+      "clause_number": "Exhibit A",
+      "clause_title": "Work Order",
+      "text": "[33FCE249] Work Order. This document constitutes a “Work Order” under the Master Agreement and this Work Order and the services contemplated herein are subject to the terms and provisions of the Master Agreement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "33FCE249",
+          "text": "Work Order. This document constitutes a “Work Order” under the Master Agreement and this Work Order and the services contemplated herein are subject to the terms and provisions of the Master Agreement."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_32",
+      "clause_number": "Exhibit A",
+      "clause_title": "Services and Payment of Fees and Expenses",
+      "text": "[3D8FBAE5] Services and Payment of Fees and Expenses. The specific services contemplated by this Work Order (the “Services”) and the related payment terms and obligations are set forth on the following attachments, which are incorporated herein by reference:\n[77CDF3A2] SCOPE OF WORK – ATTACHMENT 1; PROJECT BUDGET – ATTACHMENT 2; TIMELINE – ATTACHMENT 3; PAYMENT SCHEDULE – ATTACHMENT 4; TRANSFER OF OBLIGATIONS (if applicable) – ATTACHMENT 5; LOCAL REPRESENTATIVE DUTIES (if applicable) – ATTACHMENT 6\n[2CD87C72] To the extent that any terms and provisions in any of the attachments hereto conflict with the Master Agreement and this Work Order, the terms and provisions of the Master Agreement and this Task Order shall control.",
+      "paragraphs": [
+        {
+          "paraindetifier": "3D8FBAE5",
+          "text": "Services and Payment of Fees and Expenses. The specific services contemplated by this Work Order (the “Services”) and the related payment terms and obligations are set forth on the following attachments, which are incorporated herein by reference:"
+        },
+        {
+          "paraindetifier": "77CDF3A2",
+          "text": "SCOPE OF WORK – ATTACHMENT 1; PROJECT BUDGET – ATTACHMENT 2; TIMELINE – ATTACHMENT 3; PAYMENT SCHEDULE – ATTACHMENT 4; TRANSFER OF OBLIGATIONS (if applicable) – ATTACHMENT 5; LOCAL REPRESENTATIVE DUTIES (if applicable) – ATTACHMENT 6"
+        },
+        {
+          "paraindetifier": "2CD87C72",
+          "text": "To the extent that any terms and provisions in any of the attachments hereto conflict with the Master Agreement and this Work Order, the terms and provisions of the Master Agreement and this Task Order shall control."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_33",
+      "clause_number": "Exhibit A",
+      "clause_title": "Term",
+      "text": "[D79F5825] Term. The term of this Work Order shall commence on the date of execution and shall continue until the services described in Attachment 1 are completed, unless this Work Order is terminated in accordance with the Master Agreement. If the Master Agreement is terminated or expires, but this Work Order is not terminated or completed, then the terms of the Master Agreement shall continue to apply to this Work Order until the Work Order is either terminated or completed.",
+      "paragraphs": [
+        {
+          "paraindetifier": "D79F5825",
+          "text": "Term. The term of this Work Order shall commence on the date of execution and shall continue until the services described in Attachment 1 are completed, unless this Work Order is terminated in accordance with the Master Agreement. If the Master Agreement is terminated or expires, but this Work Order is not terminated or completed, then the terms of the Master Agreement shall continue to apply to this Work Order until the Work Order is either terminated or completed."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_34",
+      "clause_number": "Exhibit A",
+      "clause_title": "Affiliates and Subcontractors",
+      "text": "[2A023F85] Affiliates and Subcontractors. Sponsor agrees that Quintiles may use the services of its corporate affiliates to fulfill Quintiles’ obligations under this Work Order. Any such affiliates shall be bound by all the terms and conditions of, and be entitled to all rights and protections afforded under, the Master Agreement and this Work Order. Any subcontractors or consultants (other than Quintiles’ affiliates) that will be used by Quintiles in performing the Services are listed below:\n[3897D542] [Insert names of any subcontractors or consultants, other than Quintiles’ affiliates, that will be used]",
+      "paragraphs": [
+        {
+          "paraindetifier": "2A023F85",
+          "text": "Affiliates and Subcontractors. Sponsor agrees that Quintiles may use the services of its corporate affiliates to fulfill Quintiles’ obligations under this Work Order. Any such affiliates shall be bound by all the terms and conditions of, and be entitled to all rights and protections afforded under, the Master Agreement and this Work Order. Any subcontractors or consultants (other than Quintiles’ affiliates) that will be used by Quintiles in performing the Services are listed below:"
+        },
+        {
+          "paraindetifier": "3897D542",
+          "text": "[Insert names of any subcontractors or consultants, other than Quintiles’ affiliates, that will be used]"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_35",
+      "clause_number": "Exhibit A",
+      "clause_title": "Amendments",
+      "text": "[4F1F6DC9] Amendments. No modification, amendment, or waiver of this Work Order shall be effective unless in writing and duly executed and delivered by each party to the other.",
+      "paragraphs": [
+        {
+          "paraindetifier": "4F1F6DC9",
+          "text": "Amendments. No modification, amendment, or waiver of this Work Order shall be effective unless in writing and duly executed and delivered by each party to the other."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_36",
+      "clause_number": "Exhibit A",
+      "clause_title": "Currency Exchange",
+      "text": "[8DD48AD3] Currency Exchange. [Insert currency exchange provision in all Work Orders in which Quintiles will earn fees or incur expenses in excess of one million US. Dollars in a currency differing from the invoice and payment currency]",
+      "paragraphs": [
+        {
+          "paraindetifier": "8DD48AD3",
+          "text": "Currency Exchange. [Insert currency exchange provision in all Work Orders in which Quintiles will earn fees or incur expenses in excess of one million US. Dollars in a currency differing from the invoice and payment currency]"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_37",
+      "clause_number": "Exhibit A",
+      "clause_title": "Inflation and Cost Adjustment",
+      "text": "[297C4C80] Inflation and Cost Adjustment. [Insert cost adjustment provision and inflation provision, if appropriate.]",
+      "paragraphs": [
+        {
+          "paraindetifier": "297C4C80",
+          "text": "Inflation and Cost Adjustment. [Insert cost adjustment provision and inflation provision, if appropriate.]"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_38",
+      "clause_number": "Exhibit A",
+      "clause_title": "Execution / Signature Block",
+      "text": "[70B283A8] ACKNOWLEDGED, ACCEPTED AND AGREED TO:\n[35988E5A] [Quintiles] By: ________ Title: ________ Date: ________\n[4D3EC589] [Sponsor] By: ________ Title: ________ Date: ________",
+      "paragraphs": [
+        {
+          "paraindetifier": "70B283A8",
+          "text": "ACKNOWLEDGED, ACCEPTED AND AGREED TO:"
+        },
+        {
+          "paraindetifier": "35988E5A",
+          "text": "[Quintiles] By: ________ Title: ________ Date: ________"
+        },
+        {
+          "paraindetifier": "4D3EC589",
+          "text": "[Sponsor] By: ________ Title: ________ Date: ________"
+        }
+      ]
+    }
+  ],
+  "party_represented": "Quintiles, Inc",
+  "review_objective": "",
+  "specific_concerns": "",
+  "agreement_type": "Master Services Agreement"
+}
