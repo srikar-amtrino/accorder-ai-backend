@@ -23,7 +23,11 @@ from dotenv import load_dotenv
 load_dotenv(PROJECT_ROOT / ".env")
 
 from src.schemas.general_review import GeneralReviewRequest
-from src.tools.general_review import general_review_service, _response_cache
+from src.tools.general_review import (
+    extract_audit_trace_bundle,
+    general_review_service,
+    _response_cache,
+)
 
 logging.basicConfig(
     level=logging.INFO,
@@ -61,8 +65,15 @@ async def main():
     )
     elapsed = time.time() - t0
 
+    clause_units, recon_pass, party_audit = extract_audit_trace_bundle(audit_trace)
+
     logger.info(f"Review completed in {elapsed:.1f}s | {len(response.suggestions)} suggestions")
-    logger.info(f"Audit trace collected: {len(audit_trace)} clause units")
+    logger.info(f"Audit trace collected: {len(clause_units)} clause units")
+    if recon_pass:
+        resolved_cnt = recon_pass.get("total_criteria_fully_resolved", recon_pass.get("total_criteria_resolved", 0))
+        partial_cnt = recon_pass.get("total_criteria_partially_resolved", 0)
+        blobs_cnt = recon_pass.get("total_fix_blobs_removed", 0)
+        logger.info(f"  CCRL Registered: {recon_pass.get('total_ccrl_entries_registered', 0)} | Fully Resolved: {resolved_cnt} | Partial: {partial_cnt} | Fix Blobs Removed: {blobs_cnt}")
 
     # Determine run number dynamically
     run_num = 1
@@ -78,13 +89,13 @@ async def main():
             "party_represented": request.party_represented,
             "review_objective": request.review_objective,
             "total_clauses": len(request.clauses or []),
-            "total_clause_units": len(audit_trace),
+            "total_clause_units": len(clause_units),
             "total_suggestions_issued": len(response.suggestions),
             "execution_seconds": round(elapsed, 2),
         },
-        "party_representation_audit": getattr(audit_trace, "party_representation_audit", None),
-        "reconciliation_pass": getattr(audit_trace, "reconciliation_pass", None),
-        "clause_units": audit_trace,
+        "party_representation_audit": party_audit,
+        "reconciliation_pass": recon_pass,
+        "clause_units": clause_units,
     }
 
     # Save to target locations

@@ -1,0 +1,1310 @@
+{
+  "document_name": "Sample 3 Clause Simulation",
+  "paragraph_count": 130,
+  "agreement_type": "Professional Services Agreement",
+  "party_represented": "Neutral General Review",
+  "runs_summary": [
+    {
+      "run": 1,
+      "suggestions_count": 31,
+      "elapsed_seconds": 75.71
+    },
+    {
+      "run": 2,
+      "suggestions_count": 31,
+      "elapsed_seconds": 66.54
+    },
+    {
+      "run": 3,
+      "suggestions_count": 32,
+      "elapsed_seconds": 74.15
+    }
+  ],
+  "total_unique_paragraphs_flagged": 33,
+  "clause_consistency_percentage": 87.88,
+  "risk_level_consistency_percentage": 81.82,
+  "mean_reason_similarity_across_runs": 0.071,
+  "mean_suggested_fix_similarity_across_runs": 0.568,
+  "unanimous_perfect_match_count": 27,
+  "inconsistencies": [
+    {
+      "para_identifier": "33F0E92C",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Custodian",
+        "run_2": "Custodian",
+        "run_3": "Custodian",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Low",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.031,
+        "run_1_preview": "As currently drafted, the clause imposes a clear affirmative obligation on the City to instruct the Custodian to act, bu...",
+        "run_2_preview": "This clause places a binding custodial instruction obligation on the City that is entirely contingent on confirmations p...",
+        "run_3_preview": "This clause places the entire operational and financial burden of Custodian instruction squarely on the City \u2014 including..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.58,
+        "run_1_len": 401,
+        "run_2_len": 467,
+        "run_3_len": 590
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "4680E535",
+      "present_in_runs": [
+        1,
+        2
+      ],
+      "clause": {
+        "run_1": "Duties of the City",
+        "run_2": "Duties of the City",
+        "run_3": "MISSING",
+        "unanimous": false
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "None",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_preview": "As currently drafted, this provision imposes an obligation solely on the City to provide financial data \"upon request\" w...",
+        "run_2_preview": "The phrase \"properly determine required liquidity\" is commercially ambiguous because neither \"required liquidity\" nor th...",
+        "run_3_preview": null
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_len": 277,
+        "run_2_len": 212,
+        "run_3_len": 0
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "592189B2",
+      "present_in_runs": [
+        1,
+        3
+      ],
+      "clause": {
+        "run_1": "Duties of the City",
+        "run_2": "MISSING",
+        "run_3": "Duties of the City",
+        "unanimous": false
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "None",
+        "run_3": "Medium",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_preview": "The phrase \"investment plan\" is used as an operative trigger for fund-movement instructions yet is not defined anywhere ...",
+        "run_2_preview": null,
+        "run_3_preview": "The phrase \"respond to Consultant's requests\" is operationally ambiguous \u2014 a court could reasonably read it as requiring..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_len": 365,
+        "run_2_len": 0,
+        "run_3_len": 276
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "7C717BFE",
+      "present_in_runs": [
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "MISSING",
+        "run_2": "Consultant Certifications, Representations and Acknowledgements",
+        "run_3": "Consultant Certifications, Representations and Acknowledgements",
+        "unanimous": false
+      },
+      "risk_level": {
+        "run_1": "None",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_preview": null,
+        "run_2_preview": "The clause establishes the Consultant's fiduciary status but omits any express standard of skill, care, or diligence by ...",
+        "run_3_preview": "The clause declares a fiduciary status but fails to articulate any objective performance standard \u2014 such as the skill an..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_len": 0,
+        "run_2_len": 219,
+        "run_3_len": 214
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "A09DE6DB",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Appointment of Consultant",
+        "run_2": "Appointment of Consultant",
+        "run_3": "Appointment of Consultant",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Low",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.073,
+        "run_1_preview": "The phrase \"all other provisions of law applicable to this undertaking\" is materially ambiguous because it fails to spec...",
+        "run_2_preview": "The compliance covenant in the final sentence is imposed exclusively on Consultant \u2014 requiring it to \"act in accordance ...",
+        "run_3_preview": "The compliance obligation in this clause runs solely against Consultant \u2014 requiring it to act in accordance with the Agr..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.938,
+        "run_1_len": 650,
+        "run_2_len": 606,
+        "run_3_len": 642
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "C9005322",
+      "present_in_runs": [
+        3
+      ],
+      "clause": {
+        "run_1": "MISSING",
+        "run_2": "MISSING",
+        "run_3": "Proxy Voting",
+        "unanimous": false
+      },
+      "risk_level": {
+        "run_1": "None",
+        "run_2": "None",
+        "run_3": "Medium",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_preview": null,
+        "run_2_preview": null,
+        "run_3_preview": "The phrase \"direct the Custodian in voting of all proxies\" is grammatically incomplete and ambiguous\u2014a court could reaso..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_len": 0,
+        "run_2_len": 0,
+        "run_3_len": 220
+      },
+      "fully_consistent": false
+    }
+  ],
+  "all_comparisons": [
+    {
+      "para_identifier": "121E2576",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Insurance",
+        "run_2": "Insurance",
+        "run_3": "Insurance",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.055,
+        "run_1_preview": "The clause restricts the Consultant's coverage obligation to \"throughout the duration of this Agreement\" without requiri...",
+        "run_2_preview": "The insurance maintenance obligation is currently limited to \"the duration of this Agreement,\" leaving a gap for latent ...",
+        "run_3_preview": "The insurance obligation is bounded only to \"the duration of this Agreement,\" leaving a gap for claims-made or late-disc..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.868,
+        "run_1_len": 1243,
+        "run_2_len": 1220,
+        "run_3_len": 1270
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "315DDB1C",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Directions to Consultant",
+        "run_2": "Directions to Consultant",
+        "run_3": "Directions to Consultant",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.062,
+        "run_1_preview": "This clause contains three commercially significant deficiencies that affect both parties. The reference to \"Schedule X\"...",
+        "run_2_preview": "This clause contains four compounding deficiencies that create material enforceability risk for both parties. The refere...",
+        "run_3_preview": "The City's unilateral right to amend Schedule X \"at any time\" with only unspecified \"notice\" to Consultant creates a mat..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.818,
+        "run_1_len": 583,
+        "run_2_len": 674,
+        "run_3_len": 543
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "33F0E92C",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Custodian",
+        "run_2": "Custodian",
+        "run_3": "Custodian",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Low",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.031,
+        "run_1_preview": "As currently drafted, the clause imposes a clear affirmative obligation on the City to instruct the Custodian to act, bu...",
+        "run_2_preview": "This clause places a binding custodial instruction obligation on the City that is entirely contingent on confirmations p...",
+        "run_3_preview": "This clause places the entire operational and financial burden of Custodian instruction squarely on the City \u2014 including..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.58,
+        "run_1_len": 401,
+        "run_2_len": 467,
+        "run_3_len": 590
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "3E202905",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Compliance with Kansas Cash Basis Law",
+        "run_2": "Compliance with Kansas Cash Basis Law",
+        "run_3": "Compliance with Kansas Cash Basis Law",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.047,
+        "run_1_preview": "The clause addresses only the Kansas Cash-Basis Law budget-appropriation mechanism, leaving the compliance framework mat...",
+        "run_2_preview": "This section addresses only the Kansas Cash-Basis Law budgetary appropriation framework, leaving the Agreement silent on...",
+        "run_3_preview": "Although this section addresses the City's statutory appropriations constraint under Kansas law, it is silent on three m..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.409,
+        "run_1_len": 1304,
+        "run_2_len": 1364,
+        "run_3_len": 1223
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "45D00E57",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Governing Law",
+        "run_2": "Governing Law",
+        "run_3": "Governing Law",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.068,
+        "run_1_preview": "The current provision does nothing more than identify Kansas as the governing law, leaving the parties entirely without ...",
+        "run_2_preview": "The current clause identifies governing law but is structurally incomplete as a dispute resolution provision: it names n...",
+        "run_3_preview": "The current governing law provision does no more than designate Kansas law, leaving the parties with no agreed forum, no..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.483,
+        "run_1_len": 845,
+        "run_2_len": 820,
+        "run_3_len": 849
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "4680E535",
+      "present_in_runs": [
+        1,
+        2
+      ],
+      "clause": {
+        "run_1": "Duties of the City",
+        "run_2": "Duties of the City",
+        "run_3": "MISSING",
+        "unanimous": false
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "None",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_preview": "As currently drafted, this provision imposes an obligation solely on the City to provide financial data \"upon request\" w...",
+        "run_2_preview": "The phrase \"properly determine required liquidity\" is commercially ambiguous because neither \"required liquidity\" nor th...",
+        "run_3_preview": null
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_len": 277,
+        "run_2_len": 212,
+        "run_3_len": 0
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "4ED984C1",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Consultant Certifications, Representations and Acknowledgements",
+        "run_2": "Consultant Certifications, Representations and Acknowledgements",
+        "run_3": "Consultant Certifications, Representations and Acknowledgements",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.049,
+        "run_1_preview": "The clause addresses Consultant's investment adviser registration status but omits three market-standard warranty elemen...",
+        "run_2_preview": "As currently drafted, this clause addresses only Consultant's regulatory registration status and leaves three material g...",
+        "run_3_preview": "The clause addresses only Consultant's registration under the Investment Consultants Act of 1940 and omits three commerc..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.598,
+        "run_1_len": 764,
+        "run_2_len": 661,
+        "run_3_len": 822
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "51BE7809",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Disputes",
+        "run_2": "Disputes",
+        "run_3": "Disputes",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.084,
+        "run_1_preview": "This clause contains multiple material deficiencies that expose both parties to significant legal and commercial risk. T...",
+        "run_2_preview": "This disputes clause contains several material deficiencies that expose both the City and the Consultant to significant ...",
+        "run_3_preview": "This clause contains five material deficiencies that create legal uncertainty for both parties. First, it names no gover..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.399,
+        "run_1_len": 857,
+        "run_2_len": 830,
+        "run_3_len": 843
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "592189B2",
+      "present_in_runs": [
+        1,
+        3
+      ],
+      "clause": {
+        "run_1": "Duties of the City",
+        "run_2": "MISSING",
+        "run_3": "Duties of the City",
+        "unanimous": false
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "None",
+        "run_3": "Medium",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_preview": "The phrase \"investment plan\" is used as an operative trigger for fund-movement instructions yet is not defined anywhere ...",
+        "run_2_preview": null,
+        "run_3_preview": "The phrase \"respond to Consultant's requests\" is operationally ambiguous \u2014 a court could reasonably read it as requiring..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_len": 365,
+        "run_2_len": 0,
+        "run_3_len": 276
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "5A975C63",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Invalidity",
+        "run_2": "Invalidity",
+        "run_3": "Invalidity",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Low",
+        "run_2": "Low",
+        "run_3": "Low",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.102,
+        "run_1_preview": "The clause provides that an invalid provision \"shall automatically be considered reformed and amended so as to conform t...",
+        "run_2_preview": "The phrase \"automatically be considered reformed and amended so as to conform to all applicable legal requirements\" is a...",
+        "run_3_preview": "The phrase \"automatically be considered reformed and amended so as to conform to all applicable legal requirements\" intr..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.526,
+        "run_1_len": 591,
+        "run_2_len": 483,
+        "run_3_len": 503
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "5DA83437",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Assignment",
+        "run_2": "Assignment",
+        "run_3": "Assignment",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.023,
+        "run_1_preview": "The current clause restricts only Consultant's ability to assign this Agreement, leaving the City entirely free to assig...",
+        "run_2_preview": "As currently drafted, the assignment restriction binds only the Consultant while imposing no equivalent limitation on th...",
+        "run_3_preview": "The current clause imposes an assignment restriction solely on Consultant while leaving the City entirely free to assign..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.414,
+        "run_1_len": 960,
+        "run_2_len": 924,
+        "run_3_len": 746
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "613890C8",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Consultant Certifications, Representations and Acknowledgements",
+        "run_2": "Consultant Certifications, Representations and Acknowledgements",
+        "run_3": "Consultant Certifications, Representations and Acknowledgements",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.06,
+        "run_1_preview": "The authority representation is currently unilateral, binding only the Consultant while imposing no equivalent represent...",
+        "run_2_preview": "The authority-to-contract representation is stated solely for the Consultant, leaving the other party's capacity entirel...",
+        "run_3_preview": "The authority representation runs only one way: the Consultant warrants its capacity to enter and perform this Agreement..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.684,
+        "run_1_len": 97,
+        "run_2_len": 116,
+        "run_3_len": 266
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "64EAE892",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Survivorship",
+        "run_2": "Survivorship",
+        "run_3": "Survivorship",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.116,
+        "run_1_preview": "The survivorship clause expressly names only the Consultant's post-termination obligations\u2014Insurance and Indemnification...",
+        "run_2_preview": "The survivorship clause names only Consultant's post-termination obligations\u2014Insurance and Indemnification\u2014while imposin...",
+        "run_3_preview": "The survivorship clause expressly names only Consultant's post-termination obligations \u2014 Insurance and Indemnification \u2014..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.476,
+        "run_1_len": 468,
+        "run_2_len": 419,
+        "run_3_len": 427
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "68F524D9",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Duties of the City",
+        "run_2": "Duties of the City",
+        "run_3": "Duties of the City",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.043,
+        "run_1_preview": "The word \"Timely\" sets no objective or enforceable standard for when the City must deliver balances, account statements,...",
+        "run_2_preview": "The word \"Timely\" imposes a delivery obligation on the City without anchoring it to any objective timeframe, meaning bot...",
+        "run_3_preview": "The obligation to \"timely\" provide balances, account statements, and interest earned is unenforceable in practice becaus..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.878,
+        "run_1_len": 177,
+        "run_2_len": 184,
+        "run_3_len": 179
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "7C717BFE",
+      "present_in_runs": [
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "MISSING",
+        "run_2": "Consultant Certifications, Representations and Acknowledgements",
+        "run_3": "Consultant Certifications, Representations and Acknowledgements",
+        "unanimous": false
+      },
+      "risk_level": {
+        "run_1": "None",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_preview": null,
+        "run_2_preview": "The clause establishes the Consultant's fiduciary status but omits any express standard of skill, care, or diligence by ...",
+        "run_3_preview": "The clause declares a fiduciary status but fails to articulate any objective performance standard \u2014 such as the skill an..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_len": 0,
+        "run_2_len": 219,
+        "run_3_len": 214
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "8651AAA9",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Waiver",
+        "run_2": "Waiver",
+        "run_3": "Waiver",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.044,
+        "run_1_preview": "The clause correctly addresses non-waiver of future rights arising from failure to enforce and requires waivers to be in...",
+        "run_2_preview": "As currently drafted, the waiver clause does not expressly state that a party's waiver of one specific breach or right i...",
+        "run_3_preview": "The clause addresses the effect of a party's failure to enforce a right (passive non-enforcement), but omits the equally..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.751,
+        "run_1_len": 710,
+        "run_2_len": 752,
+        "run_3_len": 707
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "8E179149",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Amendments",
+        "run_2": "Amendments",
+        "run_3": "Amendments",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.151,
+        "run_1_preview": "The current clause omits three market-standard safeguards: it does not require signatures by an authorized representativ...",
+        "run_2_preview": "The current clause omits three market-standard elements: it does not require signatures by an authorized representative ...",
+        "run_3_preview": "The current Amendments clause, while requiring a written and signed instrument, leaves three material gaps that create e..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.896,
+        "run_1_len": 283,
+        "run_2_len": 287,
+        "run_3_len": 286
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "A09DE6DB",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Appointment of Consultant",
+        "run_2": "Appointment of Consultant",
+        "run_3": "Appointment of Consultant",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Low",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.073,
+        "run_1_preview": "The phrase \"all other provisions of law applicable to this undertaking\" is materially ambiguous because it fails to spec...",
+        "run_2_preview": "The compliance covenant in the final sentence is imposed exclusively on Consultant \u2014 requiring it to \"act in accordance ...",
+        "run_3_preview": "The compliance obligation in this clause runs solely against Consultant \u2014 requiring it to act in accordance with the Agr..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.938,
+        "run_1_len": 650,
+        "run_2_len": 606,
+        "run_3_len": 642
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "A6D7967B",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Termination of Agreement",
+        "run_2": "Termination of Agreement",
+        "run_3": "Termination of Agreement",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.043,
+        "run_1_preview": "The clause permits termination \"for cause\" without defining cause or affording either party a cure period before termina...",
+        "run_2_preview": "The termination clause omits a cure period for cause-based termination, meaning either party may terminate immediately u...",
+        "run_3_preview": "The termination clause presents three bilateral fairness deficiencies. First, \"cause\" is used without definition, leavin..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.262,
+        "run_1_len": 1061,
+        "run_2_len": 1054,
+        "run_3_len": 1208
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "A74C860B",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Notices",
+        "run_2": "Notices",
+        "run_3": "Notices",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Low",
+        "run_2": "Low",
+        "run_3": "Low",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.147,
+        "run_1_preview": "The notice block sets out Columbia Capital Management, LLC's address but contains no mechanism by which either party may...",
+        "run_2_preview": "The notice block identifies Columbia Capital Management, LLC's current address and designated recipient but contains no ...",
+        "run_3_preview": "The notice block sets out a fixed address for Columbia Capital Management, LLC but contains no mechanism permitting eith..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.664,
+        "run_1_len": 327,
+        "run_2_len": 257,
+        "run_3_len": 304
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "AD41E3DC",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Management Fees",
+        "run_2": "Management Fees",
+        "run_3": "Management Fees",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.079,
+        "run_1_preview": "The clause establishes the fee rate and billing cadence but omits four commercially material elements that create signif...",
+        "run_2_preview": "The clause establishes the fee rate and billing frequency but omits several commercially essential payment mechanics tha...",
+        "run_3_preview": "The clause establishes the fee calculation methodology and billing frequency but omits several market-standard commercia..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.467,
+        "run_1_len": 1211,
+        "run_2_len": 1277,
+        "run_3_len": 1259
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "BF539E01",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Fiduciary",
+        "run_2": "Fiduciary",
+        "run_3": "Fiduciary",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.064,
+        "run_1_preview": "The phrase \"an enterprise of like character and with like aims\" is undefined within this Agreement and in general commer...",
+        "run_2_preview": "The clause imposes an unlimited, open-ended fiduciary standard on the Consultant \u2014 including the full prudent-person dut...",
+        "run_3_preview": "The clause imposes a full fiduciary standard on Consultant without cross-referencing any limitation of liability provisi..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.555,
+        "run_1_len": 700,
+        "run_2_len": 825,
+        "run_3_len": 718
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "BFF425B1",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Quality Assurance",
+        "run_2": "Quality Assurance",
+        "run_3": "Quality Assurance",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.047,
+        "run_1_preview": "The warranty language in this clause creates several commercially significant problems. First, the phrases \"state of the...",
+        "run_2_preview": "The phrase \"state of the art procedures and techniques in all relevant subject matters\" is undefined, subjective, and wo...",
+        "run_3_preview": "This clause imposes broad, open-ended warranties solely on the Consultant using undefined and inherently subjective benc..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.385,
+        "run_1_len": 849,
+        "run_2_len": 833,
+        "run_3_len": 799
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "C50263CE",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Independent Contractor",
+        "run_2": "Independent Contractor",
+        "run_3": "Independent Contractor",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.032,
+        "run_1_preview": "As currently drafted, the Independent Contractor clause omits three market-standard elements that are essential to enfor...",
+        "run_2_preview": "As drafted, this clause omits three market-standard elements that together create meaningful legal and commercial exposu...",
+        "run_3_preview": "The clause omits three market-standard elements that are essential to a legally defensible independent contractor provis..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.335,
+        "run_1_len": 900,
+        "run_2_len": 885,
+        "run_3_len": 873
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "C9005322",
+      "present_in_runs": [
+        3
+      ],
+      "clause": {
+        "run_1": "MISSING",
+        "run_2": "MISSING",
+        "run_3": "Proxy Voting",
+        "unanimous": false
+      },
+      "risk_level": {
+        "run_1": "None",
+        "run_2": "None",
+        "run_3": "Medium",
+        "unanimous": false
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_preview": null,
+        "run_2_preview": null,
+        "run_3_preview": "The phrase \"direct the Custodian in voting of all proxies\" is grammatically incomplete and ambiguous\u2014a court could reaso..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.0,
+        "run_1_len": 0,
+        "run_2_len": 0,
+        "run_3_len": 220
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "DD546C92",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Indemnification",
+        "run_2": "Indemnification",
+        "run_3": "Indemnification",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.043,
+        "run_1_preview": "The clause has three procedural gaps that create commercial risk for both parties. First, the opening phrase \"Without in...",
+        "run_2_preview": "The indemnification clause contains three gaps that expose both parties to commercial and enforceability risk. First, th...",
+        "run_3_preview": "The opening phrase \"Without in any way limiting\" creates material uncertainty by implying this indemnity sits entirely o..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.088,
+        "run_1_len": 1402,
+        "run_2_len": 1336,
+        "run_3_len": 1145
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "DDF8F810",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Potential Conflicts of Consultant",
+        "run_2": "Potential Conflicts of Consultant",
+        "run_3": "Potential Conflicts of Consultant",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.039,
+        "run_1_preview": "Although the clause describes Consultant's dual role as both financial advisor to Issuer Clients and investment advisor ...",
+        "run_2_preview": "Although the clause identifies certain conflict scenarios and establishes a limited investment policy to manage them, it...",
+        "run_3_preview": "The clause addresses Consultant's conflict-avoidance policy in some detail but contains a material gap: neither party is..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.869,
+        "run_1_len": 1470,
+        "run_2_len": 1552,
+        "run_3_len": 1436
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "E158FB57",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Services",
+        "run_2": "Services",
+        "run_3": "Services",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "Medium",
+        "run_2": "Medium",
+        "run_3": "Medium",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.115,
+        "run_1_preview": "The clause describes what Consultant shall perform and how additional services may be authorized, but it does not define...",
+        "run_2_preview": "The clause clearly defines what the Consultant is engaged to perform and establishes a process for adding work, but it n...",
+        "run_3_preview": "The clause clearly defines what the Consultant is engaged to perform and establishes a process for additional services, ..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.904,
+        "run_1_len": 941,
+        "run_2_len": 846,
+        "run_3_len": 874
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "E33D4470",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Representations",
+        "run_2": "Representations",
+        "run_3": "Representations",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.078,
+        "run_1_preview": "The representations clause, as drafted, contains only an anti-collusion warranty and omits four market-standard warranty...",
+        "run_2_preview": "The existing representations clause is limited solely to an anti-collusion statement, leaving the agreement without any ...",
+        "run_3_preview": "The existing Representations clause is limited to a single anti-collusion statement, leaving the Agreement entirely with..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.427,
+        "run_1_len": 546,
+        "run_2_len": 562,
+        "run_3_len": 824
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "E58B98E9",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Representations",
+        "run_2": "Representations",
+        "run_3": "Representations",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.085,
+        "run_1_preview": "The authority representation runs exclusively in one direction: only the Consultant makes a binding warranty of organiza...",
+        "run_2_preview": "The authority representation is unilateral, requiring only the Consultant to warrant that it has the requisite power and...",
+        "run_3_preview": "The authority representation is made exclusively by the Consultant, leaving no equivalent warranty from the Client that ..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.546,
+        "run_1_len": 252,
+        "run_2_len": 275,
+        "run_3_len": 317
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "E7BB3348",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Compliance with Laws",
+        "run_2": "Compliance with Laws",
+        "run_3": "Compliance with Laws",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.08,
+        "run_1_preview": "As drafted, this clause imposes compliance obligations exclusively on the Consultant while imposing no equivalent obliga...",
+        "run_2_preview": "The clause as drafted imposes compliance obligations solely on the Consultant and omits several market-standard elements...",
+        "run_3_preview": "The clause imposes compliance obligations solely on the Consultant and omits several market-standard elements that expos..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.438,
+        "run_1_len": 828,
+        "run_2_len": 797,
+        "run_3_len": 966
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "F189AA6F",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Compliance with Equal Opportunity Laws, Regulations, and Rules",
+        "run_2": "Compliance with Equal Opportunity Laws, Regulations, and Rules",
+        "run_3": "Compliance with Equal Opportunity Laws, Regulations, and Rules",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.136,
+        "run_1_preview": "The clause addresses anti-discrimination obligations but leaves three material compliance gaps: it contains no anti-brib...",
+        "run_2_preview": "The clause addresses anti-discrimination obligations in isolation but omits several market-standard compliance elements,...",
+        "run_3_preview": "The clause addresses anti-discrimination obligations but leaves three material compliance gaps that expose both parties:..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.412,
+        "run_1_len": 733,
+        "run_2_len": 687,
+        "run_3_len": 773
+      },
+      "fully_consistent": false
+    },
+    {
+      "para_identifier": "FAAEDB9E",
+      "present_in_runs": [
+        1,
+        2,
+        3
+      ],
+      "clause": {
+        "run_1": "Compensation and Expenses",
+        "run_2": "Compensation and Expenses",
+        "run_3": "Compensation and Expenses",
+        "unanimous": true
+      },
+      "risk_level": {
+        "run_1": "High",
+        "run_2": "High",
+        "run_3": "High",
+        "unanimous": true
+      },
+      "reason_similarity": {
+        "avg_pairwise_ratio": 0.077,
+        "run_1_preview": "Section 3 as drafted is a bare payment shell that defers entirely to Exhibit A without specifying the fee basis, invoici...",
+        "run_2_preview": "The compensation clause defers almost entirely to Exhibit A without establishing any of the core commercial mechanics\u2014fe...",
+        "run_3_preview": "This provision is a bare referential clause that delegates all material commercial terms \u2014 fee basis, invoicing, payment..."
+      },
+      "suggested_fix_similarity": {
+        "avg_pairwise_ratio": 0.41,
+        "run_1_len": 702,
+        "run_2_len": 646,
+        "run_3_len": 671
+      },
+      "fully_consistent": false
+    }
+  ]
+}

@@ -1,0 +1,840 @@
+{
+  "clauses": [
+    {
+      "clause_id": "clause_1",
+      "clause_number": null,
+      "clause_title": "Preamble and Recitals",
+      "text": "[92010B38] PROFESSIONAL SERVICES AGREEMENT\n[2AD1245C] THIS PROFESSIONAL SERVICES AGREEMENT (“Agreement”) is entered into this    day of May, 2024, by and between the City of Westwood, Kansas, a municipal corporation (“City,”) and Columbia Capital Management, LLC, a Missouri limited liability company having its principle place of business in Merriam, Kansas (“Consultant”).\n[A1DA059D] WHEREAS, the City needs professional assistance to perform the services outlined in the Scope of Services described in Exhibit A; and\n[3BB427C1] WHEREAS, the Consultant represents that it has sufficient experience and qualified personnel to perform the professional services herein described on behalf of the City; and\n[D1272A25] WHEREAS, The City has determined, based upon information provided by the Consultant, that Consultant is qualified to provide the professional services described herein.\n[D73C43FA] WHEREAS, the City and Consultant desire to enter into this Agreement to set forth the specific terms and conditions of their relationship.\n[46FC8893] NOW, THEREFORE, in consideration of the mutual covenants, promises, and agreements set forth herein, the parties agree as follows:",
+      "paragraphs": [
+        {
+          "paraindetifier": "92010B38",
+          "text": "PROFESSIONAL SERVICES AGREEMENT"
+        },
+        {
+          "paraindetifier": "2AD1245C",
+          "text": "THIS PROFESSIONAL SERVICES AGREEMENT (“Agreement”) is entered into this    day of May, 2024, by and between the City of Westwood, Kansas, a municipal corporation (“City,”) and Columbia Capital Management, LLC, a Missouri limited liability company having its principle place of business in Merriam, Kansas (“Consultant”)."
+        },
+        {
+          "paraindetifier": "A1DA059D",
+          "text": "WHEREAS, the City needs professional assistance to perform the services outlined in the Scope of Services described in Exhibit A; and"
+        },
+        {
+          "paraindetifier": "3BB427C1",
+          "text": "WHEREAS, the Consultant represents that it has sufficient experience and qualified personnel to perform the professional services herein described on behalf of the City; and"
+        },
+        {
+          "paraindetifier": "D1272A25",
+          "text": "WHEREAS, The City has determined, based upon information provided by the Consultant, that Consultant is qualified to provide the professional services described herein."
+        },
+        {
+          "paraindetifier": "D73C43FA",
+          "text": "WHEREAS, the City and Consultant desire to enter into this Agreement to set forth the specific terms and conditions of their relationship."
+        },
+        {
+          "paraindetifier": "46FC8893",
+          "text": "NOW, THEREFORE, in consideration of the mutual covenants, promises, and agreements set forth herein, the parties agree as follows:"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_2",
+      "clause_number": "Section 1",
+      "clause_title": "Engagement",
+      "text": "[7A9D9691] SECTION 1. Engagement. The City hereby engages Consultant as an independent contractor to perform the services described in this Agreement and Consultant accepts that engagement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "7A9D9691",
+          "text": "SECTION 1. Engagement. The City hereby engages Consultant as an independent contractor to perform the services described in this Agreement and Consultant accepts that engagement."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_3",
+      "clause_number": "Section 2",
+      "clause_title": "Services",
+      "text": "[A6E04B64] SECTION 2. Services.\n[E158FB57] Scope of Services. Consultant shall perform those services (“Contract Services”) described under Scope of Services in Exhibit A, which is attached to this Agreement and incorporated herein by reference. The City may also request additional services not anticipated at the time of this Agreement. At the City’s request, the Consultant shall submit a written scope of the additional work including an estimate of additional costs for the performance of the additional work. No change in scope shall be effective nor additional compensation be paid, except on the basis of the provisions of a written supplemental agreement or an amendment signed by the Parties.\n[E40C2FC4] Subcontracting Services. Consultant may not, without first obtaining the City’s written consent, subcontract any of the Contract Services. Notwithstanding the City’s consent to any subcontracting, Consultant shall remain fully responsible for all obligations under this Agreement.\n[885D6F33] Time of Performance. The Consultant agrees to complete the Contract Services within the times listed in Exhibit A, Scope of Service. In absence of written directions to the contrary, receipt of the executed Agreement shall be the Consultant’s Notice to Proceed. At the City’s discretion, an extension of time may be granted to the  Consultant for delays determined by the City as unavoidable. Consultant may request an extension of time stating the reasons for such a request. The term of this Agreement may be extended by mutual agreement of the parties beyond the time periods outlined in Exhibit A for the purpose of the Consultant providing any additional services, as outlined in Exhibit A, as may be requested by City and agreed to by Consultant. The Parties agree that time for performance of the Contract Services is of the essence and that the Consultant’s failure to meet the contractual times for performance shall constitute a material breach of this Agreement.\n[E8A8FC75] Qualified Personnel. Consultant shall provide sufficient qualified personnel to perform the Contract Services. If directed by the City, the Consultant shall remove any person the Consultant employs in connection with the work.\n[87011B4E] Performance. In performing the Contract Services, Consultant agrees to take all steps necessary for the full and effective performance of those tasks.\n[2FBF4968] Assistance from City. To assist Consultant in performing the Contract Services, the City will perform the duties outlined in Exhibit A, if any, in a timely manner so as not to unreasonably delay the Consultant’s services.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A6E04B64",
+          "text": "SECTION 2. Services."
+        },
+        {
+          "paraindetifier": "E158FB57",
+          "text": "Scope of Services. Consultant shall perform those services (“Contract Services”) described under Scope of Services in Exhibit A, which is attached to this Agreement and incorporated herein by reference. The City may also request additional services not anticipated at the time of this Agreement. At the City’s request, the Consultant shall submit a written scope of the additional work including an estimate of additional costs for the performance of the additional work. No change in scope shall be effective nor additional compensation be paid, except on the basis of the provisions of a written supplemental agreement or an amendment signed by the Parties."
+        },
+        {
+          "paraindetifier": "E40C2FC4",
+          "text": "Subcontracting Services. Consultant may not, without first obtaining the City’s written consent, subcontract any of the Contract Services. Notwithstanding the City’s consent to any subcontracting, Consultant shall remain fully responsible for all obligations under this Agreement."
+        },
+        {
+          "paraindetifier": "885D6F33",
+          "text": "Time of Performance. The Consultant agrees to complete the Contract Services within the times listed in Exhibit A, Scope of Service. In absence of written directions to the contrary, receipt of the executed Agreement shall be the Consultant’s Notice to Proceed. At the City’s discretion, an extension of time may be granted to the  Consultant for delays determined by the City as unavoidable. Consultant may request an extension of time stating the reasons for such a request. The term of this Agreement may be extended by mutual agreement of the parties beyond the time periods outlined in Exhibit A for the purpose of the Consultant providing any additional services, as outlined in Exhibit A, as may be requested by City and agreed to by Consultant. The Parties agree that time for performance of the Contract Services is of the essence and that the Consultant’s failure to meet the contractual times for performance shall constitute a material breach of this Agreement."
+        },
+        {
+          "paraindetifier": "E8A8FC75",
+          "text": "Qualified Personnel. Consultant shall provide sufficient qualified personnel to perform the Contract Services. If directed by the City, the Consultant shall remove any person the Consultant employs in connection with the work."
+        },
+        {
+          "paraindetifier": "87011B4E",
+          "text": "Performance. In performing the Contract Services, Consultant agrees to take all steps necessary for the full and effective performance of those tasks."
+        },
+        {
+          "paraindetifier": "2FBF4968",
+          "text": "Assistance from City. To assist Consultant in performing the Contract Services, the City will perform the duties outlined in Exhibit A, if any, in a timely manner so as not to unreasonably delay the Consultant’s services."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_4",
+      "clause_number": "Section 3",
+      "clause_title": "Compensation and Expenses",
+      "text": "[FAAEDB9E] SECTION 3. Compensation and Expenses. As set forth in Exhibit A, the City shall pay the Consultant for the Contract Services it performs as outlined in Section 2 of this Agreement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "FAAEDB9E",
+          "text": "SECTION 3. Compensation and Expenses. As set forth in Exhibit A, the City shall pay the Consultant for the Contract Services it performs as outlined in Section 2 of this Agreement."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_5",
+      "clause_number": "Section 4",
+      "clause_title": "Termination of Agreement",
+      "text": "[A6D7967B] SECTION 4. Termination of Agreement. The City may terminate this Agreement at any time on and after November 30, 2024, with sixty (60) days’ written notice for convenience or cause upon written notice to Consultant. If the City terminates the Agreement under this Section, the City shall pay the Consultant for Contract Services satisfactorily performed by Consultant before the termination, and for all associated expenses incurred by the Consultant before the termination. Under no circumstances will the Consultant be entitled to anticipatory profits or consequential damages. Consultant may terminate the agreement at any time upon sixty (60) days’ written notice. The provisions regarding indemnity and insurance shall survive the termination of this Agreement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A6D7967B",
+          "text": "SECTION 4. Termination of Agreement. The City may terminate this Agreement at any time on and after November 30, 2024, with sixty (60) days’ written notice for convenience or cause upon written notice to Consultant. If the City terminates the Agreement under this Section, the City shall pay the Consultant for Contract Services satisfactorily performed by Consultant before the termination, and for all associated expenses incurred by the Consultant before the termination. Under no circumstances will the Consultant be entitled to anticipatory profits or consequential damages. Consultant may terminate the agreement at any time upon sixty (60) days’ written notice. The provisions regarding indemnity and insurance shall survive the termination of this Agreement."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_6",
+      "clause_number": "Section 6",
+      "clause_title": "Compliance with Laws",
+      "text": "[E7BB3348] SECTION 6. Compliance with Laws. Consultant shall comply with local, state, and federal rules, regulations, and laws pertaining to this Agreement that are applicable at the time the Consultant conducts the Contract Services, regardless of whether such requirements are specifically referred to in this Agreement. Consultant shall defend, indemnify, and hold harmless the City, its elected officials, officers, employees, and agents against any claim or liability arising from or based on any violation of the same.",
+      "paragraphs": [
+        {
+          "paraindetifier": "E7BB3348",
+          "text": "SECTION 6. Compliance with Laws. Consultant shall comply with local, state, and federal rules, regulations, and laws pertaining to this Agreement that are applicable at the time the Consultant conducts the Contract Services, regardless of whether such requirements are specifically referred to in this Agreement. Consultant shall defend, indemnify, and hold harmless the City, its elected officials, officers, employees, and agents against any claim or liability arising from or based on any violation of the same."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_7",
+      "clause_number": "Section 7",
+      "clause_title": "Compliance with Equal Opportunity Laws, Regulations, and Rules",
+      "text": "[9DFB65DC] SECTION 7. Compliance with Equal Opportunity Laws, Regulations, and Rules.\n[F189AA6F] Discrimination Prohibited. Consultant agrees to comply with the Kansas Act Against Discrimination (K.S.A. 44-1001 et seq.) and the Kansas Age Discrimination in Employment Act (K.S.A. 44-1111 et seq.) and shall not discriminate against any person in the performance of work under this Agreement because of race, religion, color, sex, disability, national origin or ancestry, or age.\n[80DE6B34] Solicitations. In all solicitations or advertisements for employees, Consultant shall include the phrase “equal opportunity employer” or a similar phrase approved by the Kansas Human Rights Commission (Commission).\n[522CBE7B] Non-Compliance. Consultant shall be deemed to have breached this Agreement and it may be cancelled, terminated, or suspended in whole or in part by the City, if the Consultant:\n[F758BFE8] fails to comply with the reporting requirements of K.S.A. 44-1031 or K.S.A. 44-1116, and amendments thereto; or\n[AFE0F19A] is found guilty of the Kansas Act Against Discrimination or the Kansas Age Discrimination in Employment Act under a decision or order of the Commission that has become final.\n[873C7488] Flow Through Requirements. Consultant shall include the provisions of Section 7(a)-(c) in every subcontract so that such provisions will be binding upon such subcontractor for work related to the City.\n[7B20872A] Exempt Contractors. The provisions of this Section 7(a)-(d) are recommended but not enforceable against Consultant if:\n[71FC2C39] Consultant employs fewer than four employees at all times during the term of this Agreement; or\n[483E8EF5] All of Consultant’s contracts with the City cumulatively total $5,000 or less during the fiscal year of the City pursuant to K.S.A. 44-1030(c).\n[F18D394C] ADA Compliance. Consultant agrees to comply with the American with Disabilities Act of 1990 (“ADA”), codified as amended at 42 U.S.C. § 12101 et seq., as well as all other federal, state, and local laws, ordinances, rules, and regulations applicable to this project and to furnish any and all certification that may be required by federal, state, or local governmental agencies in connection therewith.\n[AC445DA3] Code Compliance. Consultant agrees to comply with Chapter 35, Article III of the Westwood Code, which prohibits discrimination in employment, housing, and public accommodations on the basis of an individual’s sexual orientation or gender identity.",
+      "paragraphs": [
+        {
+          "paraindetifier": "9DFB65DC",
+          "text": "SECTION 7. Compliance with Equal Opportunity Laws, Regulations, and Rules."
+        },
+        {
+          "paraindetifier": "F189AA6F",
+          "text": "Discrimination Prohibited. Consultant agrees to comply with the Kansas Act Against Discrimination (K.S.A. 44-1001 et seq.) and the Kansas Age Discrimination in Employment Act (K.S.A. 44-1111 et seq.) and shall not discriminate against any person in the performance of work under this Agreement because of race, religion, color, sex, disability, national origin or ancestry, or age."
+        },
+        {
+          "paraindetifier": "80DE6B34",
+          "text": "Solicitations. In all solicitations or advertisements for employees, Consultant shall include the phrase “equal opportunity employer” or a similar phrase approved by the Kansas Human Rights Commission (Commission)."
+        },
+        {
+          "paraindetifier": "522CBE7B",
+          "text": "Non-Compliance. Consultant shall be deemed to have breached this Agreement and it may be cancelled, terminated, or suspended in whole or in part by the City, if the Consultant:"
+        },
+        {
+          "paraindetifier": "F758BFE8",
+          "text": "fails to comply with the reporting requirements of K.S.A. 44-1031 or K.S.A. 44-1116, and amendments thereto; or"
+        },
+        {
+          "paraindetifier": "AFE0F19A",
+          "text": "is found guilty of the Kansas Act Against Discrimination or the Kansas Age Discrimination in Employment Act under a decision or order of the Commission that has become final."
+        },
+        {
+          "paraindetifier": "873C7488",
+          "text": "Flow Through Requirements. Consultant shall include the provisions of Section 7(a)-(c) in every subcontract so that such provisions will be binding upon such subcontractor for work related to the City."
+        },
+        {
+          "paraindetifier": "7B20872A",
+          "text": "Exempt Contractors. The provisions of this Section 7(a)-(d) are recommended but not enforceable against Consultant if:"
+        },
+        {
+          "paraindetifier": "71FC2C39",
+          "text": "Consultant employs fewer than four employees at all times during the term of this Agreement; or"
+        },
+        {
+          "paraindetifier": "483E8EF5",
+          "text": "All of Consultant’s contracts with the City cumulatively total $5,000 or less during the fiscal year of the City pursuant to K.S.A. 44-1030(c)."
+        },
+        {
+          "paraindetifier": "F18D394C",
+          "text": "ADA Compliance. Consultant agrees to comply with the American with Disabilities Act of 1990 (“ADA”), codified as amended at 42 U.S.C. § 12101 et seq., as well as all other federal, state, and local laws, ordinances, rules, and regulations applicable to this project and to furnish any and all certification that may be required by federal, state, or local governmental agencies in connection therewith."
+        },
+        {
+          "paraindetifier": "AC445DA3",
+          "text": "Code Compliance. Consultant agrees to comply with Chapter 35, Article III of the Westwood Code, which prohibits discrimination in employment, housing, and public accommodations on the basis of an individual’s sexual orientation or gender identity."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_8",
+      "clause_number": "Section 8",
+      "clause_title": "Insurance",
+      "text": "[A2B7FB29] SECTION 8. Insurance.\n[121E2576] General. Consultant shall secure and maintain, throughout the duration of this Agreement, insurance (on an occurrence basis unless otherwise agreed in writing) of such types and in at least such amounts as required herein. The City shall be named as  an additional insured for all coverages required herein except workers’ compensation coverage and professional liability coverage. All insurance procured for this Agreement by the Consultant, including additional insured designations, shall be primary and noncontributory. Consultant shall provide certificates of insurance on forms acceptable to the City at the time of this Agreement’s execution. The Certificate shall specify the date when such insurance expires. A renewal certificate shall be furnished to the City before the expiration date of any coverage. The City shall be notified by receipt of written notice from the insurer at least 30 days before material modification or cancellation of any policy listed on the Certificate.\n[4D21A23B] Notice of Claim. Consultant, upon receiving notice of any claim in connection with this Agreement, shall promptly notify the City, providing full details thereof, including an estimate of the amount of loss or liability.\n[69ECC762] Reduction of Policy Limits. Consultant shall monitor and promptly notify the City of any reduction in limits of protection afforded under any policy listed in the Certificate (or otherwise required by this Agreement) if the Consultant’s limits of protection have been impaired or reduced to such extent that the limits fall below the minimum amounts required hereunder. In that event, Consultant shall promptly reinstate the original limits of liability required hereunder and shall furnish evidence thereof to the City.\n[4F2BA00C] Industry Ratings. Consultant agrees that its insurance carrier must:\n[84AB7CCB] a. Be licensed to do business in the State of Kansas;\n[7F00725A] b. Carry a Best’s policyholder rating of “A-” or better and;\n[E61B6AA0] c. Carry at least a Class VIII financial rating; OR\n[0D7710A3] Be acceptable to the City.\n[BE3AC93D] Insurance Required. Consultant agrees to secure and maintain the following insurance:\n[9B8A7945] Commercial General Liability. Consultant shall maintain General Liability coverage including Premises-Operations Liability, Independent Contractors Liability, Products and Completed Operations, and Broad Form Property Damage within these minimum limits:\n[DC1E980D] Bodily Injury & Property Damage\t$1,000,000 combined single limit per occurrence: $2,000,000 annual aggregate\n[BC60F7BA] Fire Damage Liability\t$50,000\n[AD5EA460] Medical Payments\t$5,000\n[6D17A135] The property damage liability coverage shall contain no exclusion relative to blasting, explosion, collapse of buildings, or damages to underground property.\n[D0B384FE] Comprehensive Automobile Liability. Consultant shall maintain Automobile Liability coverage including coverage for Owned, Hired and Non-owned Auto Liability providing for all injuries to members of the public and damage to property of others arising from the use of motor vehicles on and off the Work site with these minimum limits:\n[D8B9FB81] Bodily Injury & Property Damage\t$1,000,000 combined single limit per occurrence\n[47CDAD4F] Workers’ Compensation and Employer’s Liability. Consultant shall maintain Workers’ Compensation coverage for all claims made under applicable state workers’ compensation laws. Consultant shall also maintain Employer’s Liability coverage for claims made for injury, disease, or death of an employee that, for any reason, may not fall within the provisions of a workers’ compensation law. The following minimum limits shall apply:\n[ED906531] Workers’ Compensation\tStatutory Limits\n[51C83CC9] Employers’ Liability\t$500,000 each accident; $500,000 disease – policy limit; $500,000 disease – each employee\n[8E3C52ED] Professional Liability Insurance. Consultant shall maintain Professional Liability Insurance in an amount of no less than $1,000,000.\n[C3C75DE0] Subcontractor’s Insurance. If a part of this Agreement is to be sublet, the Consultant shall either:\n[AE6D1FC1] Cover all subcontractors under its insurance policies; or\n[3EE0E132] Require each subcontractor not so covered to secure insurance that will protect subcontractor against all applicable hazards or risks of loss as and in the minimum amounts designated.\n[1E04932B] Whichever option is chosen, Consultant shall indemnify and hold harmless the City as to any and all damages, claims, or losses, including attorneys’ fees, arising out of or resulting from the acts or omissions of its subcontractors.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A2B7FB29",
+          "text": "SECTION 8. Insurance."
+        },
+        {
+          "paraindetifier": "121E2576",
+          "text": "General. Consultant shall secure and maintain, throughout the duration of this Agreement, insurance (on an occurrence basis unless otherwise agreed in writing) of such types and in at least such amounts as required herein. The City shall be named as  an additional insured for all coverages required herein except workers’ compensation coverage and professional liability coverage. All insurance procured for this Agreement by the Consultant, including additional insured designations, shall be primary and noncontributory. Consultant shall provide certificates of insurance on forms acceptable to the City at the time of this Agreement’s execution. The Certificate shall specify the date when such insurance expires. A renewal certificate shall be furnished to the City before the expiration date of any coverage. The City shall be notified by receipt of written notice from the insurer at least 30 days before material modification or cancellation of any policy listed on the Certificate."
+        },
+        {
+          "paraindetifier": "4D21A23B",
+          "text": "Notice of Claim. Consultant, upon receiving notice of any claim in connection with this Agreement, shall promptly notify the City, providing full details thereof, including an estimate of the amount of loss or liability."
+        },
+        {
+          "paraindetifier": "69ECC762",
+          "text": "Reduction of Policy Limits. Consultant shall monitor and promptly notify the City of any reduction in limits of protection afforded under any policy listed in the Certificate (or otherwise required by this Agreement) if the Consultant’s limits of protection have been impaired or reduced to such extent that the limits fall below the minimum amounts required hereunder. In that event, Consultant shall promptly reinstate the original limits of liability required hereunder and shall furnish evidence thereof to the City."
+        },
+        {
+          "paraindetifier": "4F2BA00C",
+          "text": "Industry Ratings. Consultant agrees that its insurance carrier must:"
+        },
+        {
+          "paraindetifier": "84AB7CCB",
+          "text": "a. Be licensed to do business in the State of Kansas;"
+        },
+        {
+          "paraindetifier": "7F00725A",
+          "text": "b. Carry a Best’s policyholder rating of “A-” or better and;"
+        },
+        {
+          "paraindetifier": "E61B6AA0",
+          "text": "c. Carry at least a Class VIII financial rating; OR"
+        },
+        {
+          "paraindetifier": "0D7710A3",
+          "text": "Be acceptable to the City."
+        },
+        {
+          "paraindetifier": "BE3AC93D",
+          "text": "Insurance Required. Consultant agrees to secure and maintain the following insurance:"
+        },
+        {
+          "paraindetifier": "9B8A7945",
+          "text": "Commercial General Liability. Consultant shall maintain General Liability coverage including Premises-Operations Liability, Independent Contractors Liability, Products and Completed Operations, and Broad Form Property Damage within these minimum limits:"
+        },
+        {
+          "paraindetifier": "DC1E980D",
+          "text": "Bodily Injury & Property Damage\t$1,000,000 combined single limit per occurrence: $2,000,000 annual aggregate"
+        },
+        {
+          "paraindetifier": "BC60F7BA",
+          "text": "Fire Damage Liability\t$50,000"
+        },
+        {
+          "paraindetifier": "AD5EA460",
+          "text": "Medical Payments\t$5,000"
+        },
+        {
+          "paraindetifier": "6D17A135",
+          "text": "The property damage liability coverage shall contain no exclusion relative to blasting, explosion, collapse of buildings, or damages to underground property."
+        },
+        {
+          "paraindetifier": "D0B384FE",
+          "text": "Comprehensive Automobile Liability. Consultant shall maintain Automobile Liability coverage including coverage for Owned, Hired and Non-owned Auto Liability providing for all injuries to members of the public and damage to property of others arising from the use of motor vehicles on and off the Work site with these minimum limits:"
+        },
+        {
+          "paraindetifier": "D8B9FB81",
+          "text": "Bodily Injury & Property Damage\t$1,000,000 combined single limit per occurrence"
+        },
+        {
+          "paraindetifier": "47CDAD4F",
+          "text": "Workers’ Compensation and Employer’s Liability. Consultant shall maintain Workers’ Compensation coverage for all claims made under applicable state workers’ compensation laws. Consultant shall also maintain Employer’s Liability coverage for claims made for injury, disease, or death of an employee that, for any reason, may not fall within the provisions of a workers’ compensation law. The following minimum limits shall apply:"
+        },
+        {
+          "paraindetifier": "ED906531",
+          "text": "Workers’ Compensation\tStatutory Limits"
+        },
+        {
+          "paraindetifier": "51C83CC9",
+          "text": "Employers’ Liability\t$500,000 each accident; $500,000 disease – policy limit; $500,000 disease – each employee"
+        },
+        {
+          "paraindetifier": "8E3C52ED",
+          "text": "Professional Liability Insurance. Consultant shall maintain Professional Liability Insurance in an amount of no less than $1,000,000."
+        },
+        {
+          "paraindetifier": "C3C75DE0",
+          "text": "Subcontractor’s Insurance. If a part of this Agreement is to be sublet, the Consultant shall either:"
+        },
+        {
+          "paraindetifier": "AE6D1FC1",
+          "text": "Cover all subcontractors under its insurance policies; or"
+        },
+        {
+          "paraindetifier": "3EE0E132",
+          "text": "Require each subcontractor not so covered to secure insurance that will protect subcontractor against all applicable hazards or risks of loss as and in the minimum amounts designated."
+        },
+        {
+          "paraindetifier": "1E04932B",
+          "text": "Whichever option is chosen, Consultant shall indemnify and hold harmless the City as to any and all damages, claims, or losses, including attorneys’ fees, arising out of or resulting from the acts or omissions of its subcontractors."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_9",
+      "clause_number": "Section 9",
+      "clause_title": "Indemnification",
+      "text": "[DD546C92] Section 9. Indemnification. Without in any way limiting indemnification obligations that may be set forth elsewhere in this Agreement, Consultant shall defend, indemnify, and hold harmless the  City, its elected officials, officers, employees, and agents, from all claims, damages, losses, liabilities, costs, and expenses, including attorneys’ fees, arising out of or resulting from the performance of Consultant’s services, provided that any such claim, damage, loss, liability, cost, or expense is caused in whole or in part by a negligent and/or intentional act, error, or omission of the Consultant, its subcontractors, anyone directly or indirectly employed or retained by any of them, or anyone for whose acts any of them may be liable, whether or not arising before or after completion of Consultant’s services. Consultant shall give the City immediate written notice of any claim, suit, or demand that may be subject to this provision.",
+      "paragraphs": [
+        {
+          "paraindetifier": "DD546C92",
+          "text": "Section 9. Indemnification. Without in any way limiting indemnification obligations that may be set forth elsewhere in this Agreement, Consultant shall defend, indemnify, and hold harmless the  City, its elected officials, officers, employees, and agents, from all claims, damages, losses, liabilities, costs, and expenses, including attorneys’ fees, arising out of or resulting from the performance of Consultant’s services, provided that any such claim, damage, loss, liability, cost, or expense is caused in whole or in part by a negligent and/or intentional act, error, or omission of the Consultant, its subcontractors, anyone directly or indirectly employed or retained by any of them, or anyone for whose acts any of them may be liable, whether or not arising before or after completion of Consultant’s services. Consultant shall give the City immediate written notice of any claim, suit, or demand that may be subject to this provision."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_10",
+      "clause_number": "Section 10",
+      "clause_title": "No Third Party Beneficiaries",
+      "text": "[0E574C27] Section 10. No Third Party Beneficiaries. City and Consultant specifically agree that this Agreement is not intended to create any third party beneficiary relationship nor to authorize anyone not a party to this Agreement to maintain a suit for personal injuries or property damage pursuant to the terms or provisions of this Agreement; the duties, obligations and responsibilities of the parties to this Agreement with respect to third parties shall remain as imposed by law.",
+      "paragraphs": [
+        {
+          "paraindetifier": "0E574C27",
+          "text": "Section 10. No Third Party Beneficiaries. City and Consultant specifically agree that this Agreement is not intended to create any third party beneficiary relationship nor to authorize anyone not a party to this Agreement to maintain a suit for personal injuries or property damage pursuant to the terms or provisions of this Agreement; the duties, obligations and responsibilities of the parties to this Agreement with respect to third parties shall remain as imposed by law."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_11",
+      "clause_number": "Section 11",
+      "clause_title": "Disputes",
+      "text": "[51BE7809] Section 11. Disputes. The City and Consultant agree that disputes relative to the Contract Services of this Agreement should first be addressed by negotiations between the parties. If direct negotiations fail to resolve the dispute, the party initiating the claim that is the basis of the dispute shall be free to take such steps as it deems necessary to protect its interest; provided, however, that notwithstanding any such dispute, the Consultant shall proceed with its services under this Agreement as though no dispute exists.",
+      "paragraphs": [
+        {
+          "paraindetifier": "51BE7809",
+          "text": "Section 11. Disputes. The City and Consultant agree that disputes relative to the Contract Services of this Agreement should first be addressed by negotiations between the parties. If direct negotiations fail to resolve the dispute, the party initiating the claim that is the basis of the dispute shall be free to take such steps as it deems necessary to protect its interest; provided, however, that notwithstanding any such dispute, the Consultant shall proceed with its services under this Agreement as though no dispute exists."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_12",
+      "clause_number": "Section 12",
+      "clause_title": "Representations",
+      "text": "[FAE2BFDD] Section 12. Representations. The Consultant certifies that:\n[E33D4470] The price submitted and the costs comprising same are independently arrived at without collusion.\n[48D11107] The Consultant has not knowingly influenced and promises that it will not knowingly influence a City employee or former City employee to breach any ethical standard.\n[FEC612F3] The Consultant has not violated, is not violating, and promises that it will not violate the City’s policy of prohibition against gratuities and kickbacks.\n[369EF033] The Consultant represents that it has not retained and will not retain a person to solicit or secure a City contract upon an agreement or understanding for a commission, percentage, brokerage, or contingent fee, except for retention of bona fide employees or bona fide established commercial selling agencies for the purpose of securing business.\n[FD921AFE] The Consultant is currently unaware of any conflict of interest with any party affected by this Agreement. Consultant agrees that if any conflict of interest should arise in the future, it will give notice to the City immediately.\n[E58B98E9] Consultant has all requisite power and authority to conduct its business and to execute, deliver, and perform the Agreement.\n[10F45208] Consultant warrants that the individuals who have signed this Agreement have the legal power, right, and authority to make this Agreement and to bind the Consultant.",
+      "paragraphs": [
+        {
+          "paraindetifier": "FAE2BFDD",
+          "text": "Section 12. Representations. The Consultant certifies that:"
+        },
+        {
+          "paraindetifier": "E33D4470",
+          "text": "The price submitted and the costs comprising same are independently arrived at without collusion."
+        },
+        {
+          "paraindetifier": "48D11107",
+          "text": "The Consultant has not knowingly influenced and promises that it will not knowingly influence a City employee or former City employee to breach any ethical standard."
+        },
+        {
+          "paraindetifier": "FEC612F3",
+          "text": "The Consultant has not violated, is not violating, and promises that it will not violate the City’s policy of prohibition against gratuities and kickbacks."
+        },
+        {
+          "paraindetifier": "369EF033",
+          "text": "The Consultant represents that it has not retained and will not retain a person to solicit or secure a City contract upon an agreement or understanding for a commission, percentage, brokerage, or contingent fee, except for retention of bona fide employees or bona fide established commercial selling agencies for the purpose of securing business."
+        },
+        {
+          "paraindetifier": "FD921AFE",
+          "text": "The Consultant is currently unaware of any conflict of interest with any party affected by this Agreement. Consultant agrees that if any conflict of interest should arise in the future, it will give notice to the City immediately."
+        },
+        {
+          "paraindetifier": "E58B98E9",
+          "text": "Consultant has all requisite power and authority to conduct its business and to execute, deliver, and perform the Agreement."
+        },
+        {
+          "paraindetifier": "10F45208",
+          "text": "Consultant warrants that the individuals who have signed this Agreement have the legal power, right, and authority to make this Agreement and to bind the Consultant."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_13",
+      "clause_number": "Section 13",
+      "clause_title": "Quality Assurance",
+      "text": "[BFF425B1] Section 13. Quality Assurance. Consultant warrants that all work and services performed under this Agreement, shall conform to or exceed the recognized professional standards prevalent in their field. Further, the Consultant warrants that all work and service performed under this Agreement shall be performed with the professional expertise, skills, and knowledge of state of the art procedures and techniques in all relevant subject matters. The Consultant accordingly shall be capable of performing the necessary consulting and other services required herein and possess the ready comprehension of the required subject matter and the expertise to provide these services.",
+      "paragraphs": [
+        {
+          "paraindetifier": "BFF425B1",
+          "text": "Section 13. Quality Assurance. Consultant warrants that all work and services performed under this Agreement, shall conform to or exceed the recognized professional standards prevalent in their field. Further, the Consultant warrants that all work and service performed under this Agreement shall be performed with the professional expertise, skills, and knowledge of state of the art procedures and techniques in all relevant subject matters. The Consultant accordingly shall be capable of performing the necessary consulting and other services required herein and possess the ready comprehension of the required subject matter and the expertise to provide these services."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_14",
+      "clause_number": "Section 14",
+      "clause_title": "Assignment",
+      "text": "[5DA83437] Section 14. Assignment. Neither this Agreement nor any rights or obligations hereunder shall be assigned or otherwise transferred by Consultant without the prior written consent of the City. This Agreement is binding upon and fully enforceable against the successors and assigns of Consultant, whether consented to or not.",
+      "paragraphs": [
+        {
+          "paraindetifier": "5DA83437",
+          "text": "Section 14. Assignment. Neither this Agreement nor any rights or obligations hereunder shall be assigned or otherwise transferred by Consultant without the prior written consent of the City. This Agreement is binding upon and fully enforceable against the successors and assigns of Consultant, whether consented to or not."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_15",
+      "clause_number": "Section 15",
+      "clause_title": "Notices",
+      "text": "[1F88E997] Section 15. Notices. Any formal notice required or permitted under this Agreement shall be deemed sufficiently given if the notice is in writing and personally delivered or sent by First Class mail, postage prepaid, to the party to whom said notice is to be given. Notices delivered in person shall be deemed to be served effective as of the date the notice is delivered. Notices sent by First Class Mail shall be deemed to be served 72 hours after the date the notice is postmarked to the addressee, postage prepaid.\n[A74C860B] Columbia Capital Management, LLC Attn: Compliance Officer 6700 Antioch Rd., Suite 250 Merriam, KS 66204\n[52590A3C] City of Westwood, Kansas 4700 Rainbow Blvd. Westwood, KS 66202 Attn: City Administrator",
+      "paragraphs": [
+        {
+          "paraindetifier": "1F88E997",
+          "text": "Section 15. Notices. Any formal notice required or permitted under this Agreement shall be deemed sufficiently given if the notice is in writing and personally delivered or sent by First Class mail, postage prepaid, to the party to whom said notice is to be given. Notices delivered in person shall be deemed to be served effective as of the date the notice is delivered. Notices sent by First Class Mail shall be deemed to be served 72 hours after the date the notice is postmarked to the addressee, postage prepaid."
+        },
+        {
+          "paraindetifier": "A74C860B",
+          "text": "Columbia Capital Management, LLC Attn: Compliance Officer 6700 Antioch Rd., Suite 250 Merriam, KS 66204"
+        },
+        {
+          "paraindetifier": "52590A3C",
+          "text": "City of Westwood, Kansas 4700 Rainbow Blvd. Westwood, KS 66202 Attn: City Administrator"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_16",
+      "clause_number": "Section 16",
+      "clause_title": "Independent Contractor",
+      "text": "[C50263CE] Section 16. Independent Contractor. In no event, while performing under this Agreement, shall Consultant be deemed to be acting as an employee of the City; rather, Consultant shall be deemed to be an independent contractor. Consultant shall be responsible for and pay all taxes and withholdings required by law upon the compensation paid under this Agreement, and shall defend, indemnify, and hold harmless the City from liability in connection therewith. Nothing expressed herein or implied herein shall be construed as creating between Consultant and the City the relationships of employer and employee, principal and agent, a partnership, or a joint venture.",
+      "paragraphs": [
+        {
+          "paraindetifier": "C50263CE",
+          "text": "Section 16. Independent Contractor. In no event, while performing under this Agreement, shall Consultant be deemed to be acting as an employee of the City; rather, Consultant shall be deemed to be an independent contractor. Consultant shall be responsible for and pay all taxes and withholdings required by law upon the compensation paid under this Agreement, and shall defend, indemnify, and hold harmless the City from liability in connection therewith. Nothing expressed herein or implied herein shall be construed as creating between Consultant and the City the relationships of employer and employee, principal and agent, a partnership, or a joint venture."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_17",
+      "clause_number": "Section 17",
+      "clause_title": "Compliance with Kansas Cash Basis Law",
+      "text": "[3E202905] Section 17. Compliance with Kansas Cash Basis Law. This Agreement must comply with the applicable provisions of the Kansas Cash-Basis Law, K.S.A. 10-1101 et seq., as amended. The City is obligated only to pay periodic payments or monthly installments under this Agreement as may lawfully be made from funds budgeted and appropriated for the purposes set forth in this Agreement during the City’s current budget year. Notwithstanding any other provision of this Agreement, in the event that the City does not budget and appropriate funds for any renewal term, for any reason in its sole discretion, the parties agree that they shall be relieved of all obligations under this Agreement without penalty. To the extent that the City does budget and appropriate funds for the purposes set forth in this Agreement, the obligations of the parties shall remain as provided herein.",
+      "paragraphs": [
+        {
+          "paraindetifier": "3E202905",
+          "text": "Section 17. Compliance with Kansas Cash Basis Law. This Agreement must comply with the applicable provisions of the Kansas Cash-Basis Law, K.S.A. 10-1101 et seq., as amended. The City is obligated only to pay periodic payments or monthly installments under this Agreement as may lawfully be made from funds budgeted and appropriated for the purposes set forth in this Agreement during the City’s current budget year. Notwithstanding any other provision of this Agreement, in the event that the City does not budget and appropriate funds for any renewal term, for any reason in its sole discretion, the parties agree that they shall be relieved of all obligations under this Agreement without penalty. To the extent that the City does budget and appropriate funds for the purposes set forth in this Agreement, the obligations of the parties shall remain as provided herein."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_18",
+      "clause_number": "Section 18",
+      "clause_title": "Legal Action",
+      "text": "[83467001] Section 18. Legal Action. The parties agree that the sole and exclusive venue for any legal actions arising out of this Agreement shall be the District Court of Johnson County, Kansas.",
+      "paragraphs": [
+        {
+          "paraindetifier": "83467001",
+          "text": "Section 18. Legal Action. The parties agree that the sole and exclusive venue for any legal actions arising out of this Agreement shall be the District Court of Johnson County, Kansas."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_19",
+      "clause_number": "Section 19",
+      "clause_title": "Governing Law",
+      "text": "[45D00E57] Section 19. Governing Law. This Agreement, the rights and obligations of the parties, and any claim or dispute arising hereunder shall be construed in accordance with the laws of the State of Kansas.",
+      "paragraphs": [
+        {
+          "paraindetifier": "45D00E57",
+          "text": "Section 19. Governing Law. This Agreement, the rights and obligations of the parties, and any claim or dispute arising hereunder shall be construed in accordance with the laws of the State of Kansas."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_20",
+      "clause_number": "Section 20",
+      "clause_title": "Phraseology",
+      "text": "[51F28F08] Section 20. Phraseology. In this Agreement, the singular includes the plural, the plural includes the singular and any gender includes the other gender.",
+      "paragraphs": [
+        {
+          "paraindetifier": "51F28F08",
+          "text": "Section 20. Phraseology. In this Agreement, the singular includes the plural, the plural includes the singular and any gender includes the other gender."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_21",
+      "clause_number": "Section 21",
+      "clause_title": "Descriptive Headings and Capitalization",
+      "text": "[01A1A742] Section 21. Descriptive Headings and Capitalization. The descriptive headings of the provisions of this Agreement are formulated and used only for convenience and shall not be deemed to affect the meaning and construction of any such provision. Some terms are capitalized throughout the Agreement, but use of or failure to use capitals shall have no legal bearing on the interpretation of such terms.",
+      "paragraphs": [
+        {
+          "paraindetifier": "01A1A742",
+          "text": "Section 21. Descriptive Headings and Capitalization. The descriptive headings of the provisions of this Agreement are formulated and used only for convenience and shall not be deemed to affect the meaning and construction of any such provision. Some terms are capitalized throughout the Agreement, but use of or failure to use capitals shall have no legal bearing on the interpretation of such terms."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_22",
+      "clause_number": "Section 22",
+      "clause_title": "Invalidity",
+      "text": "[5A975C63] Section 22. Invalidity. If any provision in this Agreement shall be adjudicated invalid under applicable laws, such invalid provision shall automatically be considered reformed and amended so as to conform to all applicable legal requirements, or, if such invalidity cannot be cured by reformation or amendment, the same shall be considered stricken and deleted, but in neither such event or events shall the validity or enforceability of the remaining valid portions hereof be affected thereby.",
+      "paragraphs": [
+        {
+          "paraindetifier": "5A975C63",
+          "text": "Section 22. Invalidity. If any provision in this Agreement shall be adjudicated invalid under applicable laws, such invalid provision shall automatically be considered reformed and amended so as to conform to all applicable legal requirements, or, if such invalidity cannot be cured by reformation or amendment, the same shall be considered stricken and deleted, but in neither such event or events shall the validity or enforceability of the remaining valid portions hereof be affected thereby."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_23",
+      "clause_number": "Section 23",
+      "clause_title": "Waiver",
+      "text": "[8651AAA9] Section 23. Waiver. The failure of either party to insist upon the strict performance of any of the terms or conditions of this Agreement or to exercise any option, right, or remedy herein contained, shall not be construed as a waiver or relinquishment for the future of such term, provision, option, right, or remedy, but the same shall continue and remain in full force and effect. No waiver by either party of any term or provision hereof shall be deemed to have been made unless expressed in writing and signed by the waiving party.",
+      "paragraphs": [
+        {
+          "paraindetifier": "8651AAA9",
+          "text": "Section 23. Waiver. The failure of either party to insist upon the strict performance of any of the terms or conditions of this Agreement or to exercise any option, right, or remedy herein contained, shall not be construed as a waiver or relinquishment for the future of such term, provision, option, right, or remedy, but the same shall continue and remain in full force and effect. No waiver by either party of any term or provision hereof shall be deemed to have been made unless expressed in writing and signed by the waiving party."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_24",
+      "clause_number": "Section 24",
+      "clause_title": "Merger",
+      "text": "[A893A8B8] Section 24. Merger. This Agreement and the documents incorporated by reference constitute the entire agreement between the parties with respect to the professional services set forth herein. There are no verbal understandings, agreements, representations or warranties between the parties that are not expressly set forth herein. This Agreement supersedes all prior agreements and understandings between the parties, both written and oral.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A893A8B8",
+          "text": "Section 24. Merger. This Agreement and the documents incorporated by reference constitute the entire agreement between the parties with respect to the professional services set forth herein. There are no verbal understandings, agreements, representations or warranties between the parties that are not expressly set forth herein. This Agreement supersedes all prior agreements and understandings between the parties, both written and oral."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_25",
+      "clause_number": "Section 25",
+      "clause_title": "Verbal Statements Not Binding",
+      "text": "[4DE9658A] Section 25. Verbal Statements Not Binding. It is understood and agreed that the written terms and provisions of this Agreement supersede all verbal statements of any and every official or other representative of the City, and such statements shall not be effective or be construed as entering into, or forming a part of, or altering in any way whatsoever, this written Agreement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "4DE9658A",
+          "text": "Section 25. Verbal Statements Not Binding. It is understood and agreed that the written terms and provisions of this Agreement supersede all verbal statements of any and every official or other representative of the City, and such statements shall not be effective or be construed as entering into, or forming a part of, or altering in any way whatsoever, this written Agreement."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_26",
+      "clause_number": "Section 26",
+      "clause_title": "Amendments",
+      "text": "[8E179149] Section 26. Amendments. This Agreement may not be amended unless such amendment is in writing and signed by both parties.",
+      "paragraphs": [
+        {
+          "paraindetifier": "8E179149",
+          "text": "Section 26. Amendments. This Agreement may not be amended unless such amendment is in writing and signed by both parties."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_27",
+      "clause_number": "Section 27",
+      "clause_title": "Survivorship",
+      "text": "[64EAE892] Section 27. Survivorship. Notwithstanding the termination of this Agreement, Consultant’s obligations with respect to Insurance (Section 8) and Indemnification (Section 9), and any other terms and conditions that by their nature should survive termination, shall survive the termination of this Agreement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "64EAE892",
+          "text": "Section 27. Survivorship. Notwithstanding the termination of this Agreement, Consultant’s obligations with respect to Insurance (Section 8) and Indemnification (Section 9), and any other terms and conditions that by their nature should survive termination, shall survive the termination of this Agreement."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_28",
+      "clause_number": null,
+      "clause_title": "Execution / Signature Block",
+      "text": "[639847CB] IN WITNESS WHEREOF, the parties hereto have made and executed this Agreement the day and year first above written.\n[2F78BE64] CITY OF WESTWOOD, KANSAS\n[AFFA2C63] By:\n[1C2E85FE] Title:\n[E1126702] COLUMBIA CAPITAL MANAGEMENT, LLC\n[086D17E3] By:\n[5D55031E] Title:\tManaging Member",
+      "paragraphs": [
+        {
+          "paraindetifier": "639847CB",
+          "text": "IN WITNESS WHEREOF, the parties hereto have made and executed this Agreement the day and year first above written."
+        },
+        {
+          "paraindetifier": "2F78BE64",
+          "text": "CITY OF WESTWOOD, KANSAS"
+        },
+        {
+          "paraindetifier": "AFFA2C63",
+          "text": "By:"
+        },
+        {
+          "paraindetifier": "1C2E85FE",
+          "text": "Title:"
+        },
+        {
+          "paraindetifier": "E1126702",
+          "text": "COLUMBIA CAPITAL MANAGEMENT, LLC"
+        },
+        {
+          "paraindetifier": "086D17E3",
+          "text": "By:"
+        },
+        {
+          "paraindetifier": "5D55031E",
+          "text": "Title:\tManaging Member"
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_29",
+      "clause_number": "Exhibit A",
+      "clause_title": "Appointment of Consultant",
+      "text": "[DF6CE675] EXHIBIT A: Scope of Services\n[A09DE6DB] Appointment of Consultant. The City hereby appoints Consultant to act as the investment adviser and to assume the responsibilities of investment management of the pooled cash of the City including all idle funds, cash, deposits, investments, capital accounts and bond proceeds (the “Accounts”). Consultant does hereby accept said appointment as an investment adviser under the Accounts. By accepting such appointment, Consultant agrees that at all times it shall act in accordance with the terms and conditions of this Agreement and all other provisions of law applicable to this undertaking.",
+      "paragraphs": [
+        {
+          "paraindetifier": "DF6CE675",
+          "text": "EXHIBIT A: Scope of Services"
+        },
+        {
+          "paraindetifier": "A09DE6DB",
+          "text": "Appointment of Consultant. The City hereby appoints Consultant to act as the investment adviser and to assume the responsibilities of investment management of the pooled cash of the City including all idle funds, cash, deposits, investments, capital accounts and bond proceeds (the “Accounts”). Consultant does hereby accept said appointment as an investment adviser under the Accounts. By accepting such appointment, Consultant agrees that at all times it shall act in accordance with the terms and conditions of this Agreement and all other provisions of law applicable to this undertaking."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_30",
+      "clause_number": "Exhibit A",
+      "clause_title": "Fiduciary",
+      "text": "[BF539E01] Fiduciary. In addition to, but not in lieu of any and all applicable fiduciary standards imposed under federal or state law, Consultant shall act as a fiduciary with respect to the assets it manages pursuant to this Agreement. As a fiduciary, Consultant shall perform its duties under this Agreement with the care, skill, prudence, and diligence under the circumstances then prevailing that a prudent person acting in a like capacity and familiar with such matters would use in an enterprise of like character and with like aims.",
+      "paragraphs": [
+        {
+          "paraindetifier": "BF539E01",
+          "text": "Fiduciary. In addition to, but not in lieu of any and all applicable fiduciary standards imposed under federal or state law, Consultant shall act as a fiduciary with respect to the assets it manages pursuant to this Agreement. As a fiduciary, Consultant shall perform its duties under this Agreement with the care, skill, prudence, and diligence under the circumstances then prevailing that a prudent person acting in a like capacity and familiar with such matters would use in an enterprise of like character and with like aims."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_31",
+      "clause_number": "Exhibit A",
+      "clause_title": "Investment Management Services",
+      "text": "[AED4D9EC] Investment Management Services.\n[8F455969] Consultant’s scope of services shall include:\n[DA20BDE6] Providing recommendations to the City regarding updating, developing and maintaining an investment policy for the City, consistent with various Kansas statutes pertaining to deposits, investments and collateral management. Philosophically, the City’s investments will be evaluated for safety, liquidity and yield, in that order, with the recognition that ensuring adequate liquidity is also often the best way to preserve principal (safety).\n[1FB41A07] Implementing an investment strategy that allocates the City’s pooled cash into multiple subportfolios with the investments in each subportfolio targeted to the unique needs for and statutory constraints on those subportfolios. Subordinate to the core investment goals of preserving principal and providing adequate liquidity, Consultant shall seek to maximize income from the portfolio that the City can use to support its operations.\n[1035F5B4] Complying with Kansas the requirements of K.S.A. 12-1675 et seq. providing local banks with a “first look” at the City’s investment opportunities where required.\n[26218FFD] Monitoring and marking-to-market the collateral posted by the City’s bank depositories on a weekly basis to ensure compliance with state law and City policy.\n[17E03AFC] Selecting investment securities for the City’s portfolio, consistent with state law and the City’s investment policy.\n[1EA19029] Providing periodic portfolio reporting to the City, including information on holdings, transactions, portfolio income and performance.\n[CEE39A6A] Working with the city attorney to draft an ordinance designating certain of the City’s funds as multi-year capital funds.\n[51099AB4] Providing the City with general market information, ad hoc reporting and other routine requests related to investment management.\n[00C727EF] Consultant shall invest and otherwise manage the assets held by the City, its banks and any Custodian in the Accounts. Responsibility for the investment and management is assigned to Consultant by the City. Consultant shall have sole discretion with respect to investment of funds in the Accounts without prior consultation with the City; however, Consultant shall be bound by such written investment policy objectives and guidelines for the management of the assets as shall from time to time be provided to Consultant by the City. Consultant shall have the authority to select the brokerage firms, consistent with the requirements of K.S.A. 12-1675(b)(4), through which orders will be placed. Consultant may combine orders for the Accounts with orders for other accounts or funds under management. Consultant shall effect all purchases and sales of securities in a manner consistent with the principles of best execution, taking into account net price (including commissions) and execution capability and other services that the broker or dealer may provide. Consultant shall use investment strategies designed to ensure that all securities transactions are executed in such a manner that the total explicit and implicit costs and total proceeds in every transaction are the most favorable under the circumstances. Consultant shall issue suitable instructions to the Custodian with respect to deliveries and payments.",
+      "paragraphs": [
+        {
+          "paraindetifier": "AED4D9EC",
+          "text": "Investment Management Services."
+        },
+        {
+          "paraindetifier": "8F455969",
+          "text": "Consultant’s scope of services shall include:"
+        },
+        {
+          "paraindetifier": "DA20BDE6",
+          "text": "Providing recommendations to the City regarding updating, developing and maintaining an investment policy for the City, consistent with various Kansas statutes pertaining to deposits, investments and collateral management. Philosophically, the City’s investments will be evaluated for safety, liquidity and yield, in that order, with the recognition that ensuring adequate liquidity is also often the best way to preserve principal (safety)."
+        },
+        {
+          "paraindetifier": "1FB41A07",
+          "text": "Implementing an investment strategy that allocates the City’s pooled cash into multiple subportfolios with the investments in each subportfolio targeted to the unique needs for and statutory constraints on those subportfolios. Subordinate to the core investment goals of preserving principal and providing adequate liquidity, Consultant shall seek to maximize income from the portfolio that the City can use to support its operations."
+        },
+        {
+          "paraindetifier": "1035F5B4",
+          "text": "Complying with Kansas the requirements of K.S.A. 12-1675 et seq. providing local banks with a “first look” at the City’s investment opportunities where required."
+        },
+        {
+          "paraindetifier": "26218FFD",
+          "text": "Monitoring and marking-to-market the collateral posted by the City’s bank depositories on a weekly basis to ensure compliance with state law and City policy."
+        },
+        {
+          "paraindetifier": "17E03AFC",
+          "text": "Selecting investment securities for the City’s portfolio, consistent with state law and the City’s investment policy."
+        },
+        {
+          "paraindetifier": "1EA19029",
+          "text": "Providing periodic portfolio reporting to the City, including information on holdings, transactions, portfolio income and performance."
+        },
+        {
+          "paraindetifier": "CEE39A6A",
+          "text": "Working with the city attorney to draft an ordinance designating certain of the City’s funds as multi-year capital funds."
+        },
+        {
+          "paraindetifier": "51099AB4",
+          "text": "Providing the City with general market information, ad hoc reporting and other routine requests related to investment management."
+        },
+        {
+          "paraindetifier": "00C727EF",
+          "text": "Consultant shall invest and otherwise manage the assets held by the City, its banks and any Custodian in the Accounts. Responsibility for the investment and management is assigned to Consultant by the City. Consultant shall have sole discretion with respect to investment of funds in the Accounts without prior consultation with the City; however, Consultant shall be bound by such written investment policy objectives and guidelines for the management of the assets as shall from time to time be provided to Consultant by the City. Consultant shall have the authority to select the brokerage firms, consistent with the requirements of K.S.A. 12-1675(b)(4), through which orders will be placed. Consultant may combine orders for the Accounts with orders for other accounts or funds under management. Consultant shall effect all purchases and sales of securities in a manner consistent with the principles of best execution, taking into account net price (including commissions) and execution capability and other services that the broker or dealer may provide. Consultant shall use investment strategies designed to ensure that all securities transactions are executed in such a manner that the total explicit and implicit costs and total proceeds in every transaction are the most favorable under the circumstances. Consultant shall issue suitable instructions to the Custodian with respect to deliveries and payments."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_32",
+      "clause_number": "Exhibit A",
+      "clause_title": "Duties of the City",
+      "text": "[0EBEAEDF] Duties of the City. In order to fully effect this agreement, the City agrees to:\n[68F524D9] Timely provide Consultant with balances, account statements and interest earned on the City’s funds and accounts.\n[4680E535] Upon request, provide Consultant with historical account balances and monthly account cash flows to permit Consultant to properly determine required liquidity.\n[592189B2] Upon request and with reasonable notice, respond to Consultant’s requests to move money via Federal Reserve wire or other means between the City’s various accounts as necessary to effect the investment plan.",
+      "paragraphs": [
+        {
+          "paraindetifier": "0EBEAEDF",
+          "text": "Duties of the City. In order to fully effect this agreement, the City agrees to:"
+        },
+        {
+          "paraindetifier": "68F524D9",
+          "text": "Timely provide Consultant with balances, account statements and interest earned on the City’s funds and accounts."
+        },
+        {
+          "paraindetifier": "4680E535",
+          "text": "Upon request, provide Consultant with historical account balances and monthly account cash flows to permit Consultant to properly determine required liquidity."
+        },
+        {
+          "paraindetifier": "592189B2",
+          "text": "Upon request and with reasonable notice, respond to Consultant’s requests to move money via Federal Reserve wire or other means between the City’s various accounts as necessary to effect the investment plan."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_33",
+      "clause_number": "Exhibit A",
+      "clause_title": "Custodian",
+      "text": "[33F0E92C] Custodian. Pursuant to K.S.A. 12-1675(e)(1) the City shall instruct the Custodian to deliver securities sold and pay for securities purchased, including all expenses relating to the purchase and sale of such securities, such as brokerage commissions and transfer taxes, in accordance with copies of confirmations provided to the Custodian by Consultant.",
+      "paragraphs": [
+        {
+          "paraindetifier": "33F0E92C",
+          "text": "Custodian. Pursuant to K.S.A. 12-1675(e)(1) the City shall instruct the Custodian to deliver securities sold and pay for securities purchased, including all expenses relating to the purchase and sale of such securities, such as brokerage commissions and transfer taxes, in accordance with copies of confirmations provided to the Custodian by Consultant."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_34",
+      "clause_number": "Exhibit A",
+      "clause_title": "Potential Conflicts of Consultant",
+      "text": "[DDF8F810] Potential Conflicts of Consultant. It is understood that Consultant will be acting in a similar capacity for other institutional clients, including other municipal governments in Kansas and that investments and reinvestments for the Accounts of the City may differ from those made or recommended with respect to the accounts and clients even though the investment objectives may be the same or similar; however, Consultant shall allocate investment opportunities among clients on a fair and equitable basis. In addition, Consultant serves as financial advisor to municipal governments within and beyond Kansas that issue bonds (an “Issuer Client”), including, in the case of Kansas issuers, bonds eligible for investment by the City. To prevent any appearances of favoring an issuer client over an investment client, or of favoring an investment client over an issuer client, it is the policy of Consultant to not purchase bonds of an Issuer Client issuing bonds in the primary market on behalf an investing client or to purchase callable bonds of an Issuer Client at any time on behalf of an investing client. This policy serves to protect both clients from potential conflicts but may limit investment opportunities for the City from time to time.",
+      "paragraphs": [
+        {
+          "paraindetifier": "DDF8F810",
+          "text": "Potential Conflicts of Consultant. It is understood that Consultant will be acting in a similar capacity for other institutional clients, including other municipal governments in Kansas and that investments and reinvestments for the Accounts of the City may differ from those made or recommended with respect to the accounts and clients even though the investment objectives may be the same or similar; however, Consultant shall allocate investment opportunities among clients on a fair and equitable basis. In addition, Consultant serves as financial advisor to municipal governments within and beyond Kansas that issue bonds (an “Issuer Client”), including, in the case of Kansas issuers, bonds eligible for investment by the City. To prevent any appearances of favoring an issuer client over an investment client, or of favoring an investment client over an issuer client, it is the policy of Consultant to not purchase bonds of an Issuer Client issuing bonds in the primary market on behalf an investing client or to purchase callable bonds of an Issuer Client at any time on behalf of an investing client. This policy serves to protect both clients from potential conflicts but may limit investment opportunities for the City from time to time."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_35",
+      "clause_number": "Exhibit A",
+      "clause_title": "Directions to Consultant",
+      "text": "[315DDB1C] Directions to Consultant. The names, titles and authorities of the individuals authorized to act on behalf of the City with respect to the Accounts and this Agreement are set forth in Schedule X to this Agreement, which is attached hereto and incorporated herein, and which may be amended in writing at any time by the City with notice provided to Consultant. Consultant may include information regarding the Accounts in aggregate performance data of Consultant that does not identify the City.",
+      "paragraphs": [
+        {
+          "paraindetifier": "315DDB1C",
+          "text": "Directions to Consultant. The names, titles and authorities of the individuals authorized to act on behalf of the City with respect to the Accounts and this Agreement are set forth in Schedule X to this Agreement, which is attached hereto and incorporated herein, and which may be amended in writing at any time by the City with notice provided to Consultant. Consultant may include information regarding the Accounts in aggregate performance data of Consultant that does not identify the City."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_36",
+      "clause_number": "Exhibit A",
+      "clause_title": "Management Fees",
+      "text": "[AD41E3DC] Management Fees. Consultant will be compensated for its services under this Agreement in an amount equal to 0.20% of the market value of the Accounts, billed quarterly in arrears based upon the average of the month-end Account balances for such quarter, with a minimum fee for each quarter of $3,000. Market value, including accrued income, will be determinative for the purpose of calculating fees. Such amount shall be the sole compensation owing by reason of investment advisory services under this Agreement. The fee for services for any period less than a full quarterly period will be pro-rated on a daily basis on the annualized fee for the period and on the market value of the portfolio as described on the final date of such period.",
+      "paragraphs": [
+        {
+          "paraindetifier": "AD41E3DC",
+          "text": "Management Fees. Consultant will be compensated for its services under this Agreement in an amount equal to 0.20% of the market value of the Accounts, billed quarterly in arrears based upon the average of the month-end Account balances for such quarter, with a minimum fee for each quarter of $3,000. Market value, including accrued income, will be determinative for the purpose of calculating fees. Such amount shall be the sole compensation owing by reason of investment advisory services under this Agreement. The fee for services for any period less than a full quarterly period will be pro-rated on a daily basis on the annualized fee for the period and on the market value of the portfolio as described on the final date of such period."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_37",
+      "clause_number": "Exhibit A",
+      "clause_title": "Notice of Events",
+      "text": "[A75AC65C] Notice of Events. Consultant shall provide written notice to the City regarding certain events pertaining to the Accounts and/or Consultant. Such notice shall include, at a minimum, the date, identification and description of the event triggering the notice requirement and shall be signed by an authorized party of Consultant.\n[6377E8C9] Written notice shall be immediately up the occurrence of any of the following events:\n[753258CD] A material adverse change to Consultant’s financial condition or status;\n[99004C4A] Consultant’s insolvency, filing of a petition in bankruptcy, becoming party to an involuntary bankruptcy proceeding, or Consultant making an assignment for the benefit of creditors;\n[793600A6] Any material violation or incidence of non-compliance with the City’s investment policy objectives and guidelines;\n[CA2A011B] Consultant agrees to furnish written notice to the City within ten (10) business days, if any of the following events occur:\n[5BA9E5BF] A material change(s) in senior officers or senior personnel involved in the management of the Accounts;\n[96F1F4AE] A material change(s) in ownership of Consultant, including the addition or departure of any person owning ten (10) percent or more of the membership interests in Consultant;\n[89FCD1B6] Any significant legal actions instituted against Consultant or its members; and\n[744B5534] Any investigations, examinations or other proceedings commenced by any governmental or regulatory agency, which are not conducted in the ordinary course of Consultant’s business, including investigations, examinations or other proceedings involving Consultant’s members.",
+      "paragraphs": [
+        {
+          "paraindetifier": "A75AC65C",
+          "text": "Notice of Events. Consultant shall provide written notice to the City regarding certain events pertaining to the Accounts and/or Consultant. Such notice shall include, at a minimum, the date, identification and description of the event triggering the notice requirement and shall be signed by an authorized party of Consultant."
+        },
+        {
+          "paraindetifier": "6377E8C9",
+          "text": "Written notice shall be immediately up the occurrence of any of the following events:"
+        },
+        {
+          "paraindetifier": "753258CD",
+          "text": "A material adverse change to Consultant’s financial condition or status;"
+        },
+        {
+          "paraindetifier": "99004C4A",
+          "text": "Consultant’s insolvency, filing of a petition in bankruptcy, becoming party to an involuntary bankruptcy proceeding, or Consultant making an assignment for the benefit of creditors;"
+        },
+        {
+          "paraindetifier": "793600A6",
+          "text": "Any material violation or incidence of non-compliance with the City’s investment policy objectives and guidelines;"
+        },
+        {
+          "paraindetifier": "CA2A011B",
+          "text": "Consultant agrees to furnish written notice to the City within ten (10) business days, if any of the following events occur:"
+        },
+        {
+          "paraindetifier": "5BA9E5BF",
+          "text": "A material change(s) in senior officers or senior personnel involved in the management of the Accounts;"
+        },
+        {
+          "paraindetifier": "96F1F4AE",
+          "text": "A material change(s) in ownership of Consultant, including the addition or departure of any person owning ten (10) percent or more of the membership interests in Consultant;"
+        },
+        {
+          "paraindetifier": "89FCD1B6",
+          "text": "Any significant legal actions instituted against Consultant or its members; and"
+        },
+        {
+          "paraindetifier": "744B5534",
+          "text": "Any investigations, examinations or other proceedings commenced by any governmental or regulatory agency, which are not conducted in the ordinary course of Consultant’s business, including investigations, examinations or other proceedings involving Consultant’s members."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_38",
+      "clause_number": "Exhibit A",
+      "clause_title": "Proxy Voting",
+      "text": "[C9005322] Proxy Voting. The City shall direct the Custodian in voting of all proxies and Consultant shall have no responsibility in respect of the voting of proxies.",
+      "paragraphs": [
+        {
+          "paraindetifier": "C9005322",
+          "text": "Proxy Voting. The City shall direct the Custodian in voting of all proxies and Consultant shall have no responsibility in respect of the voting of proxies."
+        }
+      ]
+    },
+    {
+      "clause_id": "clause_39",
+      "clause_number": "Exhibit A",
+      "clause_title": "Consultant Certifications, Representations and Acknowledgements",
+      "text": "[DC66D1AB] Consultant Certifications, Representations and Acknowledgements. Consultant hereby certifies, represents, and acknowledges as follows:\n[4ED984C1] Consultant (i) is registered as an “investment adviser” under the Investment  Consultants Act of 1940 as amended (the “Consultants Act”); (ii) will promptly advise the City if at any time during the term of this Agreement Consultant ceases being so registered; and (iii) has delivered to the City a copy of Part II of its Form ADV or comparable Brochure pursuant to the Consultants Act;\n[7C717BFE] Consultant is a fiduciary with respect to the assets it manages pursuant to this Agreement;\n[11FA6054] Prior to the execution of this Agreement, Consultant has disclosed to the City any action, event or occurrence that would be reportable in Section 11 of Consultant’s next ADV filing with the Securities and Exchange Commission;\n[027B723E] Consultant and members: (i) are not legally prohibited from contracting with the City and (ii) have no public or private interest, direct or indirect, and shall not acquire directly or indirectly any such interest, which does or may conflict in any manner with the performance of Consultant’s obligations under this Agreement;\n[7B2E0769] Consultant did not retain a person or entity to influence (i) the outcome of the investment decision made by the City with respect to Consultant or (ii) the procurement of investment advice or services by the City with respect to Consultant, for compensation, contingent in whole or in party, upon the decision or procurement; and\n[613890C8] Consultant is duly authorized and fully empowered to execute, deliver and perform this Agreement.",
+      "paragraphs": [
+        {
+          "paraindetifier": "DC66D1AB",
+          "text": "Consultant Certifications, Representations and Acknowledgements. Consultant hereby certifies, represents, and acknowledges as follows:"
+        },
+        {
+          "paraindetifier": "4ED984C1",
+          "text": "Consultant (i) is registered as an “investment adviser” under the Investment  Consultants Act of 1940 as amended (the “Consultants Act”); (ii) will promptly advise the City if at any time during the term of this Agreement Consultant ceases being so registered; and (iii) has delivered to the City a copy of Part II of its Form ADV or comparable Brochure pursuant to the Consultants Act;"
+        },
+        {
+          "paraindetifier": "7C717BFE",
+          "text": "Consultant is a fiduciary with respect to the assets it manages pursuant to this Agreement;"
+        },
+        {
+          "paraindetifier": "11FA6054",
+          "text": "Prior to the execution of this Agreement, Consultant has disclosed to the City any action, event or occurrence that would be reportable in Section 11 of Consultant’s next ADV filing with the Securities and Exchange Commission;"
+        },
+        {
+          "paraindetifier": "027B723E",
+          "text": "Consultant and members: (i) are not legally prohibited from contracting with the City and (ii) have no public or private interest, direct or indirect, and shall not acquire directly or indirectly any such interest, which does or may conflict in any manner with the performance of Consultant’s obligations under this Agreement;"
+        },
+        {
+          "paraindetifier": "7B2E0769",
+          "text": "Consultant did not retain a person or entity to influence (i) the outcome of the investment decision made by the City with respect to Consultant or (ii) the procurement of investment advice or services by the City with respect to Consultant, for compensation, contingent in whole or in party, upon the decision or procurement; and"
+        },
+        {
+          "paraindetifier": "613890C8",
+          "text": "Consultant is duly authorized and fully empowered to execute, deliver and perform this Agreement."
+        }
+      ]
+    }
+  ],
+  "party_represented": "Columbia Capital Management",
+  "review_objective": "",
+  "specific_concerns": "",
+  "agreement_type": "Professional Services Agreement"
+}
