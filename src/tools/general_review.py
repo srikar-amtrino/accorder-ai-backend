@@ -31,6 +31,10 @@ from src.services.reference_graph import (
     ReferenceGraph,
 )
 from src.services.scorer import AnswerRecord, ScoringResult, is_risky, score_group
+from src.services.reconciliation import (
+    CCRLReconciler,
+    build_ccrl_state,
+)
 from src.services.tracing.langsmith_tracer import ContractReviewTracer
 
 logger = get_logger(__name__)
@@ -1396,7 +1400,8 @@ def _resolve_and_score(
     extraction: ExtractionResponse,
     group: ClauseGroup,
     criteria: List[dict],
-    paragraphs: Sequence[TextInformation]
+    paragraphs: Sequence[TextInformation],
+    review_mode: str = "neutral",
 ) -> ScoringResult:
     """Resolve evidence paragraphs for each answer and compute the deterministic score."""
 
@@ -1439,7 +1444,7 @@ def _resolve_and_score(
             )
         )
 
-    return score_group(answers, criteria)
+    return score_group(answers, criteria, review_mode=review_mode)
 
 
 async def _explanation_call(
@@ -1718,12 +1723,26 @@ async def _evaluate_group(
         frag_res = await _fragment_defect_call(group, paragraphs, semaphore, session_id, titles=titles)
         _tracer.end_span(clause_span, outputs={"status": "FRAGMENT_EVALUATED", "suggestions_count": len(frag_res)})
         if audit_trace is not None:
+            party_lens_frag = {
+                "party_represented": request.party_represented or "Neutral / None",
+                "scoring_mode": "neutral" if _is_general_review_party(request.party_represented) else "advocacy",
+                "gap_score_neutral": 0.0,
+                "gap_score_advocacy": 0.0,
+                "risk_level_neutral": "Low" if frag_res else "Clean",
+                "risk_level_advocacy": "Low" if frag_res else "Clean",
+                "risk_level_changed_by_advocacy": False,
+                "criteria_penalty_detail": [],
+            }
             audit_trace.append({
                 "clause_unit_id": group.unit_id,
                 "clause_title": group.canonical_type or "Fragment / Front-Matter",
+                "para_identifier": paragraphs[group.para_indices[0]].paraindetifier,
                 "canonical_type": group.canonical_type,
                 "canonical_slug": group.canonical_slug,
                 "pipeline_path": "PATH C (Fragment / Front-Matter Defect)",
+                "conclusive_risk_level": "Low" if frag_res else "Clean",
+                "failed_criteria": [],
+                "party_representation_lens": party_lens_frag,
                 "paragraph_identifiers": [paragraphs[i].paraindetifier for i in group.para_indices],
                 "clause_unit_entire_text": "\n\n".join(paragraphs[i].text.strip() for i in group.para_indices),
                 "prompt_and_criteria_context": {
@@ -1808,7 +1827,8 @@ async def _evaluate_group(
         group = misclassified_group
 
     # Deterministic scoring in Python
-    scoring_result = _resolve_and_score(extraction, group, criteria, paragraphs)
+    review_mode = request.review_mode or ("advocacy" if request.party_represented and request.party_represented.strip().casefold() not in ("", "general review", "neutral", "general", "none") else "neutral")
+    scoring_result = _resolve_and_score(extraction, group, criteria, paragraphs, review_mode=review_mode)
 
     # Build the thinking_trace block for audit (populated only when STREAMING_SIMULATION=True)
     def _make_thinking_trace(ext_thinking: str, explanation_thinking_map: Optional[Dict[str, str]] = None) -> Optional[Dict]:
@@ -1853,16 +1873,48 @@ async def _evaluate_group(
                     "extraction_thinking": extraction_thinking or "(no thinking output returned)",
                     "explanation_thinking_by_para": {},
                 }
+
+            party_lens = {
+                "party_represented": request.party_represented or "Neutral / None",
+                "scoring_mode": scoring_result.review_mode,
+                "gap_score_neutral": scoring_result.gap_score_neutral,
+                "gap_score_advocacy": scoring_result.gap_score_advocacy,
+                "risk_level_neutral": scoring_result.level_neutral,
+                "risk_level_advocacy": scoring_result.level_advocacy,
+                "risk_level_changed_by_advocacy": (scoring_result.level_neutral != scoring_result.level_advocacy),
+                "criteria_penalty_detail": [
+                    {
+                        "criterion_id": a.criterion_id,
+                        "answer": a.answer,
+                        "penalty_neutral": 0.50 if a.answer in ("Partly met", "Unclear") else (1.00 if a.answer == "Not met" else 0.0),
+                        "penalty_advocacy": 0.70 if a.answer == "Partly met" else (0.65 if a.answer == "Unclear" else (1.00 if a.answer == "Not met" else 0.0)),
+                        "delta": round((0.70 - 0.50) if a.answer == "Partly met" else ((0.65 - 0.50) if a.answer == "Unclear" else 0.0), 2),
+                    }
+                    for a in scoring_result.failed_answers
+                ],
+            }
+
             audit_trace.append({
                 "clause_unit_id": group.unit_id,
                 "clause_title": heading_title,
+                "para_identifier": first_p.paraindetifier,
                 "canonical_type": group.canonical_type,
                 "canonical_slug": group.canonical_slug,
                 "pipeline_path": "PATH A (Type-Specific Rubric)" if group.is_classified else "PATH B (General Criteria)",
+                "conclusive_risk_level": scoring_result.final_level,
+                "failed_criteria": [
+                    {
+                        "criterion_id": a.criterion_id,
+                        "answer": a.answer,
+                        "quote": a.quote,
+                    }
+                    for a in scoring_result.failed_answers
+                ],
+                "party_representation_lens": party_lens,
                 "paragraph_identifiers": [paragraphs[i].paraindetifier for i in group.para_indices],
                 "clause_unit_entire_text": "\n\n".join(paragraphs[i].text.strip() for i in group.para_indices),
                 "prompt_and_criteria_context": {
-                    "system_prompt_used": "extraction_system.mustache (v2 calibrated - 7 interpretation rules)",
+                    "system_prompt_used": "extraction_system.mustache (v2 calibrated - 8 legal interpretation rules)",
                     "reviewer_perspective_mode": (
                         "NEUTRAL GENERAL REVIEW"
                         if _is_general_review_party(request.party_represented)
@@ -1972,16 +2024,52 @@ async def _evaluate_group(
                 "extraction_thinking": extraction_thinking or "(no thinking output returned)",
                 "explanation_thinking_by_para": explanation_thinking_map,
             }
+        party_lens_risky = {
+            "party_represented": request.party_represented or "Neutral / None",
+            "scoring_mode": scoring_result.review_mode,
+            "gap_score_neutral": scoring_result.gap_score_neutral,
+            "gap_score_advocacy": scoring_result.gap_score_advocacy,
+            "risk_level_neutral": scoring_result.level_neutral,
+            "risk_level_advocacy": scoring_result.level_advocacy,
+            "risk_level_changed_by_advocacy": (scoring_result.level_neutral != scoring_result.level_advocacy),
+            "criteria_penalty_detail": [
+                {
+                    "criterion_id": a.criterion_id,
+                    "answer": a.answer,
+                    "penalty_neutral": 0.50 if a.answer in ("Partly met", "Unclear") else (1.00 if a.answer == "Not met" else 0.0),
+                    "penalty_advocacy": 0.70 if a.answer == "Partly met" else (0.65 if a.answer == "Unclear" else (1.00 if a.answer == "Not met" else 0.0)),
+                    "delta": round((0.70 - 0.50) if a.answer == "Partly met" else ((0.65 - 0.50) if a.answer == "Unclear" else 0.0), 2),
+                }
+                for a in scoring_result.failed_answers
+            ],
+        }
+
         audit_trace.append({
             "clause_unit_id": group.unit_id,
             "clause_title": heading_title,
+            "para_identifier": first_p.paraindetifier,
             "canonical_type": group.canonical_type,
             "canonical_slug": group.canonical_slug,
             "pipeline_path": "PATH A (Type-Specific Rubric)" if group.is_classified else "PATH B (General Criteria)",
+            "conclusive_risk_level": scoring_result.final_level,
+            "failed_criteria": [
+                {
+                    "criterion_id": a.criterion_id,
+                    "answer": a.answer,
+                    "quote": a.quote,
+                    "question": next((c.get("question") or c.get("question_for_llm") or c.get("criterion", "") for c in criteria if (c.get("id") or c.get("criterion_id")) == a.criterion_id), ""),
+                }
+                for a in scoring_result.failed_answers
+            ],
+            "explanation_call": {
+                "reason": explained_results[0][1].reason if explained_results else "",
+                "suggested_fix": explained_results[0][1].suggested_fix if explained_results else "",
+            },
+            "party_representation_lens": party_lens_risky,
             "paragraph_identifiers": [paragraphs[i].paraindetifier for i in group.para_indices],
             "clause_unit_entire_text": "\n\n".join(paragraphs[i].text.strip() for i in group.para_indices),
             "prompt_and_criteria_context": {
-                "system_prompt_used": "extraction_system.mustache (v2 calibrated - 7 interpretation rules)",
+                "system_prompt_used": "extraction_system.mustache (v2 calibrated - 8 legal interpretation rules)",
                 "explanation_system_prompt": "explanation_system.mustache (Parts A-I surgical brevity rules)",
                 "reviewer_perspective_mode": (
                     "NEUTRAL GENERAL REVIEW"
@@ -2054,6 +2142,70 @@ async def _evaluate_batch(
         batch_suggestions.extend(res)
     batch_suggestions.sort(key=lambda pair: pair[0])
     return batch_suggestions
+
+
+def _build_party_representation_audit(
+    request: GeneralReviewRequest,
+    audit_trace: List[Dict[str, Any]],
+) -> Dict[str, Any]:
+    """Compile top-level party advocacy comparison summary across all clauses."""
+    party = request.party_represented or "Neutral / None"
+    mode = getattr(request, "review_mode", None) or ("advocacy" if request.party_represented and request.party_represented.strip().casefold() not in ("", "general review", "neutral", "general", "none") else "neutral")
+
+    elevated_clauses = []
+    for item in audit_trace:
+        lens = item.get("party_representation_lens")
+        if lens and lens.get("risk_level_changed_by_advocacy"):
+            elevated_clauses.append({
+                "clause_unit_id": item.get("clause_unit_id"),
+                "clause_title": item.get("clause_title"),
+                "risk_level_neutral": lens.get("risk_level_neutral"),
+                "gap_score_neutral": lens.get("gap_score_neutral"),
+                "risk_level_advocacy": lens.get("risk_level_advocacy"),
+                "gap_score_advocacy": lens.get("gap_score_advocacy"),
+                "criteria_tipped": [
+                    c.get("criterion_id") for c in lens.get("criteria_penalty_detail", [])
+                    if c.get("delta", 0) > 0
+                ],
+            })
+
+    return {
+        "party_represented": party,
+        "review_mode": mode,
+        "scoring_mode": mode,
+        "advocacy_penalties_applied": {
+            "Partly met": 0.70,
+            "Unclear": 0.65,
+            "Not met": 1.00,
+            "Met": 0.00,
+        },
+        "neutral_penalties_baseline": {
+            "Partly met": 0.50,
+            "Unclear": 0.50,
+            "Not met": 1.00,
+            "Met": 0.00,
+        },
+        "clauses_advocacy_changed_risk_level": elevated_clauses,
+        "total_clauses_risk_elevated_by_advocacy": len(elevated_clauses),
+    }
+
+
+def extract_audit_trace_bundle(
+    audit_trace: List[Dict[str, Any]]
+) -> Tuple[List[Dict[str, Any]], Dict[str, Any], Dict[str, Any]]:
+    """Extract (clause_units, reconciliation_pass, party_representation_audit) from audit_trace collector."""
+    clause_units: List[Dict[str, Any]] = []
+    recon_pass: Dict[str, Any] = getattr(audit_trace, "reconciliation_pass", {}) or {}
+    party_audit: Dict[str, Any] = getattr(audit_trace, "party_representation_audit", {}) or {}
+
+    for item in audit_trace:
+        if isinstance(item, dict) and item.get("_metadata_envelope"):
+            recon_pass = recon_pass or item.get("reconciliation_pass", {})
+            party_audit = party_audit or item.get("party_representation_audit", {})
+        else:
+            clause_units.append(item)
+
+    return clause_units, recon_pass, party_audit
 
 
 async def general_review_service(
@@ -2160,6 +2312,56 @@ async def general_review_service(
         sugg for _, sugg in positioned
         if not (sugg.clause == "Signature Block" and sugg.risk_level == "Low")
     ]
+
+    # ------------------------------------------------------------------
+    # Step 6: CCRL Reconciliation Pass (Cross-Clause Resolution Ledger)
+    # ------------------------------------------------------------------
+    scan_units = []
+    for g in groups:
+        cid = f"unit_{g.unit_id}" if g.unit_id else str(g.para_indices[0])
+        first_p = paragraphs[g.para_indices[0]]
+        ctitle = (titles.get(first_p.paraindetifier) if titles else None) or g.canonical_type or f"Clause {g.unit_id}"
+        ctext = "\n\n".join(paragraphs[i].text.strip() for i in g.para_indices if paragraphs[i].text.strip())
+        scan_units.append({
+            "clause_id": cid,
+            "clause_title": ctitle,
+            "clause_text": ctext,
+            "para_identifier": first_p.paraindetifier,
+        })
+
+    ccrl_state = build_ccrl_state(
+        suggestions=final_suggestions,
+        audit_trace_entries=audit_trace_collector,
+    )
+
+    audit_by_cid = {}
+    if audit_trace_collector is not None:
+        for at_entry in audit_trace_collector:
+            uid = at_entry.get("clause_unit_id", 0)
+            if uid:
+                audit_by_cid[f"unit_{uid}"] = at_entry
+
+    reconciler = CCRLReconciler()
+    reconciliation_summary = await reconciler.reconcile(
+        ccrl_state=ccrl_state,
+        clause_scan_units=scan_units,
+        audit_trace_by_clause_id=audit_by_cid,
+    )
+
+    if audit_trace_collector is not None:
+        party_rep_audit = _build_party_representation_audit(request, audit_trace_collector)
+        try:
+            audit_trace_collector.reconciliation_pass = reconciliation_summary
+            audit_trace_collector.party_representation_audit = party_rep_audit
+        except (AttributeError, TypeError):
+            pass
+        if isinstance(audit_trace_collector, list):
+            audit_trace_collector.append({
+                "_metadata_envelope": True,
+                "reconciliation_pass": reconciliation_summary,
+                "party_representation_audit": party_rep_audit,
+            })
+
     response = GeneralReviewResponse(suggestions=final_suggestions)
     _cache_put(fingerprint, response)
 

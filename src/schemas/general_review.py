@@ -87,6 +87,10 @@ class GeneralReviewRequest(BaseModel):
     review_objective: Optional[str] = Field(default=None, description="The user's primary objective for this review")
     specific_concerns: Optional[str] = Field(default=None, description="Specific concerns the user wants covered in addition to the full review")
     agreement_type: Optional[str] = Field(default=None, description="Kind of agreement under review (e.g. MSA, NDA), when known")
+    review_mode: Optional[Literal["neutral", "advocacy"]] = Field(
+        default=None,
+        description="Review mode: 'neutral' (bilateral fairness) or 'advocacy' (favouring party_represented). Auto-inferred if omitted."
+    )
 
     @model_validator(mode="before")
     @classmethod
@@ -105,6 +109,13 @@ class GeneralReviewRequest(BaseModel):
                 data["textinformation"] = flat
             if clauses and data.get("simulation_clause_payload") is None:
                 data["simulation_clause_payload"] = True
+
+            party = data.get("party_represented")
+            if not data.get("review_mode"):
+                if party and str(party).strip().casefold() not in ("", "general review", "neutral", "general", "none"):
+                    data["review_mode"] = "advocacy"
+                else:
+                    data["review_mode"] = "neutral"
         return data
 
     @field_validator("party_represented", "review_objective", "specific_concerns", "agreement_type", mode="before")

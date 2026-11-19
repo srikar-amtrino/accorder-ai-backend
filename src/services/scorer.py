@@ -42,6 +42,16 @@ ANSWER_PENALTIES: Dict[str, Optional[float]] = {
     "Not applicable":  None,
 }
 
+# In client advocacy mode, partial coverage and ambiguity leave the client
+# materially exposed, so higher deficiency factors are applied deterministically.
+ANSWER_PENALTIES_ADVOCACY: Dict[str, Optional[float]] = {
+    "Met":             0.0,
+    "Partly met":      0.70,
+    "Not met":         1.0,
+    "Unclear":         0.65,
+    "Not applicable":  None,
+}
+
 # Gap score thresholds → risk level.
 # Critical is used internally to trigger the High gate; the output schema
 # only allows Low / Medium / High so Critical is capped before returning.
@@ -95,6 +105,12 @@ class ScoringResult:
     failed_answers: List[AnswerRecord] = field(default_factory=list)
     # para indices that have at least one failed criterion's evidence
     risky_para_indices: List[int] = field(default_factory=list)
+    # Advocacy comparison metadata
+    gap_score_neutral: Optional[float] = None
+    gap_score_advocacy: Optional[float] = None
+    level_neutral: Optional[str] = None
+    level_advocacy: Optional[str] = None
+    review_mode: str = "neutral"
 
 
 # ---------------------------------------------------------------------------
@@ -177,7 +193,11 @@ def _max_level(a: str, b: str) -> str:
 # Public API
 # ---------------------------------------------------------------------------
 
-def compute_gap_score(answers: List[AnswerRecord], criteria: List[dict]) -> float:
+def compute_gap_score(
+    answers: List[AnswerRecord],
+    criteria: List[dict],
+    review_mode: str = "neutral",
+) -> float:
     """Weighted gap score in [0, 1].
 
     gap_score = Σ(weight_value × penalty) / Σ(weight_value)
@@ -187,6 +207,7 @@ def compute_gap_score(answers: List[AnswerRecord], criteria: List[dict]) -> floa
     to score → clean clause).
     """
     index = _build_criteria_index(criteria)
+    penalties = ANSWER_PENALTIES_ADVOCACY if review_mode == "advocacy" else ANSWER_PENALTIES
     numerator = 0.0
     denominator = 0.0
 
@@ -194,7 +215,7 @@ def compute_gap_score(answers: List[AnswerRecord], criteria: List[dict]) -> floa
         crit = index.get(ans.criterion_id)
         if crit is None:
             continue
-        pen = _penalty(ans.answer)
+        pen = penalties.get(ans.answer, 0.5)
         if pen is None:
             continue    # Not applicable — skip
         weight = float(crit.get("weight_value", 1))
@@ -234,10 +255,11 @@ def apply_gates(answers: List[AnswerRecord], criteria: List[dict]) -> Optional[s
 def score_group(
     answers: List[AnswerRecord],
     criteria: List[dict],
+    review_mode: str = "neutral",
 ) -> ScoringResult:
     """Compute the final risk level for a clause group.
 
-    1. Gap score → score-based level.
+    1. Gap score → score-based level (computed under both neutral and advocacy lenses).
     2. Gate check → gate floor (only from "Not met" answers).
     3. Final level = max(score level, gate floor).
     4. Collect failed answers and risky paragraph indices.
@@ -251,12 +273,25 @@ def score_group(
     ]
     index = _build_criteria_index(criteria)
 
-    gap_score = compute_gap_score(answers, criteria)
-    score_level = _score_to_level(gap_score, failed_answers=failed, criteria_index=index)
+    # Compute both neutral and advocacy gap scores and levels for comparative audit
+    gap_score_neutral = compute_gap_score(answers, criteria, review_mode="neutral")
+    score_level_neutral = _score_to_level(gap_score_neutral, failed_answers=failed, criteria_index=index)
+
+    gap_score_advocacy = compute_gap_score(answers, criteria, review_mode="advocacy")
+    score_level_advocacy = _score_to_level(gap_score_advocacy, failed_answers=failed, criteria_index=index)
 
     gate = apply_gates(answers, criteria)
     gate_level = _GATE_TO_LEVEL.get(gate or "None", "Low")
-    final_level = _max_level(score_level, gate_level)
+
+    final_level_neutral = _max_level(score_level_neutral, gate_level)
+    final_level_advocacy = _max_level(score_level_advocacy, gate_level)
+
+    if review_mode == "advocacy":
+        gap_score = gap_score_advocacy
+        final_level = final_level_advocacy
+    else:
+        gap_score = gap_score_neutral
+        final_level = final_level_neutral
 
     # Collect paragraph indices that carry evidence of failure
     risky_indices: List[int] = []
@@ -267,10 +302,23 @@ def score_group(
             risky_indices.append(ans.source_para_index)
 
     logger.debug(
-        "Scorer: gap_score=%.3f score_level=%s gate=%s final_level=%s "
+        "Scorer: mode=%s gap_score=%.3f (neu=%.3f, adv=%.3f) final_level=%s (neu=%s, adv=%s) gate=%s "
         "failed=%d/%d risky_paras=%s",
-        gap_score, score_level, gate, final_level,
+        review_mode, gap_score, gap_score_neutral, gap_score_advocacy,
+        final_level, final_level_neutral, final_level_advocacy, gate,
         len(failed), len(answers), risky_indices,
+    )
+
+    return ScoringResult(
+        gap_score=gap_score,
+        final_level=final_level,  # type: ignore[arg-type]
+        failed_answers=failed,
+        risky_para_indices=sorted(risky_indices),
+        gap_score_neutral=gap_score_neutral,
+        gap_score_advocacy=gap_score_advocacy,
+        level_neutral=final_level_neutral,
+        level_advocacy=final_level_advocacy,
+        review_mode=review_mode,
     )
 
     return ScoringResult(
