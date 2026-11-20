@@ -36,6 +36,7 @@ from src.services.reconciliation import (
     build_ccrl_state,
 )
 from src.services.tracing.langsmith_tracer import ContractReviewTracer
+from src.services.party_resolver import PartyPersonaResolver, PartyContext
 
 logger = get_logger(__name__)
 _tracer = ContractReviewTracer()
@@ -144,7 +145,10 @@ def _is_general_review_party(party: Optional[str]) -> bool:
     }
 
 
-def _build_reviewer_context(request: GeneralReviewRequest) -> str:
+def _build_reviewer_context(
+    request: GeneralReviewRequest,
+    party_context: Optional[PartyContext] = None,
+) -> str:
     """Render the questionnaire answers as the prompt's reviewer-context block.
 
     Explicitly separates:
@@ -175,15 +179,32 @@ def _build_reviewer_context(request: GeneralReviewRequest) -> str:
                 "Party represented %r does not appear in the document; the model will infer which party is the client.",
                 party,
             )
+
+        identity_lines = [f"Party Represented (Client): {party}"]
+        if party_context and party_context.is_active and party_context.client:
+            client_def = party_context.client.defined_term
+            cp_name = party_context.counterparty.name if party_context.counterparty else "Counterparty"
+            cp_def = party_context.counterparty.defined_term if party_context.counterparty else "Counterparty"
+            identity_lines.append(f"Client Defined Term in Agreement: \"{client_def}\" (SAME LEGAL ENTITY AS {party})")
+            identity_lines.append(f"Counterparty: {cp_name} (defined as \"{cp_def}\")")
+            identity_lines.append(
+                f"MANDATORY IDENTITY RULE: \"{party}\" and \"{client_def}\" are the EXACT SAME ENTITY. "
+                f"Never treat \"{client_def}\" as a separate company or adversary to \"{party}\". "
+                f"Any duty or liability on \"{client_def}\" IS a burden on \"{party}\". "
+                f"Any right held by \"{client_def}\" IS an asset of \"{party}\"."
+            )
+
+        ident_block = "\n".join(identity_lines)
         sections.append(
             "=== REVIEW PERSPECTIVE: CLIENT ADVOCACY REVIEW (COMMANDING WEIGHT) ===\n"
-            f"Party Represented: {party}\n"
+            f"{ident_block}\n"
             "MANDATORY INSTRUCTIONS FOR CLIENT ADVOCACY REVIEW:\n"
             f"- You are acting as dedicated legal counsel representing {party}.\n"
             f"- This client perspective carries COMMANDING WEIGHT in your analysis, risk assessment, explanation, and redlining.\n"
-            f"- Vigorously protect {party}'s legal, operational, and financial interests against one-sided, overreaching, or ambiguous terms.\n"
-            f"- In the 'reason', explicitly articulate the practical operational, financial, and legal risk TO {party} by name.\n"
-            f"- In the 'suggested_fix', surgically amend the text to shield {party} from liability, eliminate unilateral counterparty discretion, and establish necessary rights and remedies for {party}."
+            f"- Vigorously protect {party}'s legal, operational, and financial interests against one-sided counterparty terms.\n"
+            f"- PRESERVE CLIENT ASSETS: If a right or discretion belongs to {party} (or its contract defined term), that is an ASSET, not a defect. Do not weaken it.\n"
+            f"- In the 'reason', articulate the practical operational, financial, and legal risk TO {party}.\n"
+            f"- In the 'suggested_fix', surgically amend the text to shield {party} from liability and eliminate overreaching counterparty rights. Do NOT draft new affirmative burdens against {party}."
         )
 
     if request.agreement_type:
@@ -1297,6 +1318,8 @@ async def _extraction_call(
     context_bundle: Optional[str] = None,
     parent_span: Optional[Any] = None,
     is_general_path: bool = False,
+    hired_counsel_directive: str = "",
+    party_context: Optional[PartyContext] = None,
 ) -> Tuple[ExtractionResponse, str]:
     """Run criteria extraction against the clause text with structured output.
 
@@ -1307,7 +1330,7 @@ async def _extraction_call(
     """
 
     llm_model = get_bedrock_model()
-    reviewer_context = _build_reviewer_context(request)
+    reviewer_context = _build_reviewer_context(request, party_context=party_context)
 
     lines = []
     for idx in group.para_indices:
@@ -1337,6 +1360,7 @@ async def _extraction_call(
         "criteria_json": criteria_json,
         "clause_text_with_ids": clause_text_with_ids,
         "is_general_path": is_general_path or (not group.is_classified),
+        "hired_counsel_directive": hired_counsel_directive,
     }
 
     llm_span = _tracer.create_llm_span(
@@ -1404,6 +1428,8 @@ def _resolve_and_score(
     criteria: List[dict],
     paragraphs: Sequence[TextInformation],
     review_mode: str = "neutral",
+    client_defined_term: Optional[str] = None,
+    counterparty_defined_term: Optional[str] = None,
 ) -> ScoringResult:
     """Resolve evidence paragraphs for each answer and compute the deterministic score."""
 
@@ -1446,7 +1472,13 @@ def _resolve_and_score(
             )
         )
 
-    return score_group(answers, criteria, review_mode=review_mode)
+    return score_group(
+        answers,
+        criteria,
+        review_mode=review_mode,
+        client_defined_term=client_defined_term,
+        counterparty_defined_term=counterparty_defined_term,
+    )
 
 
 async def _explanation_call(
@@ -1459,6 +1491,8 @@ async def _explanation_call(
     session_id: str,
     clause_name: Optional[str] = None,
     parent_span: Optional[Any] = None,
+    hired_counsel_directive: str = "",
+    party_context: Optional[PartyContext] = None,
 ) -> Tuple[ExplanationResponse, str]:
     """Draft professional review finding with pre-computed, locked risk level.
 
@@ -1484,7 +1518,7 @@ async def _explanation_call(
         issue_lines.append(f"- Issue: {q_text}\n  Outcome: {a.answer}\n  {evidence_str}")
 
     failed_criteria_block = "\n".join(issue_lines)
-    reviewer_context = _build_reviewer_context(request)
+    reviewer_context = _build_reviewer_context(request, party_context=party_context)
     resolved_clause_name = clause_name or group.canonical_type or "General Clause"
 
     prompt_context = {
@@ -1493,6 +1527,7 @@ async def _explanation_call(
         "risk_level": scoring_result.final_level,
         "failed_criteria_block": failed_criteria_block,
         "original_text": para.text,
+        "hired_counsel_directive": hired_counsel_directive,
     }
 
     llm_span = _tracer.create_llm_span(
@@ -1642,6 +1677,8 @@ async def _evaluate_group(
     audit_trace: Optional[List[Dict[str, Any]]] = None,
     context_bundler: Optional[ContextBundler] = None,
     parent_trace: Optional[Any] = None,
+    hired_counsel_directive: str = "",
+    party_context: Optional[PartyContext] = None,
 ) -> List[Tuple[int, Suggestion]]:
     """Route group through PATH A, B, or C and return resulting suggestions."""
 
@@ -1803,7 +1840,9 @@ async def _evaluate_group(
 
     # Call A: Criteria extraction (returns (ExtractionResponse, thinking_text))
     extraction, extraction_thinking = await _extraction_call(
-        group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle, parent_span=clause_span
+        group, criteria, paragraphs, request, semaphore, session_id, context_bundle=context_bundle, parent_span=clause_span,
+        hired_counsel_directive=hired_counsel_directive,
+        party_context=party_context,
     )
 
     # Safety Net: LLM flagged type mismatch -> fall back to general criteria (PATH B)
@@ -1836,12 +1875,24 @@ async def _evaluate_group(
             context_bundle=context_bundle,
             parent_span=clause_span,
             is_general_path=True,
+            hired_counsel_directive=hired_counsel_directive,
+            party_context=party_context,
         )
         group = misclassified_group
 
     # Deterministic scoring in Python
     review_mode = request.review_mode or ("advocacy" if request.party_represented and request.party_represented.strip().casefold() not in ("", "general review", "neutral", "general", "none") else "neutral")
-    scoring_result = _resolve_and_score(extraction, group, criteria, paragraphs, review_mode=review_mode)
+    client_term = party_context.client_defined_term if party_context else None
+    cp_term = party_context.counterparty_defined_term if party_context else None
+    scoring_result = _resolve_and_score(
+        extraction,
+        group,
+        criteria,
+        paragraphs,
+        review_mode=review_mode,
+        client_defined_term=client_term,
+        counterparty_defined_term=cp_term,
+    )
 
     # Build the thinking_trace block for audit (populated only when STREAMING_SIMULATION=True)
     def _make_thinking_trace(ext_thinking: str, explanation_thinking_map: Optional[Dict[str, str]] = None) -> Optional[Dict]:
@@ -1976,6 +2027,8 @@ async def _evaluate_group(
             p_idx, group, scoring_result, criteria, request, semaphore, session_id,
             clause_name=actual_heading,
             parent_span=clause_span,
+            hired_counsel_directive=hired_counsel_directive,
+            party_context=party_context,
         )
         _, full_fix = _expand_to_paragraph(explanation.suggested_fix, p, p.text.strip())
         sugg = Suggestion(
@@ -2125,6 +2178,8 @@ async def _evaluate_batch(
     audit_trace: Optional[List[Dict[str, Any]]] = None,
     context_bundler: Optional[ContextBundler] = None,
     parent_trace: Optional[Any] = None,
+    hired_counsel_directive: str = "",
+    party_context: Optional[PartyContext] = None,
 ) -> List[Tuple[int, Suggestion]]:
     """Evaluate all groups in a batch concurrently."""
 
@@ -2142,6 +2197,8 @@ async def _evaluate_batch(
                 audit_trace=audit_trace,
                 context_bundler=context_bundler,
                 parent_trace=parent_trace,
+                hired_counsel_directive=hired_counsel_directive,
+                party_context=party_context,
             )
             for group in batch
         ],
@@ -2221,6 +2278,50 @@ def extract_audit_trace_bundle(
     return clause_units, recon_pass, party_audit
 
 
+def _deduplicate_suggestions(suggestions: List[Suggestion]) -> List[Suggestion]:
+    """Eliminate redundant duplicate suggestions across the document.
+
+    Rules:
+    1. Duplicate Suggested Fix: If two suggestions recommend essentially the identical text change,
+       keep the first one and suppress the redundant duplicate.
+    2. Overlapping Reason on Same Clause: If two suggestions on the same clause have near-identical
+       reasons (e.g. identical boilerplate advice), retain only the primary one.
+    """
+    seen_fixes: Set[str] = set()
+    seen_clause_reasons: Set[Tuple[str, str]] = set()
+    deduped: List[Suggestion] = []
+
+    for s in suggestions:
+        # Normalize fix for fingerprinting
+        norm_fix = re.sub(r"\s+", " ", (s.suggested_fix or "").strip().lower())
+        norm_fix = re.sub(r"[^\w\s]", "", norm_fix)
+
+        # Normalize reason leading summary (first 80 chars)
+        norm_reason = re.sub(r"\s+", " ", (s.reason or "").strip().lower())
+        norm_reason = re.sub(r"[^\w\s]", "", norm_reason)[:80]
+
+        clause_key = (s.clause or "").strip().lower()
+
+        # Check duplicate fix across document
+        if len(norm_fix) > 40 and norm_fix in seen_fixes:
+            logger.info("Deduplication: suppressing duplicate fix in clause '%s' (para %s)", s.clause, s.para_identifier)
+            continue
+
+        # Check duplicate reason in same clause
+        if len(norm_reason) > 40 and (clause_key, norm_reason) in seen_clause_reasons:
+            logger.info("Deduplication: suppressing duplicate reason in clause '%s' (para %s)", s.clause, s.para_identifier)
+            continue
+
+        if len(norm_fix) > 40:
+            seen_fixes.add(norm_fix)
+        if len(norm_reason) > 40:
+            seen_clause_reasons.add((clause_key, norm_reason))
+
+        deduped.append(s)
+
+    return deduped
+
+
 async def general_review_service(
     request: GeneralReviewRequest,
     session_id: str,
@@ -2285,6 +2386,13 @@ async def general_review_service(
         simulation_mode=bool(request.simulation_clause_payload and request.clauses),
     )
 
+    # Step 5b: Resolve party persona and compile hired counsel directive
+    party_resolver = PartyPersonaResolver()
+    party_ctx = await party_resolver.resolve(
+        party_represented=request.party_represented,
+        paragraphs=paragraphs,
+    )
+
     semaphore = asyncio.Semaphore(MAX_CONCURRENT_CALLS)
     batch_results = await asyncio.gather(
         *[
@@ -2297,6 +2405,8 @@ async def general_review_service(
                 audit_trace=audit_trace_collector,
                 context_bundler=context_bundler,
                 parent_trace=root_trace,
+                hired_counsel_directive=party_ctx.hired_counsel_directive,
+                party_context=party_ctx,
             )
             for batch in batches
         ]
@@ -2325,6 +2435,7 @@ async def general_review_service(
         sugg for _, sugg in positioned
         if not (sugg.clause == "Signature Block" and sugg.risk_level == "Low")
     ]
+    final_suggestions = _deduplicate_suggestions(final_suggestions)
 
     # ------------------------------------------------------------------
     # Step 6: CCRL Reconciliation Pass (Cross-Clause Resolution Ledger)
@@ -2363,9 +2474,19 @@ async def general_review_service(
 
     if audit_trace_collector is not None:
         party_rep_audit = _build_party_representation_audit(request, audit_trace_collector)
+        party_context_dict = {
+            "is_active": party_ctx.is_active,
+            "client": party_ctx.client.model_dump() if party_ctx.client else None,
+            "counterparty": party_ctx.counterparty.model_dump() if party_ctx.counterparty else None,
+            "client_interests": party_ctx.client_interests.model_dump() if party_ctx.client_interests else None,
+            "agreement_nature": party_ctx.agreement_nature,
+            "hired_counsel_directive": party_ctx.hired_counsel_directive,
+        }
+        party_rep_audit["party_context"] = party_context_dict
         try:
             audit_trace_collector.reconciliation_pass = reconciliation_summary
             audit_trace_collector.party_representation_audit = party_rep_audit
+            audit_trace_collector.party_context = party_context_dict
         except (AttributeError, TypeError):
             pass
         if isinstance(audit_trace_collector, list):
@@ -2373,6 +2494,7 @@ async def general_review_service(
                 "_metadata_envelope": True,
                 "reconciliation_pass": reconciliation_summary,
                 "party_representation_audit": party_rep_audit,
+                "party_context": party_context_dict,
             })
 
     response = GeneralReviewResponse(suggestions=final_suggestions)
@@ -2450,6 +2572,12 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
             simulation_mode=bool(request.simulation_clause_payload and request.clauses),
         )
 
+        party_resolver = PartyPersonaResolver()
+        party_ctx = await party_resolver.resolve(
+            party_represented=request.party_represented,
+            paragraphs=paragraphs,
+        )
+
         tasks = [
             asyncio.create_task(
                 _evaluate_batch(
@@ -2460,6 +2588,8 @@ async def general_review_streaming_service(request: GeneralReviewRequest, sessio
                     titles=titles,
                     context_bundler=context_bundler,
                     parent_trace=root_trace,
+                    hired_counsel_directive=party_ctx.hired_counsel_directive,
+                    party_context=party_ctx,
                 )
             )
             for batch in batches

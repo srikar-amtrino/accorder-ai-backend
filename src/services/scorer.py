@@ -193,10 +193,68 @@ def _max_level(a: str, b: str) -> str:
 # Public API
 # ---------------------------------------------------------------------------
 
+def is_client_favorable_asymmetry(
+    ans: AnswerRecord,
+    crit: dict,
+    client_defined_term: Optional[str] = None,
+    counterparty_defined_term: Optional[str] = None,
+) -> bool:
+    """Check if a failed answer actually reflects a commercial asymmetry in favor of the client.
+
+    If a clause gives the client a unilateral right or discretionary power, or imposes a sole
+    restriction on the counterparty, tests for 'mutuality' or 'balance' may be answered
+    'Not met' or 'Partly met'. In advocacy mode, this is an asset for the client and should
+    not be penalized.
+    """
+    if not client_defined_term:
+        return False
+
+    q_text = (crit.get("question") or crit.get("question_for_llm") or crit.get("criterion", "")).lower()
+    cat = (crit.get("issue_category") or "").lower()
+    is_balance_criterion = any(
+        kw in q_text or kw in cat
+        for kw in ("balance", "mutual", "bilateral", "reciprocal", "one-sided", "symmetry")
+    )
+    if not is_balance_criterion:
+        return False
+
+    quote = (ans.quote or "").lower()
+    client_term = client_defined_term.lower()
+    cp_term = (counterparty_defined_term or "").lower()
+
+    # Evidence shows client holds the unilateral right/power:
+    client_right_patterns = (
+        f"{client_term} may",
+        f"{client_term} shall have the right",
+        f"{client_term} reserves the right",
+        f"at {client_term}'s sole discretion",
+        f"in {client_term}'s sole discretion",
+        f"at {client_term}'s option",
+        f"to {client_term}'s satisfaction",
+    )
+    if any(p in quote for p in client_right_patterns):
+        return True
+
+    # Evidence shows burden/restriction is exclusively on counterparty:
+    if cp_term:
+        cp_burden_patterns = (
+            f"{cp_term} shall not",
+            f"{cp_term} represents",
+            f"{cp_term} warrants",
+            f"{cp_term} agrees to indemnify",
+        )
+        if any(p in quote for p in cp_burden_patterns) and f"{client_term} shall" not in quote:
+            return True
+
+    return False
+
+
 def compute_gap_score(
     answers: List[AnswerRecord],
     criteria: List[dict],
     review_mode: str = "neutral",
+    client_defined_term: Optional[str] = None,
+    counterparty_defined_term: Optional[str] = None,
 ) -> float:
     """Weighted gap score in [0, 1].
 
@@ -215,6 +273,13 @@ def compute_gap_score(
         crit = index.get(ans.criterion_id)
         if crit is None:
             continue
+
+        # In advocacy mode, do not penalize asymmetries that favor our client
+        if review_mode == "advocacy" and is_client_favorable_asymmetry(
+            ans, crit, client_defined_term, counterparty_defined_term
+        ):
+            continue
+
         pen = penalties.get(ans.answer, 0.5)
         if pen is None:
             continue    # Not applicable — skip
@@ -227,7 +292,12 @@ def compute_gap_score(
     return numerator / denominator
 
 
-def apply_gates(answers: List[AnswerRecord], criteria: List[dict]) -> Optional[str]:
+def apply_gates(
+    answers: List[AnswerRecord],
+    criteria: List[dict],
+    client_defined_term: Optional[str] = None,
+    counterparty_defined_term: Optional[str] = None,
+) -> Optional[str]:
     """Return the highest gate level triggered by any "Not met" answer.
 
     Gates only fire on "Not met", never on "Partly met" or "Unclear".
@@ -243,6 +313,11 @@ def apply_gates(answers: List[AnswerRecord], criteria: List[dict]) -> Optional[s
         crit = index.get(ans.criterion_id)
         if crit is None:
             continue
+
+        # Skip gate if this "Not met" is a client-favorable asymmetry
+        if is_client_favorable_asymmetry(ans, crit, client_defined_term, counterparty_defined_term):
+            continue
+
         gate = crit.get("gate_if_not_met", "None")
         rank = _GATE_ORDER.get(gate, 0)
         if rank > max_gate_rank:
@@ -256,6 +331,8 @@ def score_group(
     answers: List[AnswerRecord],
     criteria: List[dict],
     review_mode: str = "neutral",
+    client_defined_term: Optional[str] = None,
+    counterparty_defined_term: Optional[str] = None,
 ) -> ScoringResult:
     """Compute the final risk level for a clause group.
 
@@ -266,21 +343,36 @@ def score_group(
 
     The LLM never sees or influences the final_level returned here.
     """
+    index = _build_criteria_index(criteria)
+
     # Collect failed answers (anything that contributes a penalty)
     failed = [
         ans for ans in answers
         if ans.answer not in ("Met", "Not applicable")
+        and not (
+            review_mode == "advocacy"
+            and is_client_favorable_asymmetry(
+                ans, index.get(ans.criterion_id, {}), client_defined_term, counterparty_defined_term
+            )
+        )
     ]
-    index = _build_criteria_index(criteria)
 
     # Compute both neutral and advocacy gap scores and levels for comparative audit
     gap_score_neutral = compute_gap_score(answers, criteria, review_mode="neutral")
     score_level_neutral = _score_to_level(gap_score_neutral, failed_answers=failed, criteria_index=index)
 
-    gap_score_advocacy = compute_gap_score(answers, criteria, review_mode="advocacy")
+    gap_score_advocacy = compute_gap_score(
+        answers, criteria, review_mode="advocacy",
+        client_defined_term=client_defined_term,
+        counterparty_defined_term=counterparty_defined_term,
+    )
     score_level_advocacy = _score_to_level(gap_score_advocacy, failed_answers=failed, criteria_index=index)
 
-    gate = apply_gates(answers, criteria)
+    gate = apply_gates(
+        answers, criteria,
+        client_defined_term=client_defined_term if review_mode == "advocacy" else None,
+        counterparty_defined_term=counterparty_defined_term if review_mode == "advocacy" else None,
+    )
     gate_level = _GATE_TO_LEVEL.get(gate or "None", "Low")
 
     final_level_neutral = _max_level(score_level_neutral, gate_level)
